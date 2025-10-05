@@ -1,0 +1,15 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --card: #ffffff;
+  --muted: #f1f5f9;
+}
+
+* { box-sizing: border-box; }
+
+html, body, #root { height: 100%; }
+
+.scroll-slim::-webkit-scrollbar { height: 6px; width: 6px; }
+.scroll-slim::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 6px; }

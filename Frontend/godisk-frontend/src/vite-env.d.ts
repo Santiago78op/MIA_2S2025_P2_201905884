@@ -1,1 +1,10 @@
-// This file provides TypeScript definitions for Vite-specific features, ensuring proper type checking for Vite's environment variables.
+/// <reference types="vite/client" />
+
+interface ImportMetaEnv {
+  readonly VITE_API_URL: string
+  // more env variables...
+}
+
+interface ImportMeta {
+  readonly env: ImportMetaEnv
+}
