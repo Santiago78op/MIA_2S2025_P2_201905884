@@ -14,6 +14,7 @@ type MountIndex interface {
 	Put(id string, ref disk.PartitionRef, h fs.MountHandle)
 	GetRef(id string) (disk.PartitionRef, bool)
 	GetHandle(id string) (fs.MountHandle, bool)
+	GetByID(id string) (disk.PartitionRef, bool) // Alias para GetRef
 	Del(id string)
 	List() []string
 }
@@ -51,6 +52,11 @@ func (m *memoryIndex) GetHandle(id string) (fs.MountHandle, bool) {
 	defer m.mu.RUnlock()
 	h, ok := m.hand[id]
 	return h, ok
+}
+
+func (m *memoryIndex) GetByID(id string) (disk.PartitionRef, bool) {
+	// Alias para GetRef
+	return m.GetRef(id)
 }
 
 func (m *memoryIndex) Del(id string) {

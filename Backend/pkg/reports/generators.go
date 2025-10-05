@@ -1,7 +1,6 @@
 package reports
 
 import (
-	"context"
 	"fmt"
 	"os"
 	"os/exec"

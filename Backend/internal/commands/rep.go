@@ -10,18 +10,18 @@ import (
 
 // RepCommand representa el comando REP para generar reportes
 type RepCommand struct {
-	Name string // Tipo de reporte (mbr, disk, inode, etc.)
-	Path string // Ruta donde guardar el reporte
-	ID   string // ID de partición montada
-	Ruta string // Ruta de archivo (para file y ls)
+	ReportName string // Tipo de reporte (mbr, disk, inode, etc.)
+	Path       string // Ruta donde guardar el reporte
+	ID         string // ID de partición montada
+	Ruta       string // Ruta de archivo (para file y ls)
 }
 
-func (c *RepCommand) CommandName() CommandName {
+func (c *RepCommand) Name() CommandName {
 	return CmdRep
 }
 
 func (c *RepCommand) Validate() error {
-	if c.Name == "" {
+	if c.ReportName == "" {
 		return fmt.Errorf("rep: parámetro 'name' es obligatorio")
 	}
 	if c.Path == "" {
@@ -34,7 +34,7 @@ func (c *RepCommand) Validate() error {
 	// Validar tipo de reporte
 	validTypes := []string{"mbr", "disk", "inode", "block", "bm_inode", "bm_block", "tree", "sb", "file"}
 	valid := false
-	nameLower := strings.ToLower(c.Name)
+	nameLower := strings.ToLower(c.ReportName)
 	for _, t := range validTypes {
 		if nameLower == t {
 			valid = true
@@ -42,12 +42,12 @@ func (c *RepCommand) Validate() error {
 		}
 	}
 	if !valid {
-		return fmt.Errorf("rep: tipo de reporte '%s' no válido. Tipos: %v", c.Name, validTypes)
+		return fmt.Errorf("rep: tipo de reporte '%s' no válido. Tipos: %v", c.ReportName, validTypes)
 	}
 
 	// Validar que file requiere ruta
 	if (nameLower == "file" || nameLower == "ls") && c.Ruta == "" {
-		return fmt.Errorf("rep: reporte '%s' requiere parámetro 'ruta'", c.Name)
+		return fmt.Errorf("rep: reporte '%s' requiere parámetro 'ruta'", c.ReportName)
 	}
 
 	return nil
@@ -64,7 +64,7 @@ func (c *RepCommand) Execute(ctx context.Context, adapter *Adapter) (string, err
 	partName := ref.PartitionID
 
 	// Ejecutar según tipo de reporte
-	nameLower := strings.ToLower(c.Name)
+	nameLower := strings.ToLower(c.ReportName)
 	var err error
 
 	switch nameLower {
@@ -87,23 +87,23 @@ func (c *RepCommand) Execute(ctx context.Context, adapter *Adapter) (string, err
 	// case "file":
 	// 	err = reports.GenerateFILEReport(diskPath, partName, c.Ruta, c.Path)
 	default:
-		return "", fmt.Errorf("reporte '%s' aún no implementado", c.Name)
+		return "", fmt.Errorf("reporte '%s' aún no implementado", c.ReportName)
 	}
 
 	if err != nil {
-		return "", fmt.Errorf("error al generar reporte %s: %v", c.Name, err)
+		return "", fmt.Errorf("error al generar reporte %s: %v", c.ReportName, err)
 	}
 
-	return fmt.Sprintf("rep OK: Reporte %s generado en %s", c.Name, c.Path), nil
+	return fmt.Sprintf("rep OK: Reporte %s generado en %s", c.ReportName, c.Path), nil
 }
 
 // parseRep parsea los argumentos del comando REP
 func parseRep(args map[string]string) (CommandHandler, error) {
 	cmd := &RepCommand{
-		Name: args["name"],
-		Path: args["path"],
-		ID:   args["id"],
-		Ruta: args["ruta"], // También puede ser path_file_ls
+		ReportName: args["name"],
+		Path:       args["path"],
+		ID:         args["id"],
+		Ruta:       args["ruta"], // También puede ser path_file_ls
 	}
 
 	// Compatibilidad con path_file_ls
