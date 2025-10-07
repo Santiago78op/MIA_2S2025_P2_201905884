@@ -1,47 +1,162 @@
 import { useEffect, useState } from 'react'
-import { runCmd } from '@/lib/api'
-
-// Este componente funciona en modo "solo lectura" usando comandos que ya tienes (cuando existan):
-// - list mounts (si implementas) o ingresa manualmente el id
-// - tree -id=... -path=/
-// - cat -id=... -path=/ruta/archivo.txt (si implementas)
+import { listDisks, listMounted, getDiskInfo, type MountedPartition } from '@/lib/api'
+import { useToast } from '@/lib/useToast'
 
 export function DiskExplorer() {
-  const [id, setId] = useState('')
-  const [path, setPath] = useState('/')
-  const [tree, setTree] = useState<string>('')
-  const [file, setFile] = useState<string>('')
+  const [disks, setDisks] = useState<any[]>([])
+  const [mounted, setMounted] = useState<MountedPartition[]>([])
+  const [selectedDisk, setSelectedDisk] = useState<any>(null)
+  const [loading, setLoading] = useState(false)
+  const { push, View: Toasts } = useToast()
 
-  async function loadTree() {
-    if (!id) return
-    const res = await runCmd(`tree -id=${id} -path=${JSON.stringify(path)}`)
-    setTree(res.ok ? (res.output||'') : (res.error||'error'))
+  useEffect(() => {
+    loadDisks()
+    loadMounted()
+  }, [])
+
+  async function loadDisks() {
+    setLoading(true)
+    try {
+      const res = await listDisks()
+      if (res.ok) {
+        setDisks(res.disks || [])
+      } else {
+        push(res.error || 'Error al cargar discos', 'error')
+      }
+    } catch (e: any) {
+      push(e.message || 'Error de red', 'error')
+    } finally {
+      setLoading(false)
+    }
   }
 
-  async function openFile(p: string) {
-    if (!id) return
-    const res = await runCmd(`cat -id=${id} -path=${JSON.stringify(p)}`)
-    setFile(res.ok ? (res.output||'') : (res.error||'error'))
+  async function loadMounted() {
+    try {
+      const res = await listMounted()
+      if (res.ok) {
+        setMounted(res.partitions || [])
+      }
+    } catch (e: any) {
+      console.error('Error loading mounted partitions:', e)
+    }
   }
 
-  useEffect(() => { /* opcional: auto cargar */ }, [])
+  async function selectDisk(diskPath: string) {
+    setLoading(true)
+    try {
+      const info = await getDiskInfo(diskPath)
+      if (info.ok) {
+        setSelectedDisk(info)
+      } else {
+        push(info.error || 'Error al obtener info del disco', 'error')
+      }
+    } catch (e: any) {
+      push(e.message || 'Error de red', 'error')
+    } finally {
+      setLoading(false)
+    }
+  }
 
   return (
-    <div className="grid md:grid-cols-2 gap-3">
-      <div>
-        <div className="flex gap-2 mb-2">
-          <input className="flex-1 px-3 py-2 rounded-lg border" placeholder="ID de partición montada" value={id} onChange={e=>setId(e.target.value)} />
-          <input className="flex-1 px-3 py-2 rounded-lg border" placeholder="/" value={path} onChange={e=>setPath(e.target.value)} />
-          <button className="px-3 py-2 rounded-lg border" onClick={loadTree}>Cargar</button>
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <h3 className="text-lg font-semibold">Explorador de Discos</h3>
+        <button
+          onClick={() => { loadDisks(); loadMounted(); }}
+          disabled={loading}
+          className="px-3 py-1 text-sm rounded-lg border hover:bg-gray-50 disabled:opacity-50"
+        >
+          🔄 Recargar
+        </button>
+      </div>
+
+      <div className="grid md:grid-cols-2 gap-4">
+        {/* Lista de discos */}
+        <div>
+          <h4 className="font-medium mb-2">Discos disponibles (.mia)</h4>
+          <div className="space-y-2 h-64 overflow-auto scroll-slim bg-[var(--muted)] rounded-xl p-3">
+            {loading && <div className="text-sm text-slate-500">Cargando...</div>}
+            {!loading && disks.length === 0 && (
+              <div className="text-sm text-slate-500">No hay discos .mia en el directorio actual</div>
+            )}
+            {disks.map((disk, i) => (
+              <div
+                key={i}
+                onClick={() => selectDisk(disk.path)}
+                className="p-2 rounded border bg-white hover:bg-blue-50 cursor-pointer"
+              >
+                <div className="font-medium text-sm">{disk.name}</div>
+                <div className="text-xs text-slate-500">
+                  {(disk.size / (1024*1024)).toFixed(2)} MB
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
-        <pre className="h-64 overflow-auto scroll-slim bg-[var(--muted)] rounded-xl p-3 text-sm">{tree || 'Árbol vacío / implementa comando tree en backend.'}</pre>
-        <p className="text-xs text-slate-500 mt-1">Consejo: puedes implementar endpoints /api/fs/tree y /api/fs/file para no depender de comandos.</p>
+
+        {/* Particiones montadas */}
+        <div>
+          <h4 className="font-medium mb-2">Particiones montadas</h4>
+          <div className="space-y-2 h-64 overflow-auto scroll-slim bg-[var(--muted)] rounded-xl p-3">
+            {mounted.length === 0 && (
+              <div className="text-sm text-slate-500">No hay particiones montadas</div>
+            )}
+            {mounted.map((m, i) => (
+              <div key={i} className="p-2 rounded border bg-white">
+                <div className="font-medium text-sm font-mono">{m.mount_id}</div>
+                <div className="text-xs text-slate-500">{m.disk_path}</div>
+                <div className="text-xs text-slate-500">Partición: {m.partition_id}</div>
+              </div>
+            ))}
+          </div>
+        </div>
       </div>
-      <div>
-        <h4 className="font-medium mb-1">Visor de archivo</h4>
-        <pre className="h-80 overflow-auto scroll-slim bg-[var(--muted)] rounded-xl p-3 text-sm">{file || 'Selecciona un archivo (usa el comando cat en backend).'}
-        </pre>
-      </div>
+
+      {/* Información del disco seleccionado */}
+      {selectedDisk && (
+        <div className="mt-4 p-4 rounded-xl border bg-white">
+          <h4 className="font-medium mb-3">Información del disco</h4>
+          <div className="grid md:grid-cols-2 gap-4 text-sm">
+            <div>
+              <div className="text-slate-500">Path:</div>
+              <div className="font-mono text-xs">{selectedDisk.path}</div>
+            </div>
+            <div>
+              <div className="text-slate-500">Tamaño:</div>
+              <div>{(selectedDisk.size / (1024*1024)).toFixed(2)} MB</div>
+            </div>
+            <div>
+              <div className="text-slate-500">Creado:</div>
+              <div>{new Date(selectedDisk.created_at).toLocaleString()}</div>
+            </div>
+            <div>
+              <div className="text-slate-500">Fit:</div>
+              <div>{selectedDisk.fit}</div>
+            </div>
+          </div>
+
+          {selectedDisk.partitions && selectedDisk.partitions.length > 0 && (
+            <div className="mt-4">
+              <h5 className="font-medium mb-2">Particiones</h5>
+              <div className="space-y-2">
+                {selectedDisk.partitions.map((p: any, i: number) => (
+                  <div key={i} className="p-2 rounded border bg-gray-50 text-sm">
+                    <div className="flex justify-between">
+                      <span className="font-medium">{p.name}</span>
+                      <span className="text-slate-500">{p.type}</span>
+                    </div>
+                    <div className="text-xs text-slate-500 mt-1">
+                      Inicio: {p.start} | Tamaño: {(p.size / (1024*1024)).toFixed(2)} MB
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      <Toasts />
     </div>
   )
 }

@@ -36,6 +36,14 @@ func registerRoutes(mux *http.ServeMux, s *Server) {
 	mux.HandleFunc("/api/disks", s.handleListDisks)
 	mux.HandleFunc("/api/disks/info", s.handleGetDiskInfo)
 	mux.HandleFunc("/api/mounted", s.handleListMounted)
+
+	// Reportes (DOT)
+	mux.Handle("/api/reports/mbr", s.corsWrapper(http.HandlerFunc(s.handleReportMBR)))
+	mux.Handle("/api/reports/disk", s.corsWrapper(http.HandlerFunc(s.handleReportDisk)))
+	mux.Handle("/api/reports/sb", s.corsWrapper(http.HandlerFunc(s.handleReportSuperblock)))
+	mux.Handle("/api/reports/tree", s.corsWrapper(http.HandlerFunc(s.handleReportTree)))
+	mux.Handle("/api/reports/journal", s.corsWrapper(http.HandlerFunc(s.handleReportJournal)))
+	mux.Handle("/api/reports/generate", s.corsWrapper(http.HandlerFunc(s.handleGenerateReport)))
 }
 
 func (s *Server) handleHealth(w http.ResponseWriter, r *http.Request) {
