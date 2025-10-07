@@ -414,3 +414,5 @@ func (c *LossCommand) Validate() error {
 	}
 	return nil
 }
+
+// JournalingCommand representa el comando journaling

@@ -49,6 +49,11 @@ func registerRoutes(mux *http.ServeMux, s *Server) {
 	mux.Handle("/api/logs", s.corsWrapper(http.HandlerFunc(s.handleGetLogs)))
 	mux.Handle("/api/logs/clear", s.corsWrapper(http.HandlerFunc(s.handleClearLogs)))
 	mux.Handle("/api/logs/stats", s.corsWrapper(http.HandlerFunc(s.handleGetLogStats)))
+
+	// EXT3 específicos
+	mux.Handle("/api/ext3/journal", s.corsWrapper(http.HandlerFunc(s.handleJournaling)))
+	mux.Handle("/api/ext3/recovery", s.corsWrapper(http.HandlerFunc(s.handleRecovery)))
+	mux.Handle("/api/ext3/loss", s.corsWrapper(http.HandlerFunc(s.handleLoss)))
 }
 
 func (s *Server) handleHealth(w http.ResponseWriter, r *http.Request) {

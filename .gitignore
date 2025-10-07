@@ -160,3 +160,6 @@ server
 
 # Claude AI files
 .claude/
+
+# Cloud files
+.cloud

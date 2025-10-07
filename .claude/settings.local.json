@@ -5,7 +5,10 @@
       "Read(//home/julian/Documents/MIA_2S2025_P1_201905884/backend/controllers/**)",
       "Read(//home/julian/Documents/MIA_2S2025_P1_201905884/backend/**)",
       "Read(//home/julian/Documents/MIA_2S2025_P1_201905884/backend/models/**)",
-      "Bash(find:*)"
+      "Bash(find:*)",
+      "Read(//home/julian/Documents/**)",
+      "Bash(go run:*)",
+      "Bash(curl:*)"
     ],
     "deny": [],
     "ask": []

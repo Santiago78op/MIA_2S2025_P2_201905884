@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"path/filepath"
 	"sync"
 	"time"
 )
@@ -51,6 +52,11 @@ func Init(logFile string, maxEntries int, stdout bool) error {
 		}
 
 		if logFile != "" {
+			// Crear el directorio si no existe
+			dir := filepath.Dir(logFile)
+			if err = os.MkdirAll(dir, 0755); err != nil {
+				return
+			}
 			globalLogger.file, err = os.OpenFile(logFile, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
 		}
 	})

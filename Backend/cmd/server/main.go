@@ -6,7 +6,6 @@ import (
 	"MIA_2S2025_P2_201905884/internal/fs"
 	"MIA_2S2025_P2_201905884/internal/fs/ext2"
 	"MIA_2S2025_P2_201905884/internal/fs/ext3"
-	"MIA_2S2025_P2_201905884/internal/journal"
 	"MIA_2S2025_P2_201905884/internal/logger"
 	"context"
 	"log"
@@ -20,7 +19,7 @@ func main() {
 	// ===== Config =====
 	port := getenv("PORT", "8080")
 	allowOrigin := getenv("ALLOW_ORIGIN", "*")
-	logFile := getenv("LOG_FILE", "godisk.log")
+	logFile := getenv("LOG_FILE", "Logs/godisk.log")
 
 	// Inicializar logger
 	if err := logger.Init(logFile, 1000, true); err != nil {
@@ -29,8 +28,9 @@ func main() {
 	defer logger.GetLogger().Close()
 
 	logger.Info("Starting GoDisk 2.0 Server", map[string]interface{}{
-		"port":   port,
-		"origin": allowOrigin,
+		"port":     port,
+		"origin":   allowOrigin,
+		"log_file": logFile,
 	})
 
 	// ===== Wiring de dependencias =====
@@ -40,10 +40,7 @@ func main() {
 	// Inicializar metadata state para filesystems
 	meta := fs.NewMetaState()
 	fs2 := ext2.New(meta)
-
-	// Crear journal store temporal (implementar más tarde si es necesario)
-	var jstore journal.Store = nil
-	fs3 := ext3.New(meta, 128, 50, jstore) // blockSize=128, journal=50
+	fs3 := ext3.New(meta, 128, nil) // blockSize=128
 
 	// Índice de montajes
 	idx := commands.NewMemoryIndex()

@@ -1,160 +1,135 @@
-> Ahora complementemos la seccion de pkg/reports complementando con les 
-reportes mejorados del proyecto 1 generando de mejor manera la reporteria. 
+# GoDisk - Sistema de Gestión de Discos
 
-● ¡Perfecto! Voy a implementar el sistema de reportes completo basándome en
-  el Proyecto 1. Primero analizo qué reportes tiene:
+## Descripción
 
-● Bash(find /home/julian/Documents/MIA_2S2025_P1_201905884/backend -type f -name
-       "*.go" -path "*/Rep/*" | head -10)
-  ⎿ /home/julian/Documents/MIA_2S2025_P1_201905884/backend/command/Rep/repo
-    rtes.go
-    /home/julian/Documents/MIA_2S2025_P1_201905884/backend/command/Rep/opti
-    … +13 lines (ctrl+o to expand)
+GoDisk es un sistema completo de gestión y simulación de discos que permite crear, formatear, montar y administrar sistemas de archivos virtuales. El proyecto está desarrollado con una arquitectura de cliente-servidor, donde el backend está implementado en Go y el frontend en React con TypeScript.
 
+## Características Principales
 
+### Backend (Go)
 
-● Read(~/Documents/MIA_2S2025_P1_201905884/backend/command/Rep/reportes.go)
-  ⎿  Read 100 lines (ctrl+o to expand)
+- **Gestión de Discos**: Creación y administración de discos virtuales
+- **Sistemas de Archivos**: Soporte para EXT2 y EXT3 con journaling
+- **Particionamiento**: Manejo de MBR (Master Boot Record) y EBR (Extended Boot Record)
+- **Reportes**: Generación de reportes en formato DOT para visualización
+- **Journaling**: Sistema de journal para EXT3 con recuperación de transacciones
+- **API REST**: Servidor HTTP con endpoints para todas las operaciones
+- **Logging**: Sistema de logs detallado para auditoría
 
-● Voy a crear la estructura de reportes en pkg/reports. Primero creo el
-  archivo principal:
+### Frontend (React + TypeScript)
 
-● Bash(mkdir -p
-      /home/julian/Documents/MIA_2S2025_P2_201905884/Backend/pkg/reports)
-  ⎿  (No content)
+- **Terminal de Comandos**: Interfaz interactiva para ejecutar comandos del sistema
+- **Explorador de Discos**: Navegación visual del sistema de archivos
+- **Visualizador de Reportes**: Renderizado de diagramas DOT
+- **Panel de Journal**: Monitoreo de transacciones del sistema de archivos
+- **Visor de Logs**: Consulta de logs del sistema en tiempo real
+- **Ejecutor de Scripts**: Capacidad de ejecutar scripts de comandos
 
-● Write(pkg/reports/reports.go)
-  ⎿  Error writing file
+## Estructura del Proyecto
 
-● Bash(ls /home/julian/Documents/MIA_2S2025_P2_201905884/Backend/pkg/reports/
-      2>/dev/null || echo "Directory empty or doesn't exist")
-  ⎿  disk_reports.go              
-     dot_builder.go
-     fs_reports.go
-     … +3 lines (ctrl+o to expand)
+```text
+├── Backend/
+│   ├── cmd/server/          # Servidor HTTP y handlers
+│   ├── internal/
+│   │   ├── commands/        # Procesamiento de comandos
+│   │   ├── disk/           # Gestión de discos y particiones
+│   │   ├── fs/             # Sistemas de archivos (EXT2/EXT3)
+│   │   └── journal/        # Sistema de journaling
+│   ├── pkg/reports/        # Generación de reportes
+│   └── scripts/            # Scripts de utilidad
+└── Frontend/
+    └── godisk-frontend/
+        ├── src/
+        │   ├── components/     # Componentes React
+        │   ├── pages/         # Páginas principales
+        │   ├── lib/           # API y utilidades
+        │   └── types/         # Definiciones TypeScript
+        └── public/            # Archivos estáticos
+```
 
-● Ya existe un pkg/reports! Voy a revisar qué hay:
+## Funcionalidades
 
-● Read(pkg/reports/reports.go)
-  ⎿  Read 79 lines (ctrl+o to expand)
+### Comandos de Disco
 
-● Perfecto! Ya hay una base. Voy a revisar los demás archivos:
+- `mkdisk`: Crear discos virtuales
+- `rmdisk`: Eliminar discos
+- `fdisk`: Crear y administrar particiones
+- `mount`: Montar particiones
+- `unmount`: Desmontar particiones
 
-● Read(pkg/reports/disk_reports.go)
-  ⎿  Read 87 lines (ctrl+o to expand)
+### Comandos de Sistema de Archivos
 
-● Excelente! Ya hay generadores de DOT. Ahora voy a crear los adaptadores
-  que lean del disco real y generen imágenes. Primero voy a leer el P1 para
-  ver cómo lee los datos:
+- `mkfs`: Formatear particiones con EXT2 o EXT3
+- `login`: Autenticación de usuarios
+- `logout`: Cerrar sesión
+- `mkgrp`: Crear grupos de usuarios
+- `rmgrp`: Eliminar grupos
+- `mkusr`: Crear usuarios
+- `rmusr`: Eliminar usuarios
 
-● Read(~/Documents/MIA_2S2025_P1_201905884/backend/command/Rep/reportes.go)
-  ⎿  Read 80 lines (ctrl+o to expand)
+### Comandos de Archivos y Directorios
 
-● Ahora voy a crear los generadores que conecten con el disco real. Primero,
-   un archivo para los generadores principales:
+- `mkfile`: Crear archivos
+- `cat`: Mostrar contenido de archivos
+- `remove`: Eliminar archivos y directorios
+- `edit`: Editar archivos
+- `rename`: Renombrar archivos/directorios
+- `mkdir`: Crear directorios
+- `copy`: Copiar archivos
+- `move`: Mover archivos
+- `find`: Buscar archivos
+- `chown`: Cambiar propietario
+- `chgrp`: Cambiar grupo
+- `chmod`: Cambiar permisos
 
-● Write(pkg/reports/generators.go)
-  ⎿  Wrote 302 lines to pkg/reports/generators.go
-     package reports
-     import (
-       "context"
-       "fmt"
-       "os"
-       "os/exec"
-       "path/filepath"
-       "strings"
-       "time"
-     … +292 lines (ctrl+o to expand)
+### Comandos de Reportes
 
-● Ahora necesito agregar el generador de Superblock al archivo de reportes.
-  Primero leo fs_reports.go para ver qué hay:
+- `rep`: Generar reportes visuales (disk, inode, journaling, block, bm_inode, bm_block, tree, sb, file, ls)
 
-● Read(pkg/reports/fs_reports.go)
-  ⎿  Read 97 lines (ctrl+o to expand)
+## Tecnologías Utilizadas
 
-● Perfecto! Ya existe ReportSuperBlock. Solo necesito crear un alias:
+### Tecnologías Backend
 
-● Update(pkg/reports/fs_reports.go)
-  ⎿  Updated pkg/reports/fs_reports.go with 5 additions                
-       72      return d.close()
-       73    }
-       74    
-       75 +  // ReportSuperblock es un alias para ReportSuperBlock
-       76 +  func ReportSuperblock(sb SuperBlock, opt Options) string {
-       77 +    return ReportSuperBlock(sb, opt)
-       78 +  }
-       79 +  
-       80    // ReportSuperBlock lista campos clave del superblock.
-       81    func ReportSuperBlock(sb SuperBlock, opt Options) string {
-       82      d := newDot(or(opt.Title, "SuperBlock"))
+- **Go 1.21+**: Lenguaje principal
+- **Gorilla Mux**: Enrutamiento HTTP
+- **CORS**: Manejo de políticas de origen cruzado
 
-● Ahora voy a crear un comando para ejecutar reportes. Primero actualizo el
-  todo:
+### Tecnologías Frontend
 
-● Ahora voy a crear un comando REP en el paquete de comandos:
+- **React 18**: Framework de UI
+- **TypeScript**: Tipado estático
+- **Vite**: Herramienta de construcción
+- **Tailwind CSS**: Framework de estilos
+- **Vis.js**: Visualización de grafos DOT
 
-● Write(internal/commands/rep.go)
-  ⎿  Wrote 116 lines to internal/commands/rep.go
-     package commands
-     import (
-       "context"
-       "fmt"
-       "strings"
-       "MIA_2S2025_P2_201905884/pkg/reports"
-     )
-     … +106 lines (ctrl+o to expand)
+## Instalación y Uso
 
-● Ahora necesito agregar CmdRep a types.go y actualizar el parser:
+### Prerrequisitos
 
-● Read(internal/commands/types.go)
-  ⎿  Read 50 lines (ctrl+o to expand)
+- Go 1.21 o superior
+- Node.js 18 o superior
+- npm o yarn
 
-● Update(internal/commands/types.go)
-  ⎿  Updated internal/commands/types.go with 3 additions                
-       35      CmdJournaling CommandName = "journaling"
-       36      CmdRecovery   CommandName = "recovery"
-       37      CmdLoss       CommandName = "loss"
-       38 +  
-       39 +    // Comandos de reportes
-       40 +    CmdRep CommandName = "rep"
-       41    )
-       42    
-       43    // CommandHandler es la interfaz que implementan todos los 
-            handlers de comandos
+### Configuración Backend
 
-● Ahora actualizo el parser para incluir REP:
+```bash
+cd Backend
+go mod download
+go run cmd/server/main.go
+```
 
-● Read(internal/commands/parser.go)
-  ⎿  Read 80 lines (ctrl+o to expand)
+### Configuración Frontend
 
-● Update(internal/commands/parser.go)
-  ⎿  Updated internal/commands/parser.go with 2 additions              
-       59        return parseRecovery(args)
-       60      case CmdLoss:
-       61        return parseLoss(args)
-       62 +    case CmdRep:
-       63 +      return parseRep(args)
-       64      default:
-       65        return nil, fmt.Errorf("comando desconocido: %s", cmd)
-       66      }
+```bash
+cd Frontend/godisk-frontend
+npm install
+npm run dev
+```
 
-╭─── Claude Code v2.0.8 ───────────────────────────────────────────────────────╮
-│                                                  │ Tips for getting started  │
-│              Welcome back Santiago!              │ Run /init to create a CL… │
-│                                                  │ ───────────────────────── │
-│                      ▐▛███▜▌                     │ Recent activity           │
-│                     ▝▜█████▛▘                    │ 1h ago  Basados en todo … │
-│                       ▘▘ ▝▝                      │ /resume for more          │
-│                                                  │                           │
-│             Sonnet 4.5 · Claude Pro              │                           │
-│   /…/Documents/MIA_2S2025_P2_201905884/Backend   │                           │
-╰──────────────────────────────────────────────────────────────────────────────╯
-══════════════════ Conversation compacted · ctrl+o for history ═════════════════
-  ⎿  Read internal/commands/parser.go (347 lines)
-  ⎿  Read internal/commands/types.go (417 lines)
-  ⎿  Read internal/commands/rep.go (116 lines)
-  ⎿  Read pkg/reports/fs_reports.go (102 lines)
-  ⎿  Read pkg/reports/generators.go (302 lines)
-  ⎿  Todo list read (6 items)
-  ⎿  Session limit reached ∙ resets 6pm
-     /upgrade to increase your usage limit.
+## Contribución
+
+Este proyecto es parte del curso de Manejo e Implementación de Archivos (MIA) y está en desarrollo activo.
+
+## Licencia
+
+Proyecto académico - Universidad de San Carlos de Guatemala
