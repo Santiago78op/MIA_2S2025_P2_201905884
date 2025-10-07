@@ -110,7 +110,38 @@ GoDisk es un sistema completo de gestión y simulación de discos que permite cr
 - Node.js 18 o superior
 - npm o yarn
 
-### Configuración Backend
+### Inicio Rápido
+
+El proyecto incluye scripts automatizados para facilitar el desarrollo:
+
+#### Opción 1: Scripts de Conveniencia (Recomendado)
+
+```bash
+# Desde la raíz del proyecto
+./start.sh    # Inicia frontend y backend automáticamente
+./stop.sh     # Mata todos los procesos del proyecto
+```
+
+#### Opción 2: Scripts Completos
+
+```bash
+# Desde la raíz del proyecto
+./Backend/scripts/start-project.sh    # Script completo de inicio
+./Backend/scripts/kill-processes.sh   # Script completo de limpieza
+```
+
+Los scripts automáticamente:
+
+- ✅ Verifican dependencias (Go, Node.js, npm)
+- ✅ Instalan paquetes si es necesario
+- ✅ Limpian puertos en uso
+- ✅ Inician ambos servicios en paralelo
+- ✅ Muestran logs en tiempo real
+- ✅ Permiten detener con Ctrl+C
+
+### Configuración Manual
+
+#### Configuración Backend
 
 ```bash
 cd Backend
@@ -118,13 +149,20 @@ go mod download
 go run cmd/server/main.go
 ```
 
-### Configuración Frontend
+#### Configuración Frontend
 
 ```bash
 cd Frontend/godisk-frontend
 npm install
 npm run dev
 ```
+
+### URLs de Acceso
+
+Una vez iniciados los servicios:
+
+- **Backend API**: <http://localhost:8080>
+- **Frontend Web**: <http://localhost:5173>
 
 ## Contribución
 
