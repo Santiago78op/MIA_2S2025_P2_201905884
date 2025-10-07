@@ -184,6 +184,17 @@ func (e *FS2) Mkdir(ctx context.Context, h fs.MountHandle, req fs.MkdirRequest) 
 
 func (e *FS2) Remove(ctx context.Context, h fs.MountHandle, path string) error {
 	e.logger.Printf("Eliminando: %s", path)
+
+	// Validar que no se elimine la raíz
+	if path == "" || path == "/" {
+		return fmt.Errorf("no se puede eliminar la ruta raíz")
+	}
+
+	// TODO: Implementación completa con validación de permisos
+	// - Verificar permisos de escritura en el archivo/directorio
+	// - Si es directorio, verificar permisos recursivamente en todos los hijos
+	// - Si algún hijo no tiene permisos, no eliminar nada (rollback completo)
+
 	e.logger.Printf("Advertencia: Remove no persistente todavía")
 	return nil
 }

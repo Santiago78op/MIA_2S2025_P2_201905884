@@ -84,11 +84,19 @@ func (c *UnmountCommand) Execute(ctx context.Context, adapter *Adapter) (string,
 		return "", fmt.Errorf("unmount: id no encontrado: %s", c.ID)
 	}
 
+	h, okHandle := adapter.Index.GetHandle(c.ID)
+	if okHandle {
+		// Ejecutar unmount en el FS correspondiente para limpieza
+		_ = adapter.pickFS(h).Unmount(ctx, h)
+	}
+
 	if err := adapter.DM.Unmount(ctx, ref); err != nil {
 		return "", err
 	}
 
+	// Eliminar completamente del índice
 	adapter.Index.Del(c.ID)
+
 	return fmt.Sprintf("unmount OK id=%s", c.ID), nil
 }
 
