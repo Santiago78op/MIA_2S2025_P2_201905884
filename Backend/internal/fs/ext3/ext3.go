@@ -392,7 +392,7 @@ func (e *FS3) Loss(ctx context.Context, h fs.MountHandle) error {
 	logger.Info("Simulando pérdida de datos", map[string]interface{}{"partition": h.PartitionID})
 
 	// Obtener información de la partición
-	partStart, partSize, err := getPartitionInfo(h.DiskID, h.PartitionID)
+	partStart, _, err := getPartitionInfo(h.DiskID, h.PartitionID)
 	if err != nil {
 		return fmt.Errorf("error obteniendo info de partición: %v", err)
 	}

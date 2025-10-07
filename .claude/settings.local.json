@@ -8,7 +8,9 @@
       "Bash(find:*)",
       "Read(//home/julian/Documents/**)",
       "Bash(go run:*)",
-      "Bash(curl:*)"
+      "Bash(curl:*)",
+      "Bash(pgrep:*)",
+      "Bash(ss:*)"
     ],
     "deny": [],
     "ask": []
