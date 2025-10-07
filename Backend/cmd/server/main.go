@@ -7,6 +7,7 @@ import (
 	"MIA_2S2025_P2_201905884/internal/fs/ext2"
 	"MIA_2S2025_P2_201905884/internal/fs/ext3"
 	"MIA_2S2025_P2_201905884/internal/journal"
+	"MIA_2S2025_P2_201905884/internal/logger"
 	"context"
 	"log"
 	"net/http"
@@ -19,6 +20,18 @@ func main() {
 	// ===== Config =====
 	port := getenv("PORT", "8080")
 	allowOrigin := getenv("ALLOW_ORIGIN", "*")
+	logFile := getenv("LOG_FILE", "godisk.log")
+
+	// Inicializar logger
+	if err := logger.Init(logFile, 1000, true); err != nil {
+		log.Fatalf("[main] failed to init logger: %v", err)
+	}
+	defer logger.GetLogger().Close()
+
+	logger.Info("Starting GoDisk 2.0 Server", map[string]interface{}{
+		"port":   port,
+		"origin": allowOrigin,
+	})
 
 	// ===== Wiring de dependencias =====
 	// Inicializar disk manager
@@ -48,15 +61,18 @@ func main() {
 	s := NewServer(adapter, allowOrigin)
 	registerRoutes(mux, s)
 
+	// Aplicar middleware de logging
+	handler := LoggingMiddleware(mux)
+
 	srv := &http.Server{
 		Addr:         ":" + port,
-		Handler:      mux,
+		Handler:      handler,
 		ReadTimeout:  15 * time.Second,
 		WriteTimeout: 60 * time.Second,
 		IdleTimeout:  75 * time.Second,
 	}
 
-	log.Printf("[server] listening on :%s\n", port)
+	logger.Info("HTTP Server listening", map[string]interface{}{"port": port})
 
 	// Shutdown gracioso
 	go func() {
@@ -69,13 +85,13 @@ func main() {
 	signal.Notify(stop, os.Interrupt)
 	<-stop
 
-	log.Println("[server] shutting down...")
+	logger.Info("Shutting down server...")
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 	if err := srv.Shutdown(ctx); err != nil {
-		log.Fatalf("[server] graceful shutdown failed: %v", err)
+		logger.Error("Graceful shutdown failed", map[string]interface{}{"error": err.Error()})
 	}
-	log.Println("[server] bye")
+	logger.Info("Server stopped successfully")
 }
 
 func getenv(k, def string) string {

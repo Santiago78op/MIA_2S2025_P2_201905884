@@ -6,6 +6,7 @@ import { DiskExplorer } from '@/components/DiskExplorer'
 import { JournalPanel } from '@/components/JournalPanel'
 import { ScriptRunner } from '@/components/ScriptRunner'
 import ReportsPage from '@/pages/Reports'
+import LogsPage from '@/pages/Logs'
 
 export default function App() {
   const [showLogin, setShowLogin] = useState(false)
@@ -19,7 +20,8 @@ export default function App() {
             <nav className="ml-6 flex items-center gap-4 text-sm">
               <NavLink to="/" end className={({isActive})=>isActive?"font-semibold":"text-slate-600 hover:text-black"}>Terminal</NavLink>
               <NavLink to="/explorer" className={({isActive})=>isActive?"font-semibold":"text-slate-600 hover:text-black"}>Explorador</NavLink>
-              <NavLink to="/reports" className={({isActive})=>isActive?"font-semibold":"text-slate-600 hover:text-black"}>Reportes (DOT)</NavLink>
+              <NavLink to="/reports" className={({isActive})=>isActive?"font-semibold":"text-slate-600 hover:text-black"}>Reportes</NavLink>
+              <NavLink to="/logs" className={({isActive})=>isActive?"font-semibold":"text-slate-600 hover:text-black"}>Logs</NavLink>
             </nav>
             <div className="ml-auto flex items-center gap-2">
               <button className="px-3 py-1.5 rounded-lg bg-black text-white hover:opacity-90" onClick={() => setShowLogin(true)}>Login</button>
@@ -54,6 +56,7 @@ export default function App() {
               </section>
             }/>
             <Route path="/reports" element={<ReportsPage />} />
+            <Route path="/logs" element={<LogsPage />} />
           </Routes>
         </main>
 

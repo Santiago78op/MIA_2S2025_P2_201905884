@@ -41,6 +41,7 @@ go build -o godisk-server ./cmd/server
 Variables de entorno opcionales:
 - `PORT`: Puerto del servidor (default: 8080)
 - `ALLOW_ORIGIN`: CORS origin (default: *)
+- `LOG_FILE`: Archivo de log persistente (default: godisk.log)
 
 ### 2. Frontend (React)
 
@@ -87,6 +88,15 @@ Genera visualizaciones Graphviz de:
 - **Tree**: Árbol de directorios (placeholder)
 - **Journal**: Registro de operaciones EXT3 (placeholder)
 
+### Logs del Sistema
+Visualiza y gestiona logs en tiempo real:
+- Filtrado por nivel (DEBUG, INFO, WARN, ERROR)
+- Auto-refresh cada 2 segundos
+- Estadísticas por nivel
+- Visualización de contexto JSON
+- Limpieza de logs
+- Persistencia en archivo (backend)
+
 ## API Endpoints
 
 ### Comandos
@@ -110,6 +120,11 @@ Genera visualizaciones Graphviz de:
 ### Health
 - `GET /healthz` - Health check
 - `GET /api/version` - Información de versión
+
+### Logs
+- `GET /api/logs?level=<LEVEL>&limit=<N>` - Obtener logs
+- `POST /api/logs/clear` - Limpiar logs en memoria
+- `GET /api/logs/stats` - Estadísticas de logs
 
 ## Comandos Soportados
 

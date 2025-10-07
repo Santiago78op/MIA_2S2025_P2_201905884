@@ -153,3 +153,34 @@ export async function checkHealth(): Promise<boolean> {
     return false
   }
 }
+
+// ===== Logs =====
+export type LogLevel = 'DEBUG' | 'INFO' | 'WARN' | 'ERROR'
+
+export type LogEntry = {
+  timestamp: string
+  level: LogLevel
+  message: string
+  context?: Record<string, any>
+}
+
+export async function getLogs(level?: LogLevel, limit?: number): Promise<{ ok: boolean; logs?: LogEntry[]; count?: number; error?: string }> {
+  let url = `${API_URL}/api/logs`
+  const params = new URLSearchParams()
+  if (level) params.set('level', level)
+  if (limit) params.set('limit', limit.toString())
+  if (params.toString()) url += `?${params.toString()}`
+
+  const res = await fetch(url)
+  return res.json()
+}
+
+export async function clearLogs(): Promise<{ ok: boolean; message?: string; error?: string }> {
+  const res = await fetch(`${API_URL}/api/logs/clear`, { method: 'POST' })
+  return res.json()
+}
+
+export async function getLogStats(): Promise<{ ok: boolean; stats?: Record<string, number>; error?: string }> {
+  const res = await fetch(`${API_URL}/api/logs/stats`)
+  return res.json()
+}

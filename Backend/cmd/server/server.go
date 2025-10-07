@@ -44,6 +44,11 @@ func registerRoutes(mux *http.ServeMux, s *Server) {
 	mux.Handle("/api/reports/tree", s.corsWrapper(http.HandlerFunc(s.handleReportTree)))
 	mux.Handle("/api/reports/journal", s.corsWrapper(http.HandlerFunc(s.handleReportJournal)))
 	mux.Handle("/api/reports/generate", s.corsWrapper(http.HandlerFunc(s.handleGenerateReport)))
+
+	// Logs
+	mux.Handle("/api/logs", s.corsWrapper(http.HandlerFunc(s.handleGetLogs)))
+	mux.Handle("/api/logs/clear", s.corsWrapper(http.HandlerFunc(s.handleClearLogs)))
+	mux.Handle("/api/logs/stats", s.corsWrapper(http.HandlerFunc(s.handleGetLogStats)))
 }
 
 func (s *Server) handleHealth(w http.ResponseWriter, r *http.Request) {
