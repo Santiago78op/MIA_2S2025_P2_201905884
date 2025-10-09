@@ -133,23 +133,18 @@ func (s *Server) handleListMounted(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	mounted, err := s.adapter.DM.ListMounted(r.Context())
-	if err != nil {
-		writeJSON(w, http.StatusInternalServerError, map[string]interface{}{
-			"ok":    false,
-			"error": err.Error(),
-		})
-		return
-	}
-
 	// Convertir a formato más amigable
+	// Obtener los IDs desde el índice
 	var partitions []map[string]string
-	for _, ref := range mounted {
-		partitions = append(partitions, map[string]string{
-			"disk_path":    ref.DiskPath,
-			"partition_id": ref.PartitionID,
-			"mount_id":     commands.MakeID(ref.DiskPath, ref.PartitionID),
-		})
+	for _, mountID := range s.adapter.Index.List() {
+		ref, ok := s.adapter.Index.GetRef(mountID)
+		if ok {
+			partitions = append(partitions, map[string]string{
+				"disk_path":    ref.DiskPath,
+				"partition_id": ref.PartitionID,
+				"mount_id":     mountID,
+			})
+		}
 	}
 
 	writeJSON(w, http.StatusOK, map[string]interface{}{

@@ -1,8 +1,7 @@
 package commands
 
 import (
-	"crypto/sha1"
-	"encoding/hex"
+	"fmt"
 	"sync"
 
 	"MIA_2S2025_P2_201905884/internal/disk"
@@ -17,19 +16,22 @@ type MountIndex interface {
 	GetByID(id string) (disk.PartitionRef, bool) // Alias para GetRef
 	Del(id string)
 	List() []string
+	GenerateID() string // Genera próximo ID secuencial
 }
 
 // In-memory implementación thread-safe.
 type memoryIndex struct {
-	mu   sync.RWMutex
-	ref  map[string]disk.PartitionRef
-	hand map[string]fs.MountHandle
+	mu      sync.RWMutex
+	ref     map[string]disk.PartitionRef
+	hand    map[string]fs.MountHandle
+	counter int // Contador secuencial para IDs
 }
 
 func NewMemoryIndex() MountIndex {
 	return &memoryIndex{
-		ref:  make(map[string]disk.PartitionRef),
-		hand: make(map[string]fs.MountHandle),
+		ref:     make(map[string]disk.PartitionRef),
+		hand:    make(map[string]fs.MountHandle),
+		counter: 0,
 	}
 }
 
@@ -76,9 +78,19 @@ func (m *memoryIndex) List() []string {
 	return out
 }
 
-// MakeID genera un id estable basado en path+partition.
-func MakeID(path, part string) string {
-	h := sha1.Sum([]byte(path + "|" + part))
-	// "vd" + 8 hex para que sea corto pero estable.
-	return "vd" + hex.EncodeToString(h[:4])
+// GenerateID genera un ID secuencial tipo vd84, vd841, vd842, etc.
+// Formato: vd84 + sufijo numérico (solo si counter > 0)
+func (m *memoryIndex) GenerateID() string {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	var id string
+	if m.counter == 0 {
+		id = "vd84"
+	} else {
+		id = fmt.Sprintf("vd84%d", m.counter)
+	}
+
+	m.counter++
+	return id
 }

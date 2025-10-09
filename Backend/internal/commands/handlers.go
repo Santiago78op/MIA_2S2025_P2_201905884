@@ -67,8 +67,8 @@ func (c *MountCommand) Execute(ctx context.Context, adapter *Adapter) (string, e
 		return "", err
 	}
 
-	// Generar ID estable
-	id := MakeID(ref.DiskPath, ref.PartitionID)
+	// Generar ID secuencial tipo vd84, vd841, vd842, etc.
+	id := adapter.Index.GenerateID()
 	h := fs.MountHandle{
 		DiskID:      ref.DiskPath,
 		PartitionID: ref.PartitionID,
@@ -98,6 +98,25 @@ func (c *UnmountCommand) Execute(ctx context.Context, adapter *Adapter) (string,
 	adapter.Index.Del(c.ID)
 
 	return fmt.Sprintf("unmount OK id=%s", c.ID), nil
+}
+
+func (c *MountedCommand) Execute(ctx context.Context, adapter *Adapter) (string, error) {
+	ids := adapter.Index.List()
+	if len(ids) == 0 {
+		return "No hay particiones montadas", nil
+	}
+
+	var result strings.Builder
+	result.WriteString("Particiones montadas:\n")
+	for _, id := range ids {
+		ref, ok := adapter.Index.GetRef(id)
+		if ok {
+			result.WriteString(fmt.Sprintf("  ID: %s | Path: %s | Partition: %s\n",
+				id, ref.DiskPath, ref.PartitionID))
+		}
+	}
+
+	return result.String(), nil
 }
 
 // ==================== Handlers de Formateo ====================

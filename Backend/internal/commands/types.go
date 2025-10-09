@@ -15,6 +15,7 @@ const (
 	CmdFdisk   CommandName = "fdisk"
 	CmdMount   CommandName = "mount"
 	CmdUnmount CommandName = "unmount"
+	CmdMounted CommandName = "mounted"
 
 	// Comandos de formateo
 	CmdMkfs CommandName = "mkfs"
@@ -157,6 +158,16 @@ func (c *UnmountCommand) Validate() error {
 	if c.ID == "" {
 		return fmt.Errorf("unmount: falta parámetro 'id'")
 	}
+	return nil
+}
+
+// MountedCommand representa el comando mounted
+type MountedCommand struct {
+	BaseCommand
+}
+
+func (c *MountedCommand) Validate() error {
+	// No requiere parámetros
 	return nil
 }
 

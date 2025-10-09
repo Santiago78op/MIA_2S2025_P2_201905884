@@ -31,6 +31,8 @@ func ParseCommand(line string) (CommandHandler, error) {
 		return parseMount(args)
 	case CmdUnmount:
 		return parseUnmount(args)
+	case CmdMounted:
+		return parseMounted(args)
 	case CmdMkfs:
 		return parseMkfs(args)
 	case CmdMkdir:
@@ -194,6 +196,12 @@ func parseUnmount(args map[string]string) (*UnmountCommand, error) {
 	}, nil
 }
 
+func parseMounted(args map[string]string) (*MountedCommand, error) {
+	return &MountedCommand{
+		BaseCommand: BaseCommand{CmdName: CmdMounted},
+	}, nil
+}
+
 func parseMkfs(args map[string]string) (*MkfsCommand, error) {
 	return &MkfsCommand{
 		BaseCommand: BaseCommand{CmdName: CmdMkfs},
@@ -323,6 +331,7 @@ func Usage(cmdName CommandName) string {
 		CmdFdisk:      "fdisk -path <ruta> -mode add|delete [-name <nombre>] [-size <tamaño>] [-unit b|k|m] [-type p|e|l] [-fit bf|ff|wf] [-delete full|fast]",
 		CmdMount:      "mount -path <ruta> -name <nombre>",
 		CmdUnmount:    "unmount -id <id>",
+		CmdMounted:    "mounted",
 		CmdMkfs:       "mkfs -id <id> -fs 2fs|3fs",
 		CmdMkdir:      "mkdir -id <id> -path <ruta> [-p]",
 		CmdMkfile:     "mkfile -id <id> -path <ruta> [-cont <contenido>] [-size <tamaño>]",

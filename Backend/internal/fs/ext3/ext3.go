@@ -123,36 +123,48 @@ func (e *FS3) Mkfs(ctx context.Context, req fs.MkfsRequest) error {
 
 	// 8. Crear directorio raíz (inodo 0)
 	rootInode := ext2.Inode{
-		IUid:   0,
-		IGid:   0,
+		IUid:   1,
+		IGid:   1,
 		IS:     0,
 		IAtime: time.Now().Unix(),
 		ICtime: time.Now().Unix(),
 		IMtime: time.Now().Unix(),
 		IBlock: [15]int32{0, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1},
 		IType:  0, // directorio
-		IPerm:  [3]byte{7, 5, 5},
+		IPerm:  [3]byte{'7', '5', '5'},
 	}
 	inodes[0] = rootInode
 
-	// Marcar inodo 0 y bloque 0 como usados
+	// 9. Crear inodo de users.txt (inodo 1)
+	usersContent := "1,G,root\n1,U,root,root,123\n"
+	usersInode := ext2.Inode{
+		IUid:   1,
+		IGid:   1,
+		IS:     int32(len(usersContent)),
+		IAtime: time.Now().Unix(),
+		ICtime: time.Now().Unix(),
+		IMtime: time.Now().Unix(),
+		IBlock: [15]int32{1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1},
+		IType:  1, // archivo
+		IPerm:  [3]byte{'6', '6', '4'},
+	}
+	inodes[1] = usersInode
+
+	// Marcar inodos 0 y 1, bloques 0 y 1 como usados
 	bmInodes[0] = 1
+	bmInodes[1] = 1
 	bmBlocks[0] = 1
+	bmBlocks[1] = 1
 
 	// Actualizar contadores del superblock
-	sb.SFreeInodes = int32(n - 1)
-	sb.SFreeBlocks = int32(3*n - 1)
+	sb.SFreeInodes = int32(n - 2)
+	sb.SFreeBlocks = int32(3*n - 2)
 
-	// 9. Crear bloque de directorio raíz
+	// 10. Crear bloque de directorio raíz
 	rootBlock := ext2.NewFolderBlock()
-	rootBlock.BContent[0] = ext2.Content{
-		BName:  [12]byte{'/', 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
-		BInodo: 0,
-	}
-	rootBlock.BContent[1] = ext2.Content{
-		BName:  [12]byte{'.', '.', 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
-		BInodo: 0,
-	}
+	rootBlock.AddEntry(".", 0)
+	rootBlock.AddEntry("..", 0)
+	rootBlock.AddEntry("users.txt", 1)
 
 	// 10. Escribir estructuras al disco
 	offset := partStart
@@ -195,7 +207,7 @@ func (e *FS3) Mkfs(ctx context.Context, req fs.MkfsRequest) error {
 	}
 	offset += n * 128
 
-	// Escribir Bloque raíz
+	// Escribir Bloque raíz (bloque 0)
 	rootBlockBytes, err := ext2.SerializeFolderBlock(rootBlock)
 	if err != nil {
 		return fmt.Errorf("error serializando bloque raíz: %v", err)
@@ -203,9 +215,22 @@ func (e *FS3) Mkfs(ctx context.Context, req fs.MkfsRequest) error {
 	if _, err := f.WriteAt(rootBlockBytes, offset); err != nil {
 		return fmt.Errorf("error escribiendo bloque raíz: %v", err)
 	}
+	offset += int64(e.blockSize)
+
+	// Escribir bloque de users.txt (bloque 1)
+	usersBlock := ext2.NewFileBlock()
+	copy(usersBlock.BContent[:], usersContent)
+	usersBlockBytes, err := ext2.SerializeFileBlock(usersBlock)
+	if err != nil {
+		return fmt.Errorf("error serializando bloque users.txt: %v", err)
+	}
+	if _, err := f.WriteAt(usersBlockBytes, offset); err != nil {
+		return fmt.Errorf("error escribiendo bloque users.txt: %v", err)
+	}
 
 	// 11. Registrar formato en journal
-	journal.Append(NewJournalEntry("mkfs", "/", "EXT3 formatted", 0, 0, 0755))
+	journal.Append(NewJournalEntry("mkfs", "/", "EXT3 formatted", 1, 1, 0755))
+	journal.Append(NewJournalEntry("mkfile", "/users.txt", "initial", 1, 1, 0664))
 
 	logger.Info("Formateo EXT3 completado", map[string]interface{}{
 		"n":            n,

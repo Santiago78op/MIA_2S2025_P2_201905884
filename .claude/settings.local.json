@@ -10,7 +10,8 @@
       "Bash(go run:*)",
       "Bash(curl:*)",
       "Bash(pgrep:*)",
-      "Bash(ss:*)"
+      "Bash(ss:*)",
+      "Bash(chmod:*)"
     ],
     "deny": [],
     "ask": []
