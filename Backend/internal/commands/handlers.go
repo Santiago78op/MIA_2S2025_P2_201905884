@@ -4,9 +4,11 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"os"
 	"strconv"
 	"strings"
 
+	"MIA_2S2025_P2_201905884/internal/errors"
 	"MIA_2S2025_P2_201905884/internal/fs"
 )
 
@@ -57,7 +59,7 @@ func (c *FdiskCommand) Execute(ctx context.Context, adapter *Adapter) (string, e
 			c.Path, c.PartName, delMode), nil
 
 	default:
-		return "", fmt.Errorf("fdisk: mode debe ser add|delete")
+		return "", errors.ErrParams
 	}
 }
 
@@ -67,8 +69,8 @@ func (c *MountCommand) Execute(ctx context.Context, adapter *Adapter) (string, e
 		return "", err
 	}
 
-	// Generar ID secuencial tipo vd84, vd841, vd842, etc.
-	id := adapter.Index.GenerateID()
+	// Generar ID según formato P1: 841A, 842A, 841B, etc.
+	id := adapter.Index.GenerateID(ref.DiskPath)
 	h := fs.MountHandle{
 		DiskID:      ref.DiskPath,
 		PartitionID: ref.PartitionID,
@@ -81,7 +83,7 @@ func (c *MountCommand) Execute(ctx context.Context, adapter *Adapter) (string, e
 func (c *UnmountCommand) Execute(ctx context.Context, adapter *Adapter) (string, error) {
 	ref, ok := adapter.Index.GetRef(c.ID)
 	if !ok {
-		return "", fmt.Errorf("unmount: id no encontrado: %s", c.ID)
+		return "", errors.ErrIDNotFound
 	}
 
 	h, okHandle := adapter.Index.GetHandle(c.ID)
@@ -124,7 +126,7 @@ func (c *MountedCommand) Execute(ctx context.Context, adapter *Adapter) (string,
 func (c *MkfsCommand) Execute(ctx context.Context, adapter *Adapter) (string, error) {
 	_, ok := adapter.Index.GetRef(c.ID)
 	if !ok {
-		return "", fmt.Errorf("mkfs: id no encontrado: %s", c.ID)
+		return "", errors.ErrIDNotFound
 	}
 
 	kind := strings.ToLower(c.FSKind)
@@ -140,7 +142,7 @@ func (c *MkfsCommand) Execute(ctx context.Context, adapter *Adapter) (string, er
 			return "", err
 		}
 	default:
-		return "", fmt.Errorf("mkfs: fs desconocido: %s (usa 2fs|3fs)", kind)
+		return "", errors.ErrParams
 	}
 
 	return fmt.Sprintf("mkfs OK id=%s fs=%s", c.ID, kind), nil
@@ -151,7 +153,7 @@ func (c *MkfsCommand) Execute(ctx context.Context, adapter *Adapter) (string, er
 func (c *MkdirCommand) Execute(ctx context.Context, adapter *Adapter) (string, error) {
 	h, ok := adapter.Index.GetHandle(c.ID)
 	if !ok {
-		return "", fmt.Errorf("mkdir: id no encontrado: %s", c.ID)
+		return "", errors.ErrIDNotFound
 	}
 
 	req := fs.MkdirRequest{
@@ -169,7 +171,7 @@ func (c *MkdirCommand) Execute(ctx context.Context, adapter *Adapter) (string, e
 func (c *MkfileCommand) Execute(ctx context.Context, adapter *Adapter) (string, error) {
 	h, ok := adapter.Index.GetHandle(c.ID)
 	if !ok {
-		return "", fmt.Errorf("mkfile: id no encontrado: %s", c.ID)
+		return "", errors.ErrIDNotFound
 	}
 
 	content := []byte(c.Content)
@@ -198,7 +200,7 @@ func (c *MkfileCommand) Execute(ctx context.Context, adapter *Adapter) (string, 
 func (c *RemoveCommand) Execute(ctx context.Context, adapter *Adapter) (string, error) {
 	h, ok := adapter.Index.GetHandle(c.ID)
 	if !ok {
-		return "", fmt.Errorf("remove: id no encontrado: %s", c.ID)
+		return "", errors.ErrIDNotFound
 	}
 
 	if err := adapter.pickFS(h).Remove(ctx, h, c.Path); err != nil {
@@ -211,7 +213,7 @@ func (c *RemoveCommand) Execute(ctx context.Context, adapter *Adapter) (string, 
 func (c *EditCommand) Execute(ctx context.Context, adapter *Adapter) (string, error) {
 	h, ok := adapter.Index.GetHandle(c.ID)
 	if !ok {
-		return "", fmt.Errorf("edit: id no encontrado: %s", c.ID)
+		return "", errors.ErrIDNotFound
 	}
 
 	req := fs.WriteFileRequest{
@@ -230,7 +232,7 @@ func (c *EditCommand) Execute(ctx context.Context, adapter *Adapter) (string, er
 func (c *RenameCommand) Execute(ctx context.Context, adapter *Adapter) (string, error) {
 	h, ok := adapter.Index.GetHandle(c.ID)
 	if !ok {
-		return "", fmt.Errorf("rename: id no encontrado: %s", c.ID)
+		return "", errors.ErrIDNotFound
 	}
 
 	if err := adapter.pickFS(h).Rename(ctx, h, c.From, c.To); err != nil {
@@ -243,7 +245,7 @@ func (c *RenameCommand) Execute(ctx context.Context, adapter *Adapter) (string, 
 func (c *CopyCommand) Execute(ctx context.Context, adapter *Adapter) (string, error) {
 	h, ok := adapter.Index.GetHandle(c.ID)
 	if !ok {
-		return "", fmt.Errorf("copy: id no encontrado: %s", c.ID)
+		return "", errors.ErrIDNotFound
 	}
 
 	if err := adapter.pickFS(h).Copy(ctx, h, c.From, c.To); err != nil {
@@ -256,7 +258,7 @@ func (c *CopyCommand) Execute(ctx context.Context, adapter *Adapter) (string, er
 func (c *MoveCommand) Execute(ctx context.Context, adapter *Adapter) (string, error) {
 	h, ok := adapter.Index.GetHandle(c.ID)
 	if !ok {
-		return "", fmt.Errorf("move: id no encontrado: %s", c.ID)
+		return "", errors.ErrIDNotFound
 	}
 
 	if err := adapter.pickFS(h).Move(ctx, h, c.From, c.To); err != nil {
@@ -269,7 +271,7 @@ func (c *MoveCommand) Execute(ctx context.Context, adapter *Adapter) (string, er
 func (c *FindCommand) Execute(ctx context.Context, adapter *Adapter) (string, error) {
 	h, ok := adapter.Index.GetHandle(c.ID)
 	if !ok {
-		return "", fmt.Errorf("find: id no encontrado: %s", c.ID)
+		return "", errors.ErrIDNotFound
 	}
 
 	req := fs.FindRequest{
@@ -289,7 +291,7 @@ func (c *FindCommand) Execute(ctx context.Context, adapter *Adapter) (string, er
 func (c *ChownCommand) Execute(ctx context.Context, adapter *Adapter) (string, error) {
 	h, ok := adapter.Index.GetHandle(c.ID)
 	if !ok {
-		return "", fmt.Errorf("chown: id no encontrado: %s", c.ID)
+		return "", errors.ErrIDNotFound
 	}
 
 	if err := adapter.pickFS(h).Chown(ctx, h, c.Path, c.User, c.Group); err != nil {
@@ -303,13 +305,13 @@ func (c *ChownCommand) Execute(ctx context.Context, adapter *Adapter) (string, e
 func (c *ChmodCommand) Execute(ctx context.Context, adapter *Adapter) (string, error) {
 	h, ok := adapter.Index.GetHandle(c.ID)
 	if !ok {
-		return "", fmt.Errorf("chmod: id no encontrado: %s", c.ID)
+		return "", errors.ErrIDNotFound
 	}
 
 	// Parsear permisos octales
 	perm, err := parsePermissions(c.Perm)
 	if err != nil {
-		return "", fmt.Errorf("chmod: permisos inválidos: %v", err)
+		return "", err
 	}
 
 	if err := adapter.pickFS(h).Chmod(ctx, h, c.Path, perm); err != nil {
@@ -324,7 +326,7 @@ func (c *ChmodCommand) Execute(ctx context.Context, adapter *Adapter) (string, e
 func (c *JournalingCommand) Execute(ctx context.Context, adapter *Adapter) (string, error) {
 	h, ok := adapter.Index.GetHandle(c.ID)
 	if !ok {
-		return "", fmt.Errorf("journaling: id no encontrado: %s", c.ID)
+		return "", errors.ErrIDNotFound
 	}
 
 	entries, err := adapter.FS3.Journaling(ctx, h)
@@ -339,7 +341,7 @@ func (c *JournalingCommand) Execute(ctx context.Context, adapter *Adapter) (stri
 func (c *RecoveryCommand) Execute(ctx context.Context, adapter *Adapter) (string, error) {
 	h, ok := adapter.Index.GetHandle(c.ID)
 	if !ok {
-		return "", fmt.Errorf("recovery: id no encontrado: %s", c.ID)
+		return "", errors.ErrIDNotFound
 	}
 
 	if err := adapter.FS3.Recovery(ctx, h); err != nil {
@@ -352,7 +354,7 @@ func (c *RecoveryCommand) Execute(ctx context.Context, adapter *Adapter) (string
 func (c *LossCommand) Execute(ctx context.Context, adapter *Adapter) (string, error) {
 	h, ok := adapter.Index.GetHandle(c.ID)
 	if !ok {
-		return "", fmt.Errorf("loss: id no encontrado: %s", c.ID)
+		return "", errors.ErrIDNotFound
 	}
 
 	if err := adapter.FS3.Loss(ctx, h); err != nil {
@@ -360,6 +362,169 @@ func (c *LossCommand) Execute(ctx context.Context, adapter *Adapter) (string, er
 	}
 
 	return fmt.Sprintf("loss OK id=%s", c.ID), nil
+}
+
+// ==================== Handlers P1 ====================
+
+func (c *RmdiskCommand) Execute(ctx context.Context, adapter *Adapter) (string, error) {
+	// Verificar que el disco existe
+	if _, err := os.Stat(c.Path); err != nil {
+		return "", errors.ErrDiskNotExist
+	}
+
+	// Eliminar archivo
+	if err := os.Remove(c.Path); err != nil {
+		return "", fmt.Errorf("ERROR AL ELIMINAR DISCO: %v", err)
+	}
+
+	return fmt.Sprintf("rmdisk OK path=%s", c.Path), nil
+}
+
+func (c *LoginCommand) Execute(ctx context.Context, adapter *Adapter) (string, error) {
+	// Verificar que no hay sesión activa
+	if adapter.Session.IsActive() {
+		return "", errors.ErrSessionExists
+	}
+
+	// Intentar login
+	if err := adapter.Session.Login(ctx, c.User, c.Pass, c.ID); err != nil {
+		return "", err
+	}
+
+	return fmt.Sprintf("login OK user=%s id=%s", c.User, c.ID), nil
+}
+
+func (c *LogoutCommand) Execute(ctx context.Context, adapter *Adapter) (string, error) {
+	// Verificar que hay sesión activa
+	if !adapter.Session.IsActive() {
+		return "", errors.ErrNoSession
+	}
+
+	user := adapter.Session.CurrentUser()
+	adapter.Session.Logout()
+
+	return fmt.Sprintf("logout OK user=%s", user), nil
+}
+
+func (c *MkgrpCommand) Execute(ctx context.Context, adapter *Adapter) (string, error) {
+	// Requiere sesión activa
+	if !adapter.Session.IsActive() {
+		return "", errors.ErrNoSession
+	}
+
+	// Obtener handle del FS montado
+	h, ok := adapter.Index.GetHandle(adapter.Session.CurrentMountID())
+	if !ok {
+		return "", errors.ErrIDNotFound
+	}
+
+	// Agregar grupo
+	if err := adapter.pickFS(h).AddGroup(ctx, h, c.GroupName); err != nil {
+		return "", err
+	}
+
+	return fmt.Sprintf("mkgrp OK name=%s", c.GroupName), nil
+}
+
+func (c *RmgrpCommand) Execute(ctx context.Context, adapter *Adapter) (string, error) {
+	// Requiere sesión activa
+	if !adapter.Session.IsActive() {
+		return "", errors.ErrNoSession
+	}
+
+	// Obtener handle del FS montado
+	h, ok := adapter.Index.GetHandle(adapter.Session.CurrentMountID())
+	if !ok {
+		return "", errors.ErrIDNotFound
+	}
+
+	// Eliminar grupo
+	if err := adapter.pickFS(h).RemoveGroup(ctx, h, c.GroupName); err != nil {
+		return "", err
+	}
+
+	return fmt.Sprintf("rmgrp OK name=%s", c.GroupName), nil
+}
+
+func (c *MkusrCommand) Execute(ctx context.Context, adapter *Adapter) (string, error) {
+	// Requiere sesión activa
+	if !adapter.Session.IsActive() {
+		return "", errors.ErrNoSession
+	}
+
+	// Obtener handle del FS montado
+	h, ok := adapter.Index.GetHandle(adapter.Session.CurrentMountID())
+	if !ok {
+		return "", errors.ErrIDNotFound
+	}
+
+	// Agregar usuario
+	if err := adapter.pickFS(h).AddUser(ctx, h, c.User, c.Pass, c.Group); err != nil {
+		return "", err
+	}
+
+	return fmt.Sprintf("mkusr OK user=%s grp=%s", c.User, c.Group), nil
+}
+
+func (c *RmusrCommand) Execute(ctx context.Context, adapter *Adapter) (string, error) {
+	// Requiere sesión activa
+	if !adapter.Session.IsActive() {
+		return "", errors.ErrNoSession
+	}
+
+	// Obtener handle del FS montado
+	h, ok := adapter.Index.GetHandle(adapter.Session.CurrentMountID())
+	if !ok {
+		return "", errors.ErrIDNotFound
+	}
+
+	// Eliminar usuario
+	if err := adapter.pickFS(h).RemoveUser(ctx, h, c.User); err != nil {
+		return "", err
+	}
+
+	return fmt.Sprintf("rmusr OK user=%s", c.User), nil
+}
+
+func (c *ChgrpCommand) Execute(ctx context.Context, adapter *Adapter) (string, error) {
+	// Requiere sesión activa
+	if !adapter.Session.IsActive() {
+		return "", errors.ErrNoSession
+	}
+
+	// Obtener handle del FS montado
+	h, ok := adapter.Index.GetHandle(adapter.Session.CurrentMountID())
+	if !ok {
+		return "", errors.ErrIDNotFound
+	}
+
+	// Cambiar grupo del usuario
+	if err := adapter.pickFS(h).ChangeUserGroup(ctx, h, c.User, c.Group); err != nil {
+		return "", err
+	}
+
+	return fmt.Sprintf("chgrp OK user=%s grp=%s", c.User, c.Group), nil
+}
+
+func (c *CatCommand) Execute(ctx context.Context, adapter *Adapter) (string, error) {
+	// Requiere sesión activa
+	if !adapter.Session.IsActive() {
+		return "", errors.ErrNoSession
+	}
+
+	// Obtener handle del FS montado
+	h, ok := adapter.Index.GetHandle(adapter.Session.CurrentMountID())
+	if !ok {
+		return "", errors.ErrIDNotFound
+	}
+
+	// Leer archivo
+	content, _, err := adapter.pickFS(h).ReadFile(ctx, h, c.File1)
+	if err != nil {
+		return "", err
+	}
+
+	return string(content), nil
 }
 
 // ==================== Helper Functions ====================
@@ -374,19 +539,19 @@ func toBytes(size int64, unit string) (int64, error) {
 	case "m":
 		return size * 1024 * 1024, nil
 	default:
-		return 0, fmt.Errorf("unidad inválida: %s (usa b|k|m)", unit)
+		return 0, errors.ErrParams
 	}
 }
 
 // parsePermissions parsea una cadena de permisos octales (ej: "755")
 func parsePermissions(perm string) (uint16, error) {
 	if perm == "" {
-		return 0, fmt.Errorf("permisos vacíos")
+		return 0, errors.ErrParams
 	}
 
 	val, err := strconv.ParseUint(perm, 8, 16)
 	if err != nil {
-		return 0, fmt.Errorf("formato de permisos inválido: %s", perm)
+		return 0, errors.ErrParams
 	}
 
 	return uint16(val), nil

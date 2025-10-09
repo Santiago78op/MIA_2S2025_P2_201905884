@@ -16,22 +16,26 @@ type MountIndex interface {
 	GetByID(id string) (disk.PartitionRef, bool) // Alias para GetRef
 	Del(id string)
 	List() []string
-	GenerateID() string // Genera próximo ID secuencial
+	GenerateID(diskPath string) string // Genera ID según formato P1
 }
 
 // In-memory implementación thread-safe.
 type memoryIndex struct {
-	mu      sync.RWMutex
-	ref     map[string]disk.PartitionRef
-	hand    map[string]fs.MountHandle
-	counter int // Contador secuencial para IDs
+	mu         sync.RWMutex
+	ref        map[string]disk.PartitionRef
+	hand       map[string]fs.MountHandle
+	diskLetter map[string]rune // path -> letra (A, B, C...)
+	diskSeq    map[string]int  // path -> correlativo (1, 2, 3...)
 }
+
+const carnetSuffix = "84" // Últimos 2 dígitos del carnet
 
 func NewMemoryIndex() MountIndex {
 	return &memoryIndex{
-		ref:     make(map[string]disk.PartitionRef),
-		hand:    make(map[string]fs.MountHandle),
-		counter: 0,
+		ref:        make(map[string]disk.PartitionRef),
+		hand:       make(map[string]fs.MountHandle),
+		diskLetter: make(map[string]rune),
+		diskSeq:    make(map[string]int),
 	}
 }
 
@@ -78,19 +82,24 @@ func (m *memoryIndex) List() []string {
 	return out
 }
 
-// GenerateID genera un ID secuencial tipo vd84, vd841, vd842, etc.
-// Formato: vd84 + sufijo numérico (solo si counter > 0)
-func (m *memoryIndex) GenerateID() string {
+// GenerateID genera un ID según formato P1: <Carnet><Correlativo><LetraDisco>
+// Ejemplo: 841A (primera partición del Disco1)
+//          842A (segunda partición del Disco1)
+//          841B (primera partición del Disco3)
+func (m *memoryIndex) GenerateID(diskPath string) string {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
-	var id string
-	if m.counter == 0 {
-		id = "vd84"
-	} else {
-		id = fmt.Sprintf("vd84%d", m.counter)
+	// Asignar letra al disco si es la primera vez que se ve
+	if _, ok := m.diskLetter[diskPath]; !ok {
+		// Asignar siguiente letra disponible (A, B, C...)
+		nextLetter := rune('A' + len(m.diskLetter))
+		m.diskLetter[diskPath] = nextLetter
 	}
 
-	m.counter++
-	return id
+	// Incrementar correlativo para este disco
+	m.diskSeq[diskPath]++
+
+	// Formato: <84><correlativo><letra>
+	return fmt.Sprintf("%s%d%c", carnetSuffix, m.diskSeq[diskPath], m.diskLetter[diskPath])
 }

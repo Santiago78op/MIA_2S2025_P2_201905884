@@ -29,6 +29,13 @@ type FS interface {
 	Journaling(ctx context.Context, h MountHandle) ([]JournalEntry, error)
 	Recovery(ctx context.Context, h MountHandle) error
 	Loss(ctx context.Context, h MountHandle) error
+
+	// P1 User/Group management
+	AddGroup(ctx context.Context, h MountHandle, name string) error
+	RemoveGroup(ctx context.Context, h MountHandle, name string) error
+	AddUser(ctx context.Context, h MountHandle, user, pass, group string) error
+	RemoveUser(ctx context.Context, h MountHandle, user string) error
+	ChangeUserGroup(ctx context.Context, h MountHandle, user, group string) error
 }
 
 type MountHandle struct {

@@ -1,15 +1,18 @@
 package disk
 
-import "errors"
+import (
+	perrors "MIA_2S2025_P2_201905884/internal/errors"
+)
 
+// Aliases to P1 standard errors for backward compatibility
 var (
-	ErrInvalidParam   = errors.New("disk: parámetro inválido")
-	ErrNotFound       = errors.New("disk: no encontrado")
-	ErrExists         = errors.New("disk: ya existe")
-	ErrNoSpace        = errors.New("disk: sin espacio suficiente")
-	ErrBadLayout      = errors.New("disk: layout inválido")
-	ErrUnsupported    = errors.New("disk: operación no soportada")
-	ErrNotMounted     = errors.New("disk: no montado")
-	ErrAlreadyMounted = errors.New("disk: ya montado")
-	ErrNoExtended     = errors.New("disk: no existe partición extendida")
+	ErrInvalidParam   = perrors.ErrParams
+	ErrNotFound       = perrors.ErrPartitionNotFound
+	ErrExists         = perrors.ErrAlreadyExists
+	ErrNoSpace        = perrors.ErrNoSpace
+	ErrBadLayout      = perrors.ErrParams
+	ErrUnsupported    = perrors.ErrParams
+	ErrNotMounted     = perrors.ErrIDNotFound
+	ErrAlreadyMounted = perrors.ErrAlreadyMounted
+	ErrNoExtended     = perrors.ErrPartitionNotFound
 )

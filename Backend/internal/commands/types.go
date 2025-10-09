@@ -12,6 +12,7 @@ type CommandName string
 const (
 	// Comandos de disco/particiones
 	CmdMkdisk  CommandName = "mkdisk"
+	CmdRmdisk  CommandName = "rmdisk"
 	CmdFdisk   CommandName = "fdisk"
 	CmdMount   CommandName = "mount"
 	CmdUnmount CommandName = "unmount"
@@ -19,6 +20,19 @@ const (
 
 	// Comandos de formateo
 	CmdMkfs CommandName = "mkfs"
+
+	// Comandos de sesión (P1)
+	CmdLogin  CommandName = "login"
+	CmdLogout CommandName = "logout"
+
+	// Comandos de grupos (P1)
+	CmdMkgrp CommandName = "mkgrp"
+	CmdRmgrp CommandName = "rmgrp"
+
+	// Comandos de usuarios (P1)
+	CmdMkusr CommandName = "mkusr"
+	CmdRmusr CommandName = "rmusr"
+	CmdChgrp CommandName = "chgrp"
 
 	// Comandos de árbol/archivos
 	CmdMkdir  CommandName = "mkdir"
@@ -31,6 +45,7 @@ const (
 	CmdFind   CommandName = "find"
 	CmdChown  CommandName = "chown"
 	CmdChmod  CommandName = "chmod"
+	CmdCat    CommandName = "cat"
 
 	// Comandos EXT3 específicos
 	CmdJournaling CommandName = "journaling"
@@ -426,4 +441,138 @@ func (c *LossCommand) Validate() error {
 	return nil
 }
 
-// JournalingCommand representa el comando journaling
+// ==================== Comandos P1 ====================
+
+// RmdiskCommand representa el comando rmdisk
+type RmdiskCommand struct {
+	BaseCommand
+	Path string
+}
+
+func (c *RmdiskCommand) Validate() error {
+	if c.Path == "" {
+		return fmt.Errorf("rmdisk: falta parámetro 'path'")
+	}
+	return nil
+}
+
+// LoginCommand representa el comando login
+type LoginCommand struct {
+	BaseCommand
+	User string
+	Pass string
+	ID   string
+}
+
+func (c *LoginCommand) Validate() error {
+	if c.User == "" {
+		return fmt.Errorf("login: falta parámetro 'user'")
+	}
+	if c.Pass == "" {
+		return fmt.Errorf("login: falta parámetro 'pass'")
+	}
+	if c.ID == "" {
+		return fmt.Errorf("login: falta parámetro 'id'")
+	}
+	return nil
+}
+
+// LogoutCommand representa el comando logout
+type LogoutCommand struct {
+	BaseCommand
+}
+
+func (c *LogoutCommand) Validate() error {
+	// No requiere parámetros
+	return nil
+}
+
+// MkgrpCommand representa el comando mkgrp
+type MkgrpCommand struct {
+	BaseCommand
+	GroupName string
+}
+
+func (c *MkgrpCommand) Validate() error {
+	if c.GroupName == "" {
+		return fmt.Errorf("mkgrp: falta parámetro 'name'")
+	}
+	return nil
+}
+
+// RmgrpCommand representa el comando rmgrp
+type RmgrpCommand struct {
+	BaseCommand
+	GroupName string
+}
+
+func (c *RmgrpCommand) Validate() error {
+	if c.GroupName == "" {
+		return fmt.Errorf("rmgrp: falta parámetro 'name'")
+	}
+	return nil
+}
+
+// MkusrCommand representa el comando mkusr
+type MkusrCommand struct {
+	BaseCommand
+	User  string
+	Pass  string
+	Group string
+}
+
+func (c *MkusrCommand) Validate() error {
+	if c.User == "" {
+		return fmt.Errorf("mkusr: falta parámetro 'user'")
+	}
+	if c.Pass == "" {
+		return fmt.Errorf("mkusr: falta parámetro 'pass'")
+	}
+	if c.Group == "" {
+		return fmt.Errorf("mkusr: falta parámetro 'grp'")
+	}
+	return nil
+}
+
+// RmusrCommand representa el comando rmusr
+type RmusrCommand struct {
+	BaseCommand
+	User string
+}
+
+func (c *RmusrCommand) Validate() error {
+	if c.User == "" {
+		return fmt.Errorf("rmusr: falta parámetro 'user'")
+	}
+	return nil
+}
+
+// ChgrpCommand representa el comando chgrp
+type ChgrpCommand struct {
+	BaseCommand
+	User  string
+	Group string
+}
+
+func (c *ChgrpCommand) Validate() error {
+	if c.User == "" {
+		return fmt.Errorf("chgrp: falta parámetro 'user'")
+	}
+	if c.Group == "" {
+		return fmt.Errorf("chgrp: falta parámetro 'grp'")
+	}
+	return nil
+}
+
+// CatCommand representa el comando cat
+type CatCommand struct {
+	BaseCommand
+	File1 string
+}
+
+func (c *CatCommand) Validate() error {
+	if c.File1 == "" {
+		return fmt.Errorf("cat: falta parámetro 'file1'")
+	}
+	return nil
+}

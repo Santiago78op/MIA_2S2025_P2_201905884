@@ -23,8 +23,11 @@ func ParseCommand(line string) (CommandHandler, error) {
 
 	// Crear el comando apropiado basado en el nombre
 	switch cmdName {
+	// Comandos de disco
 	case CmdMkdisk:
 		return parseMkdisk(args)
+	case CmdRmdisk:
+		return parseRmdisk(args)
 	case CmdFdisk:
 		return parseFdisk(args)
 	case CmdMount:
@@ -33,8 +36,32 @@ func ParseCommand(line string) (CommandHandler, error) {
 		return parseUnmount(args)
 	case CmdMounted:
 		return parseMounted(args)
+
+	// Formateo
 	case CmdMkfs:
 		return parseMkfs(args)
+
+	// Sesión P1
+	case CmdLogin:
+		return parseLogin(args)
+	case CmdLogout:
+		return parseLogout(args)
+
+	// Grupos P1
+	case CmdMkgrp:
+		return parseMkgrp(args)
+	case CmdRmgrp:
+		return parseRmgrp(args)
+
+	// Usuarios P1
+	case CmdMkusr:
+		return parseMkusr(args)
+	case CmdRmusr:
+		return parseRmusr(args)
+	case CmdChgrp:
+		return parseChgrp(args)
+
+	// Archivos
 	case CmdMkdir:
 		return parseMkdir(args)
 	case CmdMkfile:
@@ -55,14 +82,21 @@ func ParseCommand(line string) (CommandHandler, error) {
 		return parseChown(args)
 	case CmdChmod:
 		return parseChmod(args)
+	case CmdCat:
+		return parseCat(args)
+
+	// EXT3
 	case CmdJournaling:
 		return parseJournaling(args)
 	case CmdRecovery:
 		return parseRecovery(args)
 	case CmdLoss:
 		return parseLoss(args)
+
+	// Reportes
 	case CmdRep:
 		return parseRep(args)
+
 	default:
 		return nil, fmt.Errorf("comando desconocido: %s", cmd)
 	}
@@ -324,28 +358,122 @@ func parseLoss(args map[string]string) (*LossCommand, error) {
 	}, nil
 }
 
+// ==================== Parsers P1 ====================
+
+func parseRmdisk(args map[string]string) (*RmdiskCommand, error) {
+	return &RmdiskCommand{
+		BaseCommand: BaseCommand{CmdName: CmdRmdisk},
+		Path:        getStringArg(args, "path", ""),
+	}, nil
+}
+
+func parseLogin(args map[string]string) (*LoginCommand, error) {
+	return &LoginCommand{
+		BaseCommand: BaseCommand{CmdName: CmdLogin},
+		User:        getStringArg(args, "user", ""),
+		Pass:        getStringArg(args, "pass", ""),
+		ID:          getStringArg(args, "id", ""),
+	}, nil
+}
+
+func parseLogout(args map[string]string) (*LogoutCommand, error) {
+	return &LogoutCommand{
+		BaseCommand: BaseCommand{CmdName: CmdLogout},
+	}, nil
+}
+
+func parseMkgrp(args map[string]string) (*MkgrpCommand, error) {
+	return &MkgrpCommand{
+		BaseCommand: BaseCommand{CmdName: CmdMkgrp},
+		GroupName:   getStringArg(args, "name", ""),
+	}, nil
+}
+
+func parseRmgrp(args map[string]string) (*RmgrpCommand, error) {
+	return &RmgrpCommand{
+		BaseCommand: BaseCommand{CmdName: CmdRmgrp},
+		GroupName:   getStringArg(args, "name", ""),
+	}, nil
+}
+
+func parseMkusr(args map[string]string) (*MkusrCommand, error) {
+	return &MkusrCommand{
+		BaseCommand: BaseCommand{CmdName: CmdMkusr},
+		User:        getStringArg(args, "user", ""),
+		Pass:        getStringArg(args, "pass", ""),
+		Group:       getStringArg(args, "grp", ""),
+	}, nil
+}
+
+func parseRmusr(args map[string]string) (*RmusrCommand, error) {
+	return &RmusrCommand{
+		BaseCommand: BaseCommand{CmdName: CmdRmusr},
+		User:        getStringArg(args, "user", ""),
+	}, nil
+}
+
+func parseChgrp(args map[string]string) (*ChgrpCommand, error) {
+	return &ChgrpCommand{
+		BaseCommand: BaseCommand{CmdName: CmdChgrp},
+		User:        getStringArg(args, "user", ""),
+		Group:       getStringArg(args, "grp", ""),
+	}, nil
+}
+
+func parseCat(args map[string]string) (*CatCommand, error) {
+	return &CatCommand{
+		BaseCommand: BaseCommand{CmdName: CmdCat},
+		File1:       getStringArg(args, "file1", ""),
+	}, nil
+}
+
 // Usage retorna el mensaje de uso para un comando
 func Usage(cmdName CommandName) string {
 	usageMap := map[CommandName]string{
-		CmdMkdisk:     "mkdisk -path <ruta> -size <tamaño> [-unit b|k|m] [-fit bf|ff|wf]",
-		CmdFdisk:      "fdisk -path <ruta> -mode add|delete [-name <nombre>] [-size <tamaño>] [-unit b|k|m] [-type p|e|l] [-fit bf|ff|wf] [-delete full|fast]",
-		CmdMount:      "mount -path <ruta> -name <nombre>",
-		CmdUnmount:    "unmount -id <id>",
-		CmdMounted:    "mounted",
-		CmdMkfs:       "mkfs -id <id> -fs 2fs|3fs",
-		CmdMkdir:      "mkdir -id <id> -path <ruta> [-p]",
-		CmdMkfile:     "mkfile -id <id> -path <ruta> [-cont <contenido>] [-size <tamaño>]",
-		CmdRemove:     "remove -id <id> -path <ruta>",
-		CmdEdit:       "edit -id <id> -path <ruta> -cont <contenido> [-append]",
-		CmdRename:     "rename -id <id> -from <origen> -to <destino>",
-		CmdCopy:       "copy -id <id> -from <origen> -to <destino>",
-		CmdMove:       "move -id <id> -from <origen> -to <destino>",
-		CmdFind:       "find -id <id> [-base <ruta>] [-name <patrón>] [-limit <n>]",
-		CmdChown:      "chown -id <id> -path <ruta> -user <usuario> -group <grupo>",
-		CmdChmod:      "chmod -id <id> -path <ruta> -perm <permisos>",
+		// Disco
+		CmdMkdisk:  "mkdisk -path <ruta> -size <tamaño> [-unit b|k|m] [-fit bf|ff|wf]",
+		CmdRmdisk:  "rmdisk -path <ruta>",
+		CmdFdisk:   "fdisk -path <ruta> -mode add|delete [-name <nombre>] [-size <tamaño>] [-unit b|k|m] [-type p|e|l] [-fit bf|ff|wf] [-delete full|fast]",
+		CmdMount:   "mount -path <ruta> -name <nombre>",
+		CmdUnmount: "unmount -id <id>",
+		CmdMounted: "mounted",
+
+		// Formateo
+		CmdMkfs: "mkfs -id <id> -fs 2fs|3fs",
+
+		// Sesión P1
+		CmdLogin:  "login -user <usuario> -pass <password> -id <id>",
+		CmdLogout: "logout",
+
+		// Grupos P1
+		CmdMkgrp: "mkgrp -name <nombre>",
+		CmdRmgrp: "rmgrp -name <nombre>",
+
+		// Usuarios P1
+		CmdMkusr: "mkusr -user <usuario> -pass <password> -grp <grupo>",
+		CmdRmusr: "rmusr -user <usuario>",
+		CmdChgrp: "chgrp -user <usuario> -grp <grupo>",
+
+		// Archivos
+		CmdMkdir:  "mkdir -id <id> -path <ruta> [-p]",
+		CmdMkfile: "mkfile -id <id> -path <ruta> [-cont <contenido>] [-size <tamaño>]",
+		CmdRemove: "remove -id <id> -path <ruta>",
+		CmdEdit:   "edit -id <id> -path <ruta> -cont <contenido> [-append]",
+		CmdRename: "rename -id <id> -from <origen> -to <destino>",
+		CmdCopy:   "copy -id <id> -from <origen> -to <destino>",
+		CmdMove:   "move -id <id> -from <origen> -to <destino>",
+		CmdFind:   "find -id <id> [-base <ruta>] [-name <patrón>] [-limit <n>]",
+		CmdChown:  "chown -id <id> -path <ruta> -user <usuario> -group <grupo>",
+		CmdChmod:  "chmod -id <id> -path <ruta> -perm <permisos>",
+		CmdCat:    "cat -file1 <ruta>",
+
+		// EXT3
 		CmdJournaling: "journaling -id <id>",
 		CmdRecovery:   "recovery -id <id>",
 		CmdLoss:       "loss -id <id>",
+
+		// Reportes P1
+		CmdRep: "rep -id <id> -path <output> -name <tipo> [-path_file_ls <ruta>]",
 	}
 
 	if usage, ok := usageMap[cmdName]; ok {

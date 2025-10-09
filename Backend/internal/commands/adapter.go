@@ -6,15 +6,27 @@ import (
 
 	"MIA_2S2025_P2_201905884/internal/disk"
 	"MIA_2S2025_P2_201905884/internal/fs"
+	"MIA_2S2025_P2_201905884/internal/reports"
 )
+
+// SessionManager define la interfaz para gestión de sesiones
+type SessionManager interface {
+	IsActive() bool
+	Login(ctx context.Context, user, pass, mountID string) error
+	Logout()
+	CurrentUser() string
+	CurrentMountID() string
+}
 
 // Adapter conecta el parser/validador de comandos con los servicios reales.
 type Adapter struct {
-	FS2   fs.FS        // implementación EXT2
-	FS3   fs.FS        // implementación EXT3
-	DM    disk.Manager // gestor de discos/particiones
-	Index MountIndex   // índice de montajes (id -> refs/handles)
-	State *fs.MetaState // estado de metadatos de filesystems
+	FS2     fs.FS              // implementación EXT2
+	FS3     fs.FS              // implementación EXT3
+	DM      disk.Manager       // gestor de discos/particiones
+	Index   MountIndex         // índice de montajes (id -> refs/handles)
+	State   *fs.MetaState      // estado de metadatos de filesystems
+	Session SessionManager     // gestor de sesiones
+	Reports reports.Generator  // generador de reportes
 }
 
 // Run ejecuta una línea de comando (parsea, valida y ejecuta).

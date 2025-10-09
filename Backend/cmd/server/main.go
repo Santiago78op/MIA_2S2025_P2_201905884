@@ -1,18 +1,21 @@
 package main
 
 import (
-	"MIA_2S2025_P2_201905884/internal/commands"
-	"MIA_2S2025_P2_201905884/internal/disk"
-	"MIA_2S2025_P2_201905884/internal/fs"
-	"MIA_2S2025_P2_201905884/internal/fs/ext2"
-	"MIA_2S2025_P2_201905884/internal/fs/ext3"
-	"MIA_2S2025_P2_201905884/internal/logger"
 	"context"
 	"log"
 	"net/http"
 	"os"
 	"os/signal"
 	"time"
+
+	"MIA_2S2025_P2_201905884/internal/auth"
+	"MIA_2S2025_P2_201905884/internal/commands"
+	"MIA_2S2025_P2_201905884/internal/disk"
+	"MIA_2S2025_P2_201905884/internal/fs"
+	"MIA_2S2025_P2_201905884/internal/fs/ext2"
+	"MIA_2S2025_P2_201905884/internal/fs/ext3"
+	"MIA_2S2025_P2_201905884/internal/logger"
+	"MIA_2S2025_P2_201905884/internal/reports"
 )
 
 func main() {
@@ -45,12 +48,18 @@ func main() {
 	// Índice de montajes
 	idx := commands.NewMemoryIndex()
 
+	// Inicializar sesión y reportes para P1
+	session := auth.NewSessionManager(fs2) // Usar fs2 para validación de credenciales
+	reportGen := reports.NewSimpleGenerator()
+
 	adapter := &commands.Adapter{
-		FS2:   fs2,
-		FS3:   fs3,
-		DM:    dm,
-		Index: idx,
-		State: meta,
+		FS2:     fs2,
+		FS3:     fs3,
+		DM:      dm,
+		Index:   idx,
+		State:   meta,
+		Session: session,
+		Reports: reportGen,
 	}
 
 	// ===== HTTP Server =====

@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"io"
 	"os"
+
+	perrors "MIA_2S2025_P2_201905884/internal/errors"
 )
 
 // RW sobre archivo .mia — little endian fijo.
@@ -78,10 +80,10 @@ func exists(path string) bool {
 func fmtName(src string) ([NameLen]byte, error) {
 	var out [NameLen]byte
 	if len(src) == 0 {
-		return out, fmt.Errorf("nombre vacío")
+		return out, perrors.ErrParams
 	}
 	if len(src) > NameLen {
-		return out, fmt.Errorf("nombre demasiado largo (max %d)", NameLen)
+		return out, perrors.ErrParams
 	}
 	copy(out[:], []byte(src))
 	return out, nil
