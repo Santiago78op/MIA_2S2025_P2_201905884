@@ -88,15 +88,15 @@ func (c *MkdiskCommand) Validate() error {
 		return fmt.Errorf("mkdisk: falta parámetro 'path'")
 	}
 	if c.Size <= 0 {
-		return fmt.Errorf("mkdisk: 'size' debe ser > 0")
+		return fmt.Errorf("mkdisk: 'size' debe ser > 0 (recibido: %d)", c.Size)
 	}
 	unit := strings.ToLower(c.Unit)
-	if unit != "" && unit != "b" && unit != "k" && unit != "m" {
-		return fmt.Errorf("mkdisk: 'unit' debe ser b|k|m")
+	if unit != "b" && unit != "k" && unit != "m" {
+		return fmt.Errorf("mkdisk: 'unit' debe ser b|k|m (recibido: '%s')", unit)
 	}
 	fit := strings.ToLower(c.Fit)
-	if fit != "" && fit != "bf" && fit != "ff" && fit != "wf" {
-		return fmt.Errorf("mkdisk: 'fit' debe ser bf|ff|wf")
+	if fit != "bf" && fit != "ff" && fit != "wf" {
+		return fmt.Errorf("mkdisk: 'fit' debe ser bf|ff|wf (recibido: '%s')", fit)
 	}
 	return nil
 }
@@ -120,18 +120,28 @@ func (c *FdiskCommand) Validate() error {
 	}
 	mode := strings.ToLower(c.Mode)
 	if mode != "add" && mode != "delete" {
-		return fmt.Errorf("fdisk: 'mode' debe ser add|delete")
+		return fmt.Errorf("fdisk: 'mode' debe ser add|delete (recibido: '%s')", mode)
 	}
 	if mode == "add" {
 		if c.PartName == "" {
 			return fmt.Errorf("fdisk add: falta parámetro 'name'")
 		}
 		if c.Size <= 0 {
-			return fmt.Errorf("fdisk add: 'size' debe ser > 0")
+			return fmt.Errorf("fdisk add: 'size' debe ser > 0 (recibido: %d)", c.Size)
 		}
 		ptype := strings.ToLower(c.Type)
 		if ptype != "p" && ptype != "e" && ptype != "l" {
-			return fmt.Errorf("fdisk add: 'type' debe ser p|e|l")
+			return fmt.Errorf("fdisk add: 'type' debe ser p|e|l (recibido: '%s')", ptype)
+		}
+		// Validar unit
+		unit := strings.ToLower(c.Unit)
+		if unit != "b" && unit != "k" && unit != "m" {
+			return fmt.Errorf("fdisk add: 'unit' debe ser b|k|m (recibido: '%s')", unit)
+		}
+		// Validar fit
+		fit := strings.ToLower(c.Fit)
+		if fit != "bf" && fit != "ff" && fit != "wf" {
+			return fmt.Errorf("fdisk add: 'fit' debe ser bf|ff|wf (recibido: '%s')", fit)
 		}
 	}
 	if mode == "delete" {
@@ -139,8 +149,8 @@ func (c *FdiskCommand) Validate() error {
 			return fmt.Errorf("fdisk delete: falta parámetro 'name'")
 		}
 		delMode := strings.ToLower(c.Delete)
-		if delMode != "" && delMode != "full" && delMode != "fast" {
-			return fmt.Errorf("fdisk delete: 'delete' debe ser full|fast")
+		if delMode != "full" && delMode != "fast" {
+			return fmt.Errorf("fdisk delete: 'delete' debe ser full|fast (recibido: '%s')", delMode)
 		}
 	}
 	return nil
@@ -235,6 +245,10 @@ func (c *MkfileCommand) Validate() error {
 	// ID se puede inyectar desde sesión, se valida en ejecución
 	if c.Path == "" {
 		return fmt.Errorf("mkfile: falta parámetro 'path'")
+	}
+	// Validar que size no sea negativo
+	if c.Size < 0 {
+		return fmt.Errorf("mkfile: 'size' no puede ser negativo (recibido: %d)", c.Size)
 	}
 	return nil
 }

@@ -193,6 +193,17 @@ func tokenize(line string) []string {
 }
 
 // Funciones helper para obtener argumentos
+
+// validateKnownFlags verifica que no haya flags desconocidos
+func validateKnownFlags(args map[string]string, validFlags map[string]bool) error {
+	for flag := range args {
+		if !validFlags[flag] {
+			return fmt.Errorf("flag desconocido: -%s", flag)
+		}
+	}
+	return nil
+}
+
 func getStringArg(args map[string]string, key string, defaultVal string) string {
 	if val, ok := args[key]; ok {
 		return val
@@ -219,6 +230,17 @@ func getBoolArg(args map[string]string, key string) bool {
 // ==================== Parsers específicos ====================
 
 func parseMkdisk(args map[string]string) (*MkdiskCommand, error) {
+	// Validar flags conocidos
+	validFlags := map[string]bool{
+		"path": true,
+		"size": true,
+		"unit": true,
+		"fit":  true,
+	}
+	if err := validateKnownFlags(args, validFlags); err != nil {
+		return nil, err
+	}
+
 	return &MkdiskCommand{
 		BaseCommand: BaseCommand{CmdName: CmdMkdisk},
 		Path:        getStringArg(args, "path", ""),

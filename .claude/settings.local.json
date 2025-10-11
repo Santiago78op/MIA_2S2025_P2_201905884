@@ -27,7 +27,9 @@
       "Bash(/tmp/test_parser.sh:*)",
       "Bash(awk:*)",
       "Bash(xargs -r kill -9)",
-      "Bash(/tmp/test_full_flow.sh:*)"
+      "Bash(/tmp/test_full_flow.sh:*)",
+      "Bash(/tmp/comprehensive_test.sh:*)",
+      "Bash(ls:*)"
     ],
     "deny": [],
     "ask": []
