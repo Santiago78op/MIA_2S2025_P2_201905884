@@ -17,6 +17,7 @@ type MountIndex interface {
 	Del(id string)
 	List() []string
 	GenerateID(diskPath string) string // Genera ID según formato P1
+	Reset()                            // Limpia todo el índice (para test/calificador)
 }
 
 // In-memory implementación thread-safe.
@@ -102,4 +103,14 @@ func (m *memoryIndex) GenerateID(diskPath string) string {
 
 	// Formato: <84><correlativo><letra>
 	return fmt.Sprintf("%s%d%c", carnetSuffix, m.diskSeq[diskPath], m.diskLetter[diskPath])
+}
+
+// Reset limpia completamente el índice (para garantizar IDs predecibles en cada corrida)
+func (m *memoryIndex) Reset() {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.ref = make(map[string]disk.PartitionRef)
+	m.hand = make(map[string]fs.MountHandle)
+	m.diskLetter = make(map[string]rune)
+	m.diskSeq = make(map[string]int)
 }

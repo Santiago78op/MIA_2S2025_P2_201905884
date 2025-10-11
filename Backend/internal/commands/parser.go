@@ -61,7 +61,7 @@ func ParseCommand(line string) (CommandHandler, error) {
 	case CmdChgrp:
 		return parseChgrp(args)
 
-	// Archivos
+	// Archivos (permiten usar sesión activa)
 	case CmdMkdir:
 		return parseMkdir(args)
 	case CmdMkfile:
@@ -103,6 +103,10 @@ func ParseCommand(line string) (CommandHandler, error) {
 }
 
 // parseLineToArgs parsea una línea en nombre de comando y mapa de argumentos
+// Soporta dos formatos:
+// 1. -flag=value (ya separado por tokenize)
+// 2. -flag value
+// Todos los flags son case-insensitive
 func parseLineToArgs(line string) (string, map[string]string, error) {
 	parts := tokenize(line)
 	if len(parts) == 0 {
@@ -118,11 +122,12 @@ func parseLineToArgs(line string) (string, map[string]string, error) {
 			continue
 		}
 
-		// Remover el prefijo '-'
-		key := strings.TrimPrefix(part, "-")
+		// Remover el prefijo '-' y convertir a minúsculas
+		key := strings.ToLower(strings.TrimPrefix(part, "-"))
 
-		// Verificar si es un flag booleano o tiene valor
+		// Verificar si el siguiente token es un valor (no empieza con -)
 		if i+1 < len(parts) && !strings.HasPrefix(parts[i+1], "-") {
+			// Tiene valor siguiente
 			args[key] = parts[i+1]
 			i++
 		} else {
@@ -135,6 +140,7 @@ func parseLineToArgs(line string) (string, map[string]string, error) {
 }
 
 // tokenize divide una línea respetando comillas
+// Maneja especialmente el caso -flag=value separándolo en dos tokens: -flag y value
 func tokenize(line string) []string {
 	var tokens []string
 	var current strings.Builder
@@ -150,7 +156,18 @@ func tokenize(line string) []string {
 			if inQuotes {
 				current.WriteByte(char)
 			} else if current.Len() > 0 {
-				tokens = append(tokens, current.String())
+				// Procesar el token acumulado
+				token := current.String()
+				// Si el token tiene formato -flag=value, separarlo
+				if strings.HasPrefix(token, "-") && strings.Contains(token, "=") {
+					parts := strings.SplitN(token, "=", 2)
+					tokens = append(tokens, parts[0]) // -flag
+					if len(parts) > 1 {
+						tokens = append(tokens, parts[1]) // value
+					}
+				} else {
+					tokens = append(tokens, token)
+				}
 				current.Reset()
 			}
 		default:
@@ -159,7 +176,17 @@ func tokenize(line string) []string {
 	}
 
 	if current.Len() > 0 {
-		tokens = append(tokens, current.String())
+		token := current.String()
+		// Procesar el último token también
+		if strings.HasPrefix(token, "-") && strings.Contains(token, "=") {
+			parts := strings.SplitN(token, "=", 2)
+			tokens = append(tokens, parts[0])
+			if len(parts) > 1 {
+				tokens = append(tokens, parts[1])
+			}
+		} else {
+			tokens = append(tokens, token)
+		}
 	}
 
 	return tokens
@@ -205,7 +232,7 @@ func parseFdisk(args map[string]string) (*FdiskCommand, error) {
 	return &FdiskCommand{
 		BaseCommand: BaseCommand{CmdName: CmdFdisk},
 		Path:        getStringArg(args, "path", ""),
-		Mode:        getStringArg(args, "mode", ""),
+		Mode:        getStringArg(args, "mode", "add"), // Default: add
 		PartName:    getStringArg(args, "name", ""),
 		Size:        getInt64Arg(args, "size", 0),
 		Unit:        getStringArg(args, "unit", "m"),

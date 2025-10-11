@@ -196,9 +196,7 @@ type MkfsCommand struct {
 }
 
 func (c *MkfsCommand) Validate() error {
-	if c.ID == "" {
-		return fmt.Errorf("mkfs: falta parámetro 'id'")
-	}
+	// ID se puede inyectar desde sesión, se valida en ejecución
 	kind := strings.ToLower(c.FSKind)
 	if kind != "2fs" && kind != "3fs" {
 		return fmt.Errorf("mkfs: 'fs' debe ser 2fs|3fs")
@@ -217,9 +215,7 @@ type MkdirCommand struct {
 }
 
 func (c *MkdirCommand) Validate() error {
-	if c.ID == "" {
-		return fmt.Errorf("mkdir: falta parámetro 'id'")
-	}
+	// ID se puede inyectar desde sesión, se valida en ejecución
 	if c.Path == "" {
 		return fmt.Errorf("mkdir: falta parámetro 'path'")
 	}
@@ -236,9 +232,7 @@ type MkfileCommand struct {
 }
 
 func (c *MkfileCommand) Validate() error {
-	if c.ID == "" {
-		return fmt.Errorf("mkfile: falta parámetro 'id'")
-	}
+	// ID se puede inyectar desde sesión, se valida en ejecución
 	if c.Path == "" {
 		return fmt.Errorf("mkfile: falta parámetro 'path'")
 	}
@@ -253,9 +247,7 @@ type RemoveCommand struct {
 }
 
 func (c *RemoveCommand) Validate() error {
-	if c.ID == "" {
-		return fmt.Errorf("remove: falta parámetro 'id'")
-	}
+	// ID se puede inyectar desde sesión, se valida en ejecución
 	if c.Path == "" {
 		return fmt.Errorf("remove: falta parámetro 'path'")
 	}
@@ -272,9 +264,7 @@ type EditCommand struct {
 }
 
 func (c *EditCommand) Validate() error {
-	if c.ID == "" {
-		return fmt.Errorf("edit: falta parámetro 'id'")
-	}
+	// ID se puede inyectar desde sesión, se valida en ejecución
 	if c.Path == "" {
 		return fmt.Errorf("edit: falta parámetro 'path'")
 	}
@@ -290,9 +280,7 @@ type RenameCommand struct {
 }
 
 func (c *RenameCommand) Validate() error {
-	if c.ID == "" {
-		return fmt.Errorf("rename: falta parámetro 'id'")
-	}
+	// ID se puede inyectar desde sesión, se valida en ejecución
 	if c.From == "" {
 		return fmt.Errorf("rename: falta parámetro 'from'")
 	}
@@ -311,9 +299,7 @@ type CopyCommand struct {
 }
 
 func (c *CopyCommand) Validate() error {
-	if c.ID == "" {
-		return fmt.Errorf("copy: falta parámetro 'id'")
-	}
+	// ID se puede inyectar desde sesión, se valida en ejecución
 	if c.From == "" {
 		return fmt.Errorf("copy: falta parámetro 'from'")
 	}
@@ -332,9 +318,7 @@ type MoveCommand struct {
 }
 
 func (c *MoveCommand) Validate() error {
-	if c.ID == "" {
-		return fmt.Errorf("move: falta parámetro 'id'")
-	}
+	// ID se puede inyectar desde sesión, se valida en ejecución
 	if c.From == "" {
 		return fmt.Errorf("move: falta parámetro 'from'")
 	}
@@ -354,9 +338,7 @@ type FindCommand struct {
 }
 
 func (c *FindCommand) Validate() error {
-	if c.ID == "" {
-		return fmt.Errorf("find: falta parámetro 'id'")
-	}
+	// ID se puede inyectar desde sesión, se valida en ejecución
 	return nil
 }
 
@@ -370,9 +352,7 @@ type ChownCommand struct {
 }
 
 func (c *ChownCommand) Validate() error {
-	if c.ID == "" {
-		return fmt.Errorf("chown: falta parámetro 'id'")
-	}
+	// ID se puede inyectar desde sesión, se valida en ejecución
 	if c.Path == "" {
 		return fmt.Errorf("chown: falta parámetro 'path'")
 	}
@@ -388,9 +368,7 @@ type ChmodCommand struct {
 }
 
 func (c *ChmodCommand) Validate() error {
-	if c.ID == "" {
-		return fmt.Errorf("chmod: falta parámetro 'id'")
-	}
+	// ID se puede inyectar desde sesión, se valida en ejecución
 	if c.Path == "" {
 		return fmt.Errorf("chmod: falta parámetro 'path'")
 	}
@@ -409,9 +387,7 @@ type JournalingCommand struct {
 }
 
 func (c *JournalingCommand) Validate() error {
-	if c.ID == "" {
-		return fmt.Errorf("journaling: falta parámetro 'id'")
-	}
+	// ID se puede inyectar desde sesión, se valida en ejecución
 	return nil
 }
 
@@ -422,9 +398,7 @@ type RecoveryCommand struct {
 }
 
 func (c *RecoveryCommand) Validate() error {
-	if c.ID == "" {
-		return fmt.Errorf("recovery: falta parámetro 'id'")
-	}
+	// ID se puede inyectar desde sesión, se valida en ejecución
 	return nil
 }
 
@@ -435,9 +409,7 @@ type LossCommand struct {
 }
 
 func (c *LossCommand) Validate() error {
-	if c.ID == "" {
-		return fmt.Errorf("loss: falta parámetro 'id'")
-	}
+	// ID se puede inyectar desde sesión, se valida en ejecución
 	return nil
 }
 

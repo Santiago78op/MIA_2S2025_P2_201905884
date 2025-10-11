@@ -32,7 +32,7 @@ func (c *RepCommand) Validate() error {
 	}
 
 	// Validar tipo de reporte
-	validTypes := []string{"mbr", "disk", "inode", "block", "bm_inode", "bm_block", "tree", "sb", "file"}
+	validTypes := []string{"mbr", "disk", "inode", "block", "bm_inode", "bm_block", "tree", "sb", "file", "ls"}
 	valid := false
 	nameLower := strings.ToLower(c.ReportName)
 	for _, t := range validTypes {
@@ -74,18 +74,20 @@ func (c *RepCommand) Execute(ctx context.Context, adapter *Adapter) (string, err
 		err = reports.GenerateDISKReport(diskPath, c.Path)
 	case "sb", "superblock":
 		err = reports.GenerateSuperblockReport(diskPath, partName, c.Path)
-	// case "inode":
-	// 	err = reports.GenerateINODEReport(diskPath, partName, c.Path)
-	// case "block":
-	// 	err = reports.GenerateBLOCKReport(diskPath, partName, c.Path)
-	// case "bm_inode":
-	// 	err = reports.GenerateBMINODEReport(diskPath, partName, c.Path)
-	// case "bm_block":
-	// 	err = reports.GenerateBMBLOCKReport(diskPath, partName, c.Path)
-	// case "tree":
-	// 	err = reports.GenerateTREEReport(diskPath, partName, c.Path)
-	// case "file":
-	// 	err = reports.GenerateFILEReport(diskPath, partName, c.Ruta, c.Path)
+	case "inode":
+		err = reports.GenerateINODEReport(diskPath, partName, c.Path)
+	case "block":
+		err = reports.GenerateBLOCKReport(diskPath, partName, c.Path)
+	case "bm_inode":
+		err = reports.GenerateBMINODEReport(diskPath, partName, c.Path)
+	case "bm_block":
+		err = reports.GenerateBMBLOCKReport(diskPath, partName, c.Path)
+	case "tree":
+		err = reports.GenerateTREEReport(diskPath, partName, c.Path)
+	case "file":
+		err = reports.GenerateFILEReport(diskPath, partName, c.Ruta, c.Path)
+	case "ls":
+		err = reports.GenerateLSReport(diskPath, partName, c.Ruta, c.Path)
 	default:
 		return "", fmt.Errorf("reporte '%s' aún no implementado", c.ReportName)
 	}

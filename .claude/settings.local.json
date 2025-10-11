@@ -23,7 +23,11 @@
       "Bash(cat:*)",
       "Bash(__NEW_LINE__ MOUNT_ID=\"841A\")",
       "Bash(MOUNT_ID=\"841A\")",
-      "Bash(/tmp/test_p2.sh:*)"
+      "Bash(/tmp/test_p2.sh:*)",
+      "Bash(/tmp/test_parser.sh:*)",
+      "Bash(awk:*)",
+      "Bash(xargs -r kill -9)",
+      "Bash(/tmp/test_full_flow.sh:*)"
     ],
     "deny": [],
     "ask": []

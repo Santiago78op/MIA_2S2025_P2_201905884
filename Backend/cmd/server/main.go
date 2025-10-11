@@ -45,8 +45,9 @@ func main() {
 	fs2 := ext2.New(meta)
 	fs3 := ext3.New(meta, 128, nil) // blockSize=128
 
-	// Índice de montajes
+	// Índice de montajes (limpio en cada inicio para IDs predecibles)
 	idx := commands.NewMemoryIndex()
+	// Ya está limpio al crearse, no necesita Reset() adicional
 
 	// Inicializar sesión y reportes para P1
 	session := auth.NewSessionManager(fs2) // Usar fs2 para validación de credenciales
