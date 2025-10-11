@@ -81,17 +81,17 @@ export function JournalPanel() {
   }, [id])
 
   return (
-    <div className="space-y-4">
+  <div className="flex flex-col gap-6">
       {/* Header con controles */}
-      <div className="flex gap-2 items-center">
+      <div className="flex flex-wrap gap-2 items-center">
         <input
-          className="flex-1 px-3 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+          className="flex-1 px-4 py-2 rounded-lg border outline-none focus:ring-2 ring-blue-700/20 bg-white text-base shadow"
           placeholder="ID de partición montada (ej: vd12ab34)"
           value={id}
           onChange={e => setId(e.target.value)}
         />
         <button
-          className="px-4 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700 disabled:bg-gray-400"
+          className="px-5 py-2 rounded-lg bg-blue-700 text-white font-semibold shadow hover:bg-blue-800 transition disabled:opacity-50"
           onClick={load}
           disabled={busy || !id}
         >
@@ -100,31 +100,31 @@ export function JournalPanel() {
       </div>
 
       {/* Botones de acción */}
-      <div className="flex gap-2">
+      <div className="flex flex-wrap gap-2 items-center">
         <button
-          className="px-4 py-2 rounded-lg bg-green-600 text-white hover:bg-green-700 disabled:bg-gray-400"
+          className="px-5 py-2 rounded-lg bg-green-600 text-white font-semibold shadow hover:bg-green-700 transition disabled:opacity-50"
           onClick={recovery}
           disabled={busy || !id}
         >
           🔄 Recovery
         </button>
         <button
-          className="px-4 py-2 rounded-lg bg-red-600 text-white hover:bg-red-700 disabled:bg-gray-400"
+          className="px-5 py-2 rounded-lg bg-red-600 text-white font-semibold shadow hover:bg-red-700 transition disabled:opacity-50"
           onClick={loss}
           disabled={busy || !id}
         >
           ⚠️ Loss
         </button>
         <div className="flex-1" />
-        <div className="flex gap-1 border rounded-lg">
+        <div className="flex gap-0 border rounded-lg overflow-hidden">
           <button
-            className={`px-3 py-2 rounded-l-lg ${viewMode === 'table' ? 'bg-gray-200' : 'hover:bg-gray-100'}`}
+            className={`px-4 py-2 text-base font-semibold ${viewMode === 'table' ? 'bg-blue-50 text-blue-700' : 'hover:bg-gray-100 text-slate-600'}`}
             onClick={() => setViewMode('table')}
           >
             📋 Tabla
           </button>
           <button
-            className={`px-3 py-2 rounded-r-lg ${viewMode === 'raw' ? 'bg-gray-200' : 'hover:bg-gray-100'}`}
+            className={`px-4 py-2 text-base font-semibold ${viewMode === 'raw' ? 'bg-blue-50 text-blue-700' : 'hover:bg-gray-100 text-slate-600'}`}
             onClick={() => setViewMode('raw')}
           >
             📄 Raw
@@ -141,27 +141,27 @@ export function JournalPanel() {
 
       {/* Tabla de entradas */}
       {viewMode === 'table' && entries.length > 0 && (
-        <div className="border rounded-lg overflow-hidden">
-          <table className="w-full text-sm">
-            <thead className="bg-gray-100 border-b">
+        <div className="border rounded-2xl overflow-hidden shadow-md">
+          <table className="w-full text-base">
+            <thead className="bg-blue-50 border-b">
               <tr>
-                <th className="px-4 py-2 text-left">#</th>
-                <th className="px-4 py-2 text-left">Operación</th>
-                <th className="px-4 py-2 text-left">Ruta</th>
-                <th className="px-4 py-2 text-left">Contenido</th>
-                <th className="px-4 py-2 text-left">Timestamp</th>
+                <th className="px-5 py-3 text-left font-bold text-blue-700">#</th>
+                <th className="px-5 py-3 text-left font-bold text-blue-700">Operación</th>
+                <th className="px-5 py-3 text-left font-bold text-blue-700">Ruta</th>
+                <th className="px-5 py-3 text-left font-bold text-blue-700">Contenido</th>
+                <th className="px-5 py-3 text-left font-bold text-blue-700">Timestamp</th>
               </tr>
             </thead>
             <tbody>
               {entries.map((entry, idx) => (
-                <tr key={idx} className="border-b hover:bg-gray-50">
-                  <td className="px-4 py-2 text-gray-500">{idx}</td>
-                  <td className="px-4 py-2 font-mono font-semibold text-blue-600">{entry.Op}</td>
-                  <td className="px-4 py-2 font-mono">{entry.Path}</td>
-                  <td className="px-4 py-2 font-mono text-xs text-gray-600 max-w-xs truncate">
+                <tr key={idx} className="border-b hover:bg-blue-50">
+                  <td className="px-5 py-3 text-gray-500">{idx}</td>
+                  <td className="px-5 py-3 font-mono font-bold text-blue-700">{entry.Op}</td>
+                  <td className="px-5 py-3 font-mono">{entry.Path}</td>
+                  <td className="px-5 py-3 font-mono text-xs text-gray-600 max-w-xs truncate">
                     {entry.Content || '-'}
                   </td>
-                  <td className="px-4 py-2 text-xs text-gray-500">
+                  <td className="px-5 py-3 text-xs text-gray-500">
                     {entry.Timestamp ? new Date(entry.Timestamp).toLocaleString() : '-'}
                   </td>
                 </tr>
@@ -174,7 +174,7 @@ export function JournalPanel() {
       {/* Vista Raw */}
       {viewMode === 'raw' && (
         <textarea
-          className="w-full h-96 rounded-lg border border-gray-300 p-3 font-mono text-sm resize-none"
+          className="w-full h-96 rounded-2xl border border-blue-200 p-4 font-mono text-base resize-none bg-blue-50 text-blue-700 shadow"
           value={rawText}
           readOnly
         />
@@ -182,14 +182,14 @@ export function JournalPanel() {
 
       {/* Empty state */}
       {!error && entries.length === 0 && rawText === '' && (
-        <div className="text-center py-12 text-gray-400">
-          Ingresa un ID de partición y presiona "Cargar Journal"
+        <div className="text-center py-12 text-blue-700/40 text-lg">
+          Ingresa un ID de partición y presiona <span className="font-bold">Cargar Journal</span>
         </div>
       )}
 
       {!error && entries.length === 0 && rawText !== '' && viewMode === 'table' && (
-        <div className="text-center py-12 text-gray-400">
-          Journal vacío o sin formato JSON. Usa vista "Raw" para ver el contenido.
+        <div className="text-center py-12 text-blue-700/40 text-lg">
+          Journal vacío o sin formato JSON. Usa vista <span className="font-bold">Raw</span> para ver el contenido.
         </div>
       )}
     </div>

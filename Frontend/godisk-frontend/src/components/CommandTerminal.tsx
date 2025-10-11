@@ -1,6 +1,6 @@
-import { useEffect, useRef, useState } from 'react'
-import { runCmd } from '@/lib/api'
-import { useToast } from '@/lib/useToast'
+import React, { useEffect, useRef, useState } from 'react';
+import { runCmd } from '@/lib/api';
+import { useToast } from '@/lib/useToast';
 
 export function CommandTerminal() {
   const [history, setHistory] = useState<string[]>([])
@@ -36,27 +36,27 @@ export function CommandTerminal() {
   }
 
   return (
-    <div>
-      <div className="h-60 overflow-auto scroll-slim bg-[var(--muted)] rounded-xl p-3 text-sm font-mono space-y-2">
+    <div className="flex flex-col gap-4">
+      <div className="h-64 overflow-auto scroll-slim bg-gray-100 rounded-2xl p-4 text-sm font-mono space-y-2 border shadow-inner">
         {history.length === 0 && (
-          <div className="text-slate-500">Escribe un comando (ej.: <code>mkdisk -size=50 -unit=m -fit=ff -path="/tmp/Disco1.mia"</code>)</div>
+          <div className="text-slate-500">Escribe un comando <span className="font-semibold">(ej: <code>mkdisk -size=50 -unit=m -fit=ff -path=\"/tmp/Disco1.mia\"</code>)</span></div>
         )}
         {history.map((ln, i) => (
-          <pre key={i} className="whitespace-pre-wrap">{ln}</pre>
+          <pre key={i} className="whitespace-pre-wrap text-xs leading-tight">{ln}</pre>
         ))}
       </div>
-      <div className="mt-2 flex items-center gap-2">
+      <form className="flex flex-col sm:flex-row items-center gap-2" onSubmit={e => {e.preventDefault(); submit();}}>
         <input
           ref={inputRef}
-          className="flex-1 px-3 py-2 rounded-lg border outline-none focus:ring-2 ring-black/10"
+          className="flex-1 px-4 py-2 rounded-lg border outline-none focus:ring-2 ring-blue-700/20 bg-white text-sm shadow"
           placeholder="Escribe un comando…"
           value={line}
           onChange={e => setLine(e.target.value)}
           onKeyDown={onKey}
           disabled={busy}
         />
-        <button onClick={submit} disabled={busy} className="px-3 py-2 rounded-lg bg-black text-white hover:opacity-90 disabled:opacity-50">Enviar</button>
-      </div>
+        <button type="submit" disabled={busy} className="px-5 py-2 rounded-lg bg-blue-700 text-white font-semibold shadow hover:bg-blue-800 transition disabled:opacity-50">Enviar</button>
+      </form>
       <Toasts />
     </div>
   )

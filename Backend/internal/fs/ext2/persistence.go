@@ -157,3 +157,404 @@ func readSuperblockFromDisk(diskPath string, partStart int64) (*Superblock, erro
 
 	return DeserializeSuperblock(data)
 }
+
+// writeSuperblockToDisk escribe el superbloque al disco
+func writeSuperblockToDisk(diskPath string, partStart int64, sb *Superblock) error {
+	f, err := os.OpenFile(diskPath, os.O_RDWR, 0666)
+	if err != nil {
+		return fmt.Errorf("error al abrir disco: %v", err)
+	}
+	defer f.Close()
+
+	sbData, err := SerializeSuperblock(sb)
+	if err != nil {
+		return fmt.Errorf("error al serializar superbloque: %v", err)
+	}
+
+	if err := disk.WriteBytesAt(f, partStart, sbData); err != nil {
+		return fmt.Errorf("error al escribir superbloque: %v", err)
+	}
+
+	return nil
+}
+
+// readInodeFromDisk lee un inodo desde el disco
+func readInodeFromDisk(diskPath string, partStart int64, sb *Superblock, inodeIndex int32) (*Inode, error) {
+	if inodeIndex < 0 || inodeIndex >= sb.S_inodes_count {
+		return nil, fmt.Errorf("índice de inodo fuera de rango: %d", inodeIndex)
+	}
+
+	f, err := os.Open(diskPath)
+	if err != nil {
+		return nil, fmt.Errorf("error al abrir disco: %v", err)
+	}
+	defer f.Close()
+
+	inodeOffset := partStart + int64(sb.S_inode_start) + (int64(inodeIndex) * int64(sb.S_inode_size))
+	data, err := disk.ReadBytesAt(f, inodeOffset, int(sb.S_inode_size))
+	if err != nil {
+		return nil, fmt.Errorf("error al leer inodo: %v", err)
+	}
+
+	return DeserializeInode(data)
+}
+
+// writeInodeToDisk escribe un inodo al disco
+func writeInodeToDisk(diskPath string, partStart int64, sb *Superblock, inodeIndex int32, inode *Inode) error {
+	if inodeIndex < 0 || inodeIndex >= sb.S_inodes_count {
+		return fmt.Errorf("índice de inodo fuera de rango: %d", inodeIndex)
+	}
+
+	f, err := os.OpenFile(diskPath, os.O_RDWR, 0666)
+	if err != nil {
+		return fmt.Errorf("error al abrir disco: %v", err)
+	}
+	defer f.Close()
+
+	inodeData, err := SerializeInode(inode)
+	if err != nil {
+		return fmt.Errorf("error al serializar inodo: %v", err)
+	}
+
+	inodeOffset := partStart + int64(sb.S_inode_start) + (int64(inodeIndex) * int64(sb.S_inode_size))
+	if err := disk.WriteBytesAt(f, inodeOffset, inodeData); err != nil {
+		return fmt.Errorf("error al escribir inodo: %v", err)
+	}
+
+	return nil
+}
+
+// readFolderBlockFromDisk lee un bloque de carpeta desde el disco
+func readFolderBlockFromDisk(diskPath string, partStart int64, sb *Superblock, blockIndex int32) (*FolderBlock, error) {
+	if blockIndex < 0 || blockIndex >= sb.S_blocks_count {
+		return nil, fmt.Errorf("índice de bloque fuera de rango: %d", blockIndex)
+	}
+
+	f, err := os.Open(diskPath)
+	if err != nil {
+		return nil, fmt.Errorf("error al abrir disco: %v", err)
+	}
+	defer f.Close()
+
+	blockOffset := partStart + int64(sb.S_block_start) + (int64(blockIndex) * int64(sb.S_block_size))
+	data, err := disk.ReadBytesAt(f, blockOffset, int(sb.S_block_size))
+	if err != nil {
+		return nil, fmt.Errorf("error al leer bloque: %v", err)
+	}
+
+	return DeserializeFolderBlock(data)
+}
+
+// writeFolderBlockToDisk escribe un bloque de carpeta al disco
+func writeFolderBlockToDisk(diskPath string, partStart int64, sb *Superblock, blockIndex int32, fb *FolderBlock) error {
+	if blockIndex < 0 || blockIndex >= sb.S_blocks_count {
+		return fmt.Errorf("índice de bloque fuera de rango: %d", blockIndex)
+	}
+
+	f, err := os.OpenFile(diskPath, os.O_RDWR, 0666)
+	if err != nil {
+		return fmt.Errorf("error al abrir disco: %v", err)
+	}
+	defer f.Close()
+
+	fbData, err := SerializeFolderBlock(fb)
+	if err != nil {
+		return fmt.Errorf("error al serializar folder block: %v", err)
+	}
+
+	blockOffset := partStart + int64(sb.S_block_start) + (int64(blockIndex) * int64(sb.S_block_size))
+	if err := disk.WriteBytesAt(f, blockOffset, fbData); err != nil {
+		return fmt.Errorf("error al escribir folder block: %v", err)
+	}
+
+	return nil
+}
+
+// readFileBlockFromDisk lee un bloque de archivo desde el disco
+func readFileBlockFromDisk(diskPath string, partStart int64, sb *Superblock, blockIndex int32) (*FileBlock, error) {
+	if blockIndex < 0 || blockIndex >= sb.S_blocks_count {
+		return nil, fmt.Errorf("índice de bloque fuera de rango: %d", blockIndex)
+	}
+
+	f, err := os.Open(diskPath)
+	if err != nil {
+		return nil, fmt.Errorf("error al abrir disco: %v", err)
+	}
+	defer f.Close()
+
+	blockOffset := partStart + int64(sb.S_block_start) + (int64(blockIndex) * int64(sb.S_block_size))
+	data, err := disk.ReadBytesAt(f, blockOffset, int(sb.S_block_size))
+	if err != nil {
+		return nil, fmt.Errorf("error al leer bloque: %v", err)
+	}
+
+	return DeserializeFileBlock(data)
+}
+
+// writeFileBlockToDisk escribe un bloque de archivo al disco
+func writeFileBlockToDisk(diskPath string, partStart int64, sb *Superblock, blockIndex int32, fileBlock *FileBlock) error {
+	if blockIndex < 0 || blockIndex >= sb.S_blocks_count {
+		return fmt.Errorf("índice de bloque fuera de rango: %d", blockIndex)
+	}
+
+	f, err := os.OpenFile(diskPath, os.O_RDWR, 0666)
+	if err != nil {
+		return fmt.Errorf("error al abrir disco: %v", err)
+	}
+	defer f.Close()
+
+	fbData, err := SerializeFileBlock(fileBlock)
+	if err != nil {
+		return fmt.Errorf("error al serializar file block: %v", err)
+	}
+
+	blockOffset := partStart + int64(sb.S_block_start) + (int64(blockIndex) * int64(sb.S_block_size))
+	if err := disk.WriteBytesAt(f, blockOffset, fbData); err != nil {
+		return fmt.Errorf("error al escribir file block: %v", err)
+	}
+
+	return nil
+}
+
+// allocateInode busca y marca un inodo libre en el bitmap
+func allocateInode(diskPath string, partStart int64, sb *Superblock) (int32, error) {
+	f, err := os.OpenFile(diskPath, os.O_RDWR, 0666)
+	if err != nil {
+		return -1, fmt.Errorf("error al abrir disco: %v", err)
+	}
+	defer f.Close()
+
+	// Leer bitmap de inodos
+	bitmapOffset := partStart + int64(sb.S_bm_inode_start)
+	bitmap, err := disk.ReadBytesAt(f, bitmapOffset, int(sb.S_inodes_count))
+	if err != nil {
+		return -1, fmt.Errorf("error al leer bitmap de inodos: %v", err)
+	}
+
+	// Buscar primer inodo libre
+	for i := int32(0); i < sb.S_inodes_count; i++ {
+		if bitmap[i] == 0 {
+			// Marcar como ocupado
+			bitmap[i] = 1
+			if err := disk.WriteBytesAt(f, bitmapOffset, bitmap); err != nil {
+				return -1, fmt.Errorf("error al escribir bitmap de inodos: %v", err)
+			}
+
+			// Actualizar contador en superbloque
+			sb.S_free_inodes_count--
+			sb.S_first_ino = i + 1
+			if err := writeSuperblockToDisk(diskPath, partStart, sb); err != nil {
+				return -1, fmt.Errorf("error al actualizar superbloque: %v", err)
+			}
+
+			return i, nil
+		}
+	}
+
+	return -1, fmt.Errorf("no hay inodos libres")
+}
+
+// allocateBlock busca y marca un bloque libre en el bitmap
+func allocateBlock(diskPath string, partStart int64, sb *Superblock) (int32, error) {
+	f, err := os.OpenFile(diskPath, os.O_RDWR, 0666)
+	if err != nil {
+		return -1, fmt.Errorf("error al abrir disco: %v", err)
+	}
+	defer f.Close()
+
+	// Leer bitmap de bloques
+	bitmapOffset := partStart + int64(sb.S_bm_block_start)
+	bitmap, err := disk.ReadBytesAt(f, bitmapOffset, int(sb.S_blocks_count))
+	if err != nil {
+		return -1, fmt.Errorf("error al leer bitmap de bloques: %v", err)
+	}
+
+	// Buscar primer bloque libre
+	for i := int32(0); i < sb.S_blocks_count; i++ {
+		if bitmap[i] == 0 {
+			// Marcar como ocupado
+			bitmap[i] = 1
+			if err := disk.WriteBytesAt(f, bitmapOffset, bitmap); err != nil {
+				return -1, fmt.Errorf("error al escribir bitmap de bloques: %v", err)
+			}
+
+			// Actualizar contador en superbloque
+			sb.S_free_blocks_count--
+			sb.S_first_blo = i + 1
+			if err := writeSuperblockToDisk(diskPath, partStart, sb); err != nil {
+				return -1, fmt.Errorf("error al actualizar superbloque: %v", err)
+			}
+
+			return i, nil
+		}
+	}
+
+	return -1, fmt.Errorf("no hay bloques libres")
+}
+
+// navigatePath navega una ruta y retorna el inodo del último elemento
+// Si createMissing es true, crea los directorios faltantes
+func navigatePath(diskPath string, partStart int64, sb *Superblock, path string, createMissing bool) (int32, error) {
+	if path == "" || path == "/" {
+		return 0, nil // Raíz siempre es el inodo 0
+	}
+
+	// Limpiar path
+	if path[0] == '/' {
+		path = path[1:]
+	}
+	if path == "" {
+		return 0, nil
+	}
+
+	parts := splitPath(path)
+	currentInode := int32(0) // Empezar desde raíz
+
+	for i, part := range parts {
+		if part == "" || part == "." {
+			continue
+		}
+
+		// Leer inodo actual
+		inode, err := readInodeFromDisk(diskPath, partStart, sb, currentInode)
+		if err != nil {
+			return -1, fmt.Errorf("error al leer inodo %d: %v", currentInode, err)
+		}
+
+		// Verificar que sea una carpeta
+		if !inode.IsFolder() {
+			return -1, fmt.Errorf("%s no es un directorio", parts[:i])
+		}
+
+		// Buscar la parte del path en los bloques del inodo
+		found := false
+		nextInode := int32(-1)
+
+		for _, blockIdx := range inode.GetDirectBlocks() {
+			folderBlock, err := readFolderBlockFromDisk(diskPath, partStart, sb, blockIdx)
+			if err != nil {
+				return -1, fmt.Errorf("error al leer bloque %d: %v", blockIdx, err)
+			}
+
+			if inodeIdx, ok := folderBlock.FindEntry(part); ok {
+				nextInode = inodeIdx
+				found = true
+				break
+			}
+		}
+
+		if !found {
+			if !createMissing {
+				return -1, fmt.Errorf("ruta no encontrada: %s", part)
+			}
+
+			// Crear nuevo directorio
+			newInodeIdx, err := allocateInode(diskPath, partStart, sb)
+			if err != nil {
+				return -1, fmt.Errorf("error al asignar inodo: %v", err)
+			}
+
+			newBlockIdx, err := allocateBlock(diskPath, partStart, sb)
+			if err != nil {
+				return -1, fmt.Errorf("error al asignar bloque: %v", err)
+			}
+
+			// Crear nuevo inodo de carpeta
+			newInode := NewFolderInode(1, 1)
+			newInode.IBlock[0] = newBlockIdx
+			if err := writeInodeToDisk(diskPath, partStart, sb, newInodeIdx, newInode); err != nil {
+				return -1, fmt.Errorf("error al escribir inodo: %v", err)
+			}
+
+			// Crear nuevo bloque de carpeta con . y ..
+			newFolderBlock := NewFolderBlock()
+			newFolderBlock.AddEntry(".", newInodeIdx)
+			newFolderBlock.AddEntry("..", currentInode)
+			if err := writeFolderBlockToDisk(diskPath, partStart, sb, newBlockIdx, newFolderBlock); err != nil {
+				return -1, fmt.Errorf("error al escribir bloque: %v", err)
+			}
+
+			// Agregar entrada al directorio padre
+			inode, _ = readInodeFromDisk(diskPath, partStart, sb, currentInode)
+			added := false
+			for _, blockIdx := range inode.GetDirectBlocks() {
+				parentBlock, err := readFolderBlockFromDisk(diskPath, partStart, sb, blockIdx)
+				if err != nil {
+					continue
+				}
+				if !parentBlock.IsFull() {
+					parentBlock.AddEntry(part, newInodeIdx)
+					writeFolderBlockToDisk(diskPath, partStart, sb, blockIdx, parentBlock)
+					added = true
+					break
+				}
+			}
+
+			if !added {
+				// Necesitamos un nuevo bloque para el directorio padre
+				newParentBlockIdx, err := allocateBlock(diskPath, partStart, sb)
+				if err != nil {
+					return -1, fmt.Errorf("error al asignar bloque para padre: %v", err)
+				}
+
+				newParentBlock := NewFolderBlock()
+				newParentBlock.AddEntry(part, newInodeIdx)
+				writeFolderBlockToDisk(diskPath, partStart, sb, newParentBlockIdx, newParentBlock)
+
+				// Actualizar inodo padre
+				inode.SetBlock(newParentBlockIdx)
+				writeInodeToDisk(diskPath, partStart, sb, currentInode, inode)
+			}
+
+			nextInode = newInodeIdx
+		}
+
+		currentInode = nextInode
+	}
+
+	return currentInode, nil
+}
+
+// splitPath divide una ruta en sus componentes
+func splitPath(path string) []string {
+	if path == "" || path == "/" {
+		return []string{}
+	}
+
+	// Limpiar path
+	if path[0] == '/' {
+		path = path[1:]
+	}
+	if path[len(path)-1] == '/' {
+		path = path[:len(path)-1]
+	}
+
+	parts := []string{}
+	current := ""
+	for _, c := range path {
+		if c == '/' {
+			if current != "" {
+				parts = append(parts, current)
+				current = ""
+			}
+		} else {
+			current += string(c)
+		}
+	}
+	if current != "" {
+		parts = append(parts, current)
+	}
+	return parts
+}
+
+// joinPath une partes de una ruta con '/'
+func joinPath(parts []string) string {
+	result := ""
+	for i, part := range parts {
+		result += part
+		if i < len(parts)-1 {
+			result += "/"
+		}
+	}
+	return result
+}

@@ -65,26 +65,26 @@ export function ReportViewer() {
   }
 
   return (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <h3 className="text-lg font-semibold">Visualizador de Reportes</h3>
+    <div className="flex flex-col gap-6">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <h3 className="text-2xl font-bold text-blue-700">Visualizador de Reportes</h3>
         <button
           onClick={loadMountedList}
-          className="px-3 py-1 text-sm rounded-lg border hover:bg-gray-50"
+          className="px-4 py-2 text-base rounded-lg border bg-blue-700 text-white font-semibold shadow hover:bg-blue-800 transition"
         >
           🔄 Cargar montajes
         </button>
       </div>
 
-      <div className="grid md:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {/* Controles */}
-        <div className="space-y-3">
+        <div className="space-y-4">
           <div>
-            <label className="block text-sm font-medium mb-1">Tipo de reporte</label>
+            <label className="block text-base font-semibold mb-2 text-blue-700">Tipo de reporte</label>
             <select
               value={reportType}
               onChange={(e) => setReportType(e.target.value as ReportType)}
-              className="w-full px-3 py-2 rounded-lg border outline-none focus:ring-2 ring-black/10"
+              className="w-full px-4 py-2 rounded-lg border outline-none focus:ring-2 ring-blue-700/20 bg-white text-base shadow"
             >
               <option value="mbr">MBR - Estructura del disco</option>
               <option value="disk">Disk - Uso del disco</option>
@@ -95,21 +95,21 @@ export function ReportViewer() {
           </div>
 
           <div>
-            <label className="block text-sm font-medium mb-1">ID de montaje</label>
+            <label className="block text-base font-semibold mb-2 text-blue-700">ID de montaje</label>
             <input
               type="text"
               value={mountId}
               onChange={(e) => setMountId(e.target.value)}
               placeholder="Ej: A1, B2, etc."
-              className="w-full px-3 py-2 rounded-lg border outline-none focus:ring-2 ring-black/10"
+              className="w-full px-4 py-2 rounded-lg border outline-none focus:ring-2 ring-blue-700/20 bg-white text-base shadow"
             />
             {mounted.length > 0 && (
-              <div className="mt-2 flex flex-wrap gap-1">
+              <div className="mt-2 flex flex-wrap gap-2">
                 {mounted.map(id => (
                   <button
                     key={id}
                     onClick={() => setMountId(id)}
-                    className="px-2 py-1 text-xs rounded border bg-white hover:bg-blue-50"
+                    className="px-3 py-1 text-xs rounded-lg border bg-white hover:bg-blue-50 font-semibold text-blue-700 shadow-sm"
                   >
                     {id}
                   </button>
@@ -120,13 +120,13 @@ export function ReportViewer() {
 
           {reportType === 'tree' && (
             <div>
-              <label className="block text-sm font-medium mb-1">Ruta</label>
+              <label className="block text-base font-semibold mb-2 text-blue-700">Ruta</label>
               <input
                 type="text"
                 value={path}
                 onChange={(e) => setPath(e.target.value)}
                 placeholder="/"
-                className="w-full px-3 py-2 rounded-lg border outline-none focus:ring-2 ring-black/10"
+                className="w-full px-4 py-2 rounded-lg border outline-none focus:ring-2 ring-blue-700/20 bg-white text-base shadow"
               />
             </div>
           )}
@@ -134,15 +134,15 @@ export function ReportViewer() {
           <button
             onClick={generateReport}
             disabled={loading}
-            className="w-full px-4 py-2 rounded-lg bg-black text-white hover:opacity-90 disabled:opacity-50"
+            className="w-full px-5 py-2 rounded-lg bg-blue-700 text-white font-semibold shadow hover:bg-blue-800 transition disabled:opacity-50"
           >
             {loading ? 'Generando...' : 'Generar Reporte'}
           </button>
 
           {/* Info */}
-          <div className="p-3 rounded-lg bg-blue-50 border border-blue-200 text-sm">
-            <div className="font-medium mb-1">💡 Ayuda</div>
-            <ul className="text-xs space-y-1 text-slate-600">
+          <div className="p-4 rounded-2xl bg-blue-50 border border-blue-200 text-base">
+            <div className="font-bold mb-2 text-blue-700">💡 Ayuda</div>
+            <ul className="text-sm space-y-1 text-slate-600">
               <li><strong>MBR:</strong> Muestra particiones del disco</li>
               <li><strong>Disk:</strong> Visualización del uso del espacio</li>
               <li><strong>Superblock:</strong> Metadata del sistema de archivos</li>
@@ -153,11 +153,11 @@ export function ReportViewer() {
         </div>
 
         {/* Visualización */}
-        <div className="bg-[var(--muted)] rounded-xl p-4">
+        <div className="bg-gray-100 rounded-2xl p-6 border shadow-inner flex items-center justify-center min-h-[20rem]">
           {dotContent ? (
             <DotViewer dot={dotContent} />
           ) : (
-            <div className="flex items-center justify-center h-64 text-slate-500 text-sm">
+            <div className="text-slate-500 text-base text-center">
               Selecciona un tipo de reporte y genera la visualización
             </div>
           )}
