@@ -64,23 +64,22 @@ func (e *FS3) Mkfs(ctx context.Context, req fs.MkfsRequest) error {
 	}
 
 	logger.Info("Formateando partición EXT3", map[string]interface{}{
-		"mount_id": req.MountID,
+		"mount_id":  req.MountID,
+		"disk_path": req.DiskPath,
+		"partition": req.PartitionID,
 	})
 
-	// NOTA: Por ahora usamos valores de ejemplo similar a EXT2
-	// En producción esto se obtiene del mount handle/index
-	diskPath := "/tmp/test.mia"  // TODO: obtener del adapter
-	partitionName := req.MountID // TODO: obtener del adapter
+	// Obtener información del disco y partición desde el request
+	diskPath := req.DiskPath
+	partitionName := req.PartitionID
 
 	// 1. Obtener información de la partición
 	partStart, partSize, err := getPartitionInfo(diskPath, partitionName)
 	if err != nil {
-		logger.Warn("No se pudo obtener info de partición", map[string]interface{}{
+		logger.Error("Error obteniendo info de partición", map[string]interface{}{
 			"error": err.Error(),
 		})
-		// Usar valores por defecto para desarrollo
-		partStart = 512
-		partSize = 10 * 1024 * 1024 // 10MB
+		return fmt.Errorf("no se pudo obtener información de la partición %s: %v", partitionName, err)
 	}
 
 	logger.Info("Partición encontrada", map[string]interface{}{

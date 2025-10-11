@@ -124,13 +124,18 @@ func (c *MountedCommand) Execute(ctx context.Context, adapter *Adapter) (string,
 // ==================== Handlers de Formateo ====================
 
 func (c *MkfsCommand) Execute(ctx context.Context, adapter *Adapter) (string, error) {
-	_, ok := adapter.Index.GetRef(c.ID)
+	ref, ok := adapter.Index.GetRef(c.ID)
 	if !ok {
 		return "", errors.ErrIDNotFound
 	}
 
 	kind := strings.ToLower(c.FSKind)
-	req := fs.MkfsRequest{MountID: c.ID, FSKind: kind}
+	req := fs.MkfsRequest{
+		MountID:     c.ID,
+		FSKind:      kind,
+		DiskPath:    ref.DiskPath,
+		PartitionID: ref.PartitionID,
+	}
 
 	switch kind {
 	case "2fs":

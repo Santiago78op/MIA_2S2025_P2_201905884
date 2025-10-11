@@ -11,7 +11,19 @@
       "Bash(curl:*)",
       "Bash(pgrep:*)",
       "Bash(ss:*)",
-      "Bash(chmod:*)"
+      "Bash(chmod:*)",
+      "Bash(./stop.sh)",
+      "Bash(pkill:*)",
+      "Bash(./verify_p2_84.sh:*)",
+      "Bash(tee:*)",
+      "Read(//tmp/**)",
+      "Bash(bash:*)",
+      "Bash(timeout:*)",
+      "Bash(./verify_quick.sh:*)",
+      "Bash(cat:*)",
+      "Bash(__NEW_LINE__ MOUNT_ID=\"841A\")",
+      "Bash(MOUNT_ID=\"841A\")",
+      "Bash(/tmp/test_p2.sh:*)"
     ],
     "deny": [],
     "ask": []

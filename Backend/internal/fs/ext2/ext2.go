@@ -37,25 +37,20 @@ func (e *FS2) Mkfs(ctx context.Context, req fs.MkfsRequest) error {
 
 	e.logger.Printf("Formateando partición %s con EXT2...", req.MountID)
 
-	// El req.MountID contiene el nombre de la partición
-	// Necesitamos obtener información del disco y partición
-	// Por ahora, asumimos que la info viene en el contexto o debemos buscarla
+	// Obtener información del disco y partición desde el request
+	diskPath := req.DiskPath
+	partitionName := req.PartitionID
 
-	// TEMPORAL: Usar valores de ejemplo hasta integrar con mount real
-	// En producción, esto vendría del mount handle
-	diskPath := "/tmp/test.mia"        // TODO: Obtener del mount handle
-	partitionName := req.MountID       // TODO: Obtener del mount handle
-	partitionSize := int64(10 * 1024 * 1024) // 10MB por defecto
+	e.logger.Printf("Disco: %s, Partición: %s", diskPath, partitionName)
 
-	// Intentar obtener info real de la partición
+	// Obtener info real de la partición
 	partStart, partSize, err := getPartitionInfo(diskPath, partitionName)
 	if err != nil {
-		e.logger.Printf("Advertencia: No se pudo obtener info de partición, usando valores por defecto: %v", err)
-		partStart = 512 // Después del MBR
-		partSize = partitionSize
-	} else {
-		partitionSize = partSize
+		e.logger.Printf("Error: No se pudo obtener info de partición: %v", err)
+		return fmt.Errorf("no se pudo obtener información de la partición %s: %v", partitionName, err)
 	}
+
+	partitionSize := partSize
 
 	e.logger.Printf("Partición encontrada: start=%d, size=%d bytes", partStart, partitionSize)
 

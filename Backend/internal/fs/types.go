@@ -1,8 +1,10 @@
 package fs
 
 type MkfsRequest struct {
-	MountID string // id de partición montada
-	FSKind  string // "2fs" | "3fs"
+	MountID     string // id de partición montada (ej: 841A)
+	FSKind      string // "2fs" | "3fs"
+	DiskPath    string // ruta al disco (ej: /tmp/test.mia)
+	PartitionID string // nombre de la partición (ej: Part1)
 }
 
 type MountRequest struct {
