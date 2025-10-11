@@ -179,6 +179,11 @@ func (c *MkfileCommand) Execute(ctx context.Context, adapter *Adapter) (string, 
 		return "", errors.ErrIDNotFound
 	}
 
+	// Validar que size no sea negativo
+	if c.Size < 0 {
+		return "", fmt.Errorf("ERROR SIZE NEGATIVO")
+	}
+
 	content := []byte(c.Content)
 
 	// Si se especifica size, generar contenido del tamaño indicado

@@ -20,14 +20,21 @@ func (f *FS2) AddGroup(ctx context.Context, h fs.MountHandle, name string) error
 
 	lines := strings.Split(string(content), "\n")
 
-	// 2. Verificar si el grupo ya existe
+	// 2. Verificar si el grupo ya existe (solo grupos activos, no eliminados)
 	for _, line := range lines {
 		if line == "" {
 			continue
 		}
 		parts := strings.Split(line, ",")
-		if len(parts) >= 3 && parts[1] == "G" && parts[2] == name {
-			return fmt.Errorf("el grupo '%s' ya existe", name)
+		if len(parts) >= 3 {
+			gid := strings.TrimSpace(parts[0])
+			tipo := strings.TrimSpace(parts[1])
+			grupo := strings.TrimSpace(parts[2])
+
+			// Solo verificar grupos activos (GID != 0)
+			if gid != "0" && tipo == "G" && grupo == name {
+				return fmt.Errorf("el grupo '%s' ya existe", name)
+			}
 		}
 	}
 
@@ -47,8 +54,8 @@ func (f *FS2) AddGroup(ctx context.Context, h fs.MountHandle, name string) error
 	}
 	nextID := maxID + 1
 
-	// 4. Agregar nueva línea
-	newLine := fmt.Sprintf("%d,G,%s\n", nextID, name)
+	// 4. Agregar nueva línea con formato estándar (espacios después de comas)
+	newLine := fmt.Sprintf("%d, G, %s\n", nextID, name)
 	newContent := string(content) + newLine
 
 	// 5. Escribir de vuelta a users.txt
@@ -72,10 +79,19 @@ func (f *FS2) RemoveGroup(ctx context.Context, h fs.MountHandle, name string) er
 			continue
 		}
 		parts := strings.Split(line, ",")
-		if len(parts) >= 3 && parts[1] == "G" && parts[2] == name {
-			// Marcar como eliminado (ID = 0)
-			newLines = append(newLines, fmt.Sprintf("0,%s", strings.Join(parts[1:], ",")))
-			found = true
+		if len(parts) >= 3 {
+			gid := strings.TrimSpace(parts[0])
+			tipo := strings.TrimSpace(parts[1])
+			grupo := strings.TrimSpace(parts[2])
+
+			// Verificar que sea un grupo activo (no eliminado previamente)
+			if gid != "0" && tipo == "G" && grupo == name {
+				// Marcar como eliminado (ID = 0) manteniendo formato con espacios
+				newLines = append(newLines, fmt.Sprintf("0, G, %s", grupo))
+				found = true
+			} else {
+				newLines = append(newLines, line)
+			}
 		} else {
 			newLines = append(newLines, line)
 		}
@@ -99,18 +115,25 @@ func (f *FS2) AddUser(ctx context.Context, h fs.MountHandle, user, pass, group s
 
 	lines := strings.Split(string(content), "\n")
 
-	// 2. Verificar si el usuario ya existe
+	// 2. Verificar si el usuario ya existe (solo usuarios activos)
 	for _, line := range lines {
 		if line == "" {
 			continue
 		}
 		parts := strings.Split(line, ",")
-		if len(parts) >= 5 && parts[1] == "U" && parts[2] == user {
-			return fmt.Errorf("el usuario '%s' ya existe", user)
+		if len(parts) >= 5 {
+			uid := strings.TrimSpace(parts[0])
+			tipo := strings.TrimSpace(parts[1])
+			usuario := strings.TrimSpace(parts[3])
+
+			// Verificar solo usuarios activos (UID != 0)
+			if uid != "0" && tipo == "U" && usuario == user {
+				return fmt.Errorf("el usuario '%s' ya existe", user)
+			}
 		}
 	}
 
-	// 3. Verificar que el grupo existe
+	// 3. Verificar que el grupo existe (solo grupos activos)
 	groupExists := false
 	groupID := 0
 	for _, line := range lines {
@@ -118,10 +141,17 @@ func (f *FS2) AddUser(ctx context.Context, h fs.MountHandle, user, pass, group s
 			continue
 		}
 		parts := strings.Split(line, ",")
-		if len(parts) >= 3 && parts[1] == "G" && parts[2] == group {
-			groupExists = true
-			groupID, _ = strconv.Atoi(parts[0])
-			break
+		if len(parts) >= 3 {
+			gid := strings.TrimSpace(parts[0])
+			tipo := strings.TrimSpace(parts[1])
+			grupo := strings.TrimSpace(parts[2])
+
+			// Verificar solo grupos activos (GID != 0)
+			if gid != "0" && tipo == "G" && grupo == group {
+				groupExists = true
+				groupID, _ = strconv.Atoi(gid)
+				break
+			}
 		}
 	}
 
@@ -130,8 +160,8 @@ func (f *FS2) AddUser(ctx context.Context, h fs.MountHandle, user, pass, group s
 	}
 
 	// 4. Usar el ID del grupo para el usuario
-	// Formato: <gid>,U,<user>,<group>,<pass>
-	newLine := fmt.Sprintf("%d,U,%s,%s,%s\n", groupID, user, group, pass)
+	// Formato correcto: <gid>, U, <group>, <user>, <pass>
+	newLine := fmt.Sprintf("%d, U, %s, %s, %s\n", groupID, group, user, pass)
 	newContent := string(content) + newLine
 
 	// 5. Escribir de vuelta
@@ -155,10 +185,21 @@ func (f *FS2) RemoveUser(ctx context.Context, h fs.MountHandle, user string) err
 			continue
 		}
 		parts := strings.Split(line, ",")
-		if len(parts) >= 5 && parts[1] == "U" && parts[2] == user {
-			// Marcar como eliminado
-			newLines = append(newLines, fmt.Sprintf("0,%s", strings.Join(parts[1:], ",")))
-			found = true
+		if len(parts) >= 5 {
+			uid := strings.TrimSpace(parts[0])
+			tipo := strings.TrimSpace(parts[1])
+			grupo := strings.TrimSpace(parts[2])
+			usuario := strings.TrimSpace(parts[3])
+			pass := strings.TrimSpace(parts[4])
+
+			// Verificar solo usuarios activos (UID != 0)
+			if uid != "0" && tipo == "U" && usuario == user {
+				// Marcar como eliminado manteniendo formato con espacios
+				newLines = append(newLines, fmt.Sprintf("0, U, %s, %s, %s", grupo, usuario, pass))
+				found = true
+			} else {
+				newLines = append(newLines, line)
+			}
 		} else {
 			newLines = append(newLines, line)
 		}
@@ -182,7 +223,7 @@ func (f *FS2) ChangeUserGroup(ctx context.Context, h fs.MountHandle, user, group
 
 	lines := strings.Split(string(content), "\n")
 
-	// 2. Verificar que el nuevo grupo existe
+	// 2. Verificar que el nuevo grupo existe (solo grupos activos)
 	groupExists := false
 	groupID := 0
 	for _, line := range lines {
@@ -190,10 +231,17 @@ func (f *FS2) ChangeUserGroup(ctx context.Context, h fs.MountHandle, user, group
 			continue
 		}
 		parts := strings.Split(line, ",")
-		if len(parts) >= 3 && parts[1] == "G" && parts[2] == group {
-			groupExists = true
-			groupID, _ = strconv.Atoi(parts[0])
-			break
+		if len(parts) >= 3 {
+			gid := strings.TrimSpace(parts[0])
+			tipo := strings.TrimSpace(parts[1])
+			grupo := strings.TrimSpace(parts[2])
+
+			// Verificar solo grupos activos (GID != 0)
+			if gid != "0" && tipo == "G" && grupo == group {
+				groupExists = true
+				groupID, _ = strconv.Atoi(gid)
+				break
+			}
 		}
 	}
 
@@ -209,10 +257,20 @@ func (f *FS2) ChangeUserGroup(ctx context.Context, h fs.MountHandle, user, group
 			continue
 		}
 		parts := strings.Split(line, ",")
-		if len(parts) >= 5 && parts[1] == "U" && parts[2] == user {
-			// Actualizar grupo: <newGid>,U,<user>,<newGroup>,<pass>
-			newLines = append(newLines, fmt.Sprintf("%d,U,%s,%s,%s", groupID, user, group, parts[4]))
-			found = true
+		if len(parts) >= 5 {
+			uid := strings.TrimSpace(parts[0])
+			tipo := strings.TrimSpace(parts[1])
+			usuario := strings.TrimSpace(parts[3])
+			pass := strings.TrimSpace(parts[4])
+
+			// Verificar solo usuarios activos (UID != 0)
+			if uid != "0" && tipo == "U" && usuario == user {
+				// Actualizar grupo con formato correcto: <newGid>, U, <newGroup>, <user>, <pass>
+				newLines = append(newLines, fmt.Sprintf("%d, U, %s, %s, %s", groupID, group, user, pass))
+				found = true
+			} else {
+				newLines = append(newLines, line)
+			}
 		} else {
 			newLines = append(newLines, line)
 		}
@@ -237,8 +295,8 @@ func (f *FS2) readUsersFile(h fs.MountHandle) ([]byte, error) {
 	usersPath := "/users.txt"
 	content, _, err := f.ReadFile(context.Background(), h, usersPath)
 	if err != nil {
-		// Si no existe, crear uno inicial
-		initialContent := []byte("1,G,root\n1,U,root,root,123\n")
+		// Si no existe, crear uno inicial con formato estándar (espacios después de comas)
+		initialContent := []byte("1, G, root\n1, U, root, root, 123\n")
 		return initialContent, nil
 	}
 

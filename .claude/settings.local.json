@@ -29,7 +29,10 @@
       "Bash(xargs -r kill -9)",
       "Bash(/tmp/test_full_flow.sh:*)",
       "Bash(/tmp/comprehensive_test.sh:*)",
-      "Bash(ls:*)"
+      "Bash(ls:*)",
+      "Bash(/tmp/quick_test.sh:*)",
+      "Bash(md5sum:*)",
+      "Bash(/tmp/calificacion_p1.sh:*)"
     ],
     "deny": [],
     "ask": []
