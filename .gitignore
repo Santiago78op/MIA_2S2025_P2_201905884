@@ -1,0 +1,83 @@
+# ---------------------------------------------
+# 🐹 Proyecto Go: MIA_2S2025_P2_201905884
+# ---------------------------------------------
+
+# --- Binarios de Go ---
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+*.test
+*.out
+
+# --- Carpeta de build ---
+/bin/
+/build/
+/dist/
+/tmp/
+/output/
+
+# --- Archivos del backend ---
+*.mia              # Discos binarios del sistema de archivos
+*.dot              # Archivos Graphviz
+*.png
+*.jpg
+*.jpeg
+*.svg
+*.pdf
+*.zip
+*.tar.gz
+*.log
+*.bak
+
+# --- Carpetas internas que generan datos ---
+Discos/
+Reports/
+reportes/
+logs/
+cache/
+data/
+
+# --- Go cache & modules ---
+*.mod~
+*.sum~
+vendor/
+*.a
+*.o
+
+# --- Configuración local / IDEs ---
+.vscode/
+.idea/
+*.swp
+*.swo
+*.DS_Store
+
+# --- Archivos de entorno / secretos ---
+.env
+.env.local
+.env.*
+!env.example       # pero sí incluir el archivo de ejemplo
+
+# --- Node / Frontend (si tienes el frontend React) ---
+frontend/node_modules/
+frontend/dist/
+frontend/.vite/
+frontend/.env
+frontend/.DS_Store
+frontend/npm-debug.log*
+frontend/yarn-debug.log*
+frontend/yarn-error.log*
+frontend/package-lock.json
+frontend/pnpm-lock.yaml
+frontend/.eslintcache
+
+# --- Archivos temporales del sistema ---
+Thumbs.db
+ehthumbs.db
+Icon?
+Desktop.ini
+
+# --- Cobertura / Testing ---
+coverage.out
+test-results/
