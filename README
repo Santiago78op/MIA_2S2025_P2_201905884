@@ -68,3 +68,89 @@ backend/
    ├─ fs_service_test.go
    ├─ mount_id_test.go
    └─ e2e_script_test.go         # prueba end-to-end corriendo un .smia mini
+
+> Dame un manual de como hacer Test con script para cuando no tenga claude en terminal 
+
+● Te voy a crear un manual completo para ejecutar scripts de prueba sin necesidad de Claude en terminal.
+
+● Write(~/Documents/MIA_2S2025_P2_201905884/Backend/MANUAL_TESTING.md)
+  ⎿  Wrote 668 lines to ../../MANUAL_TESTING.md                            
+     # Manual de Testing con Scripts
+     Este manual te guía paso a paso para ejecutar scripts de prueba en el
+     sistema MIA sin necesidad de asistencia de Claude.
+     ## Tabla de Contenidos
+     1. [Preparación del Entorno](#preparación-del-entorno)
+     2. [Estructura de Directorios](#estructura-de-directorios)
+     3. [Crear Archivos de Contenido](#crear-archivos-de-contenido)
+     4. [Escribir Scripts de Prueba](#escribir-scripts-de-prueba)
+     5. [Compilar y Ejecutar el Servidor](#compilar-y-ejecutar-el-servidor)
+     … +658 lines (ctrl+o to expand)
+
+● Ahora te voy a crear también un script auxiliar para facilitar la
+  ejecución de tests:
+
+● Write(run_test.sh)
+  ⎿  Wrote 115 lines to run_test.sh                        
+     #!/bin/bash
+     # Script auxiliar para ejecutar scripts de prueba SMIA
+     # Uso: ./run_test.sh <archivo.smia>
+     set -e
+     # Colores para output
+     RED='\033[0;31m'
+     GREEN='\033[0;32m'
+     … +105 lines (ctrl+o to expand)
+
+● Bash(chmod +x /home/julian/Documents/MIA_2S2025_P2_201905884/Backend/cmd/serve
+      r/run_test.sh)
+  ⎿  (No content)
+
+● Ahora voy a crear también un script de ejemplo más simple para que puedas
+  probar rápidamente:
+
+● Write(test_ejemplo_simple.smia)
+  ⎿  Wrote 66 lines to test_ejemplo_simple.smia                            
+     # Script de ejemplo simple
+     # Este script demuestra operaciones básicas del sistema MIA
+     # 1. CREAR DISCO
+     # Crea un disco de 10MB
+     mkdisk -size=10 -unit=M -path=./Discos/EjemploSimple.mia
+     # 2. CREAR PARTICIÓN
+     # Crea una partición primaria de 5MB
+     fdisk -size=5 -unit=M -path=./Discos/EjemploSimple.mia -type=P -fit=BF
+     -name=MiParticion
+     … +56 lines (ctrl+o to expand)
+
+● Perfecto! Ahora voy a crear un README rápido para que sepas cómo usar todo
+   esto:
+
+● Write(README_TESTING.md)
+  ⎿  Wrote 211 lines to README_TESTING.md                     
+     # Guía Rápida de Testing
+     ## Inicio Rápido (5 minutos)
+     ### 1. Preparación inicial (solo la primera vez)
+     ```bash
+     cd /home/julian/Documents/MIA_2S2025_P2_201905884/Backend
+     # Compilar el servidor
+     go build -o server ./cmd/server
+     … +201 lines (ctrl+o to expand)
+
+● Perfecto! Ahora voy a crear un último script para gestionar el servidor
+  fácilmente:
+
+● Write(~/Documents/MIA_2S2025_P2_201905884/Backend/manage_server.sh)
+  ⎿  Wrote 214 lines to ../../manage_server.sh                          
+     #!/bin/bash
+     # Script para gestionar el servidor MIA
+     # Uso: ./manage_server.sh {start|stop|restart|status|logs}
+     set -e
+     SERVER_DIR="/home/julian/Documents/MIA_2S2025_P2_201905884/Backend"
+     PID_FILE="$SERVER_DIR/server.pid"
+     LOG_FILE="$SERVER_DIR/server.log"
+     … +204 lines (ctrl+o to expand)
+
+● Bash(chmod +x
+      /home/julian/Documents/MIA_2S2025_P2_201905884/Backend/manage_server.sh)
+  ⎿  (No content)
+  ⎿  Session limit reached ∙ resets 5pm
+     /upgrade to increase your usage limit.
+
