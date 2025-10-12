@@ -1,0 +1,70 @@
+backend/
+├─ cmd/
+│  └─ server/
+│     └─ main.go                 # arranque, DI wiring, router, CORS
+├─ config/
+│  ├─ config.go                  # puertos, paths, flags
+│  └─ env.example                # ejemplo de envs
+├─ router/
+│  └─ router.go                  # gin.Engine, middlewares, registro de rutas
+├─ middleware/
+│  ├─ errors.go                  # middleware de error JSON
+│  └─ logging.go                 # logs de request/response (opcional)
+├─ controllers/
+│  ├─ commands_controller.go     # POST /api/commands
+│  ├─ script_controller.go       # POST /api/script
+│  ├─ reports_controller.go      # POST /api/reports
+│  └─ health_controller.go       # GET /health
+├─ command/                      # capa de "aplicación" (casos de uso)
+│  ├─ disk/                      # mkdisk, rmdisk, fdisk, mount, mounted
+│  │  ├─ service.go              # DiskService (lógica de casos de uso)
+│  │  ├─ parser.go               # parse args -> DTO
+│  │  └─ validator.go            # validaciones de flags
+│  ├─ fs/                        # mkfs, mkdir, mkfile, cat
+│  │  ├─ service.go              # FsService
+│  │  └─ pathwalk.go             # resolución de rutas / dir entries
+│  ├─ users/                     # login, logout, mkgrp, rmgrp, mkusr, rmusr, chgrp
+│  │  └─ service.go              # UserService
+│  └─ reports/                   # rep (mbr, disk, inode, block, bm_*, tree, sb, file, ls)
+│     └─ service.go              # ReportService
+├─ core/                         # dominio puro (modelos + puertos -interfaces-)
+│  ├─ models/
+│  │  ├─ mbr.go                  # MBR, Partition, EBR
+│  │  ├─ ext2.go                 # SuperBlock, Inode, Blocks
+│  │  ├─ users.go                # structs users.txt en memoria
+│  │  └─ types.go                # enums, constantes, tamaños
+│  ├─ ports/                     # interfaces (hexagonal ports)
+│  │  ├─ disk_repository.go      # leer/escribir MBR/particiones
+│  │  ├─ fs_repository.go        # leer/escribir SB, bitmaps, inodos/bloques
+│  │  ├─ mount_store.go          # estado de mounts (RAM + persistencia opcional /tmp)
+│  │  ├─ session_store.go        # sesión actual
+│  │  └─ report_generator.go     # genera DOT/imagen (Graphviz)
+│  └─ services/                  # contratos (opcional si quieres separar)
+│     ├─ disk_service.go
+│     ├─ fs_service.go
+│     ├─ user_service.go
+│     └─ report_service.go
+├─ storage/                      # adaptadores a infraestructura (hexagonal adapters)
+│  ├─ diskio/
+│  │  ├─ diskio.go               # SafeReadAt/SafeWriteAt + Region (anti-overflow)
+│  │  └─ file_repo.go            # implementación de DiskRepository/FSRepository con os.File
+│  ├─ mounts/
+│  │  └─ state.go                # persistencia opcional de letra/seq en /tmp (IDs)
+│  ├─ session/
+│  │  └─ memory.go               # sesión en RAM (usuario logueado)
+│  └─ graphviz/
+│     └─ dot.go                  # ejecuta `dot` y genera imágenes
+├─ utils/
+│  ├─ errors.go                  # errores sentenciados (var Err…)
+│  ├─ bytes.go                   # helpers binarios (encoding/binary)
+│  ├─ permissions.go             # UGO, root bypass, checks
+│  ├─ calc.go                    # cálculo de n (inodos/bloques) y offsets
+│  └─ smia.go                    # parser .smia (comentarios, espacios)
+├─ pkg/
+│  └─ logger/
+│     └─ logger.go               # logger central (zap/logrus/stdlib)
+└─ tests/
+   ├─ disk_service_test.go
+   ├─ fs_service_test.go
+   ├─ mount_id_test.go
+   └─ e2e_script_test.go         # prueba end-to-end corriendo un .smia mini
