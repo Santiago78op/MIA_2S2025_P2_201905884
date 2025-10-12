@@ -101,3 +101,134 @@ func mustRune(flags map[string]string, key string, def rune, allowed string) (ru
 	}
 	return 0, fmt.Errorf("falta %s", key)
 }
+
+func mustInt64(flags map[string]string, key string) (int64, error) {
+	v, ok := flags[key]
+	if !ok {
+		return 0, fmt.Errorf("falta %s", key)
+	}
+	var val int64
+	_, err := fmt.Sscanf(v, "%d", &val)
+	if err != nil {
+		return 0, fmt.Errorf("%s inválido: %s", key, v)
+	}
+	return val, nil
+}
+
+func mustString(flags map[string]string, key string) (string, error) {
+	v, ok := flags[key]
+	if !ok || v == "" {
+		return "", fmt.Errorf("falta %s", key)
+	}
+	return v, nil
+}
+
+// ParseMkDisk parsea un comando mkdisk
+func ParseMkDisk(line string) (MkDiskArgs, error) {
+	_, flags := ParseLine(line)
+	var args MkDiskArgs
+
+	size, err := mustInt64(flags, "size")
+	if err != nil {
+		return args, err
+	}
+	args.Size = size
+
+	unit, err := mustRune(flags, "unit", 'M', "KM")
+	if err != nil {
+		return args, err
+	}
+	args.Unit = unit
+
+	fit, err := mustRune(flags, "fit", 'F', "FBW")
+	if err != nil {
+		return args, err
+	}
+	args.Fit = fit
+
+	path, err := mustString(flags, "path")
+	if err != nil {
+		return args, err
+	}
+	args.Path = path
+
+	return args, nil
+}
+
+// ParseRmDisk parsea un comando rmdisk
+func ParseRmDisk(line string) (RmDiskArgs, error) {
+	_, flags := ParseLine(line)
+	var args RmDiskArgs
+
+	path, err := mustString(flags, "path")
+	if err != nil {
+		return args, err
+	}
+	args.Path = path
+
+	return args, nil
+}
+
+// ParseFDisk parsea un comando fdisk
+func ParseFDisk(line string) (FDiskArgs, error) {
+	_, flags := ParseLine(line)
+	var args FDiskArgs
+
+	size, err := mustInt64(flags, "size")
+	if err != nil {
+		return args, err
+	}
+	args.Size = size
+
+	unit, err := mustRune(flags, "unit", 'K', "KM")
+	if err != nil {
+		return args, err
+	}
+	args.Unit = unit
+
+	typ, err := mustRune(flags, "type", 'P', "PEL")
+	if err != nil {
+		return args, err
+	}
+	args.Type = typ
+
+	fit, err := mustRune(flags, "fit", 'W', "FBW")
+	if err != nil {
+		return args, err
+	}
+	args.Fit = fit
+
+	path, err := mustString(flags, "path")
+	if err != nil {
+		return args, err
+	}
+	args.Path = path
+
+	name, err := mustString(flags, "name")
+	if err != nil {
+		return args, err
+	}
+	args.Name = name
+
+	return args, nil
+}
+
+// ParseMount parsea un comando mount
+func ParseMount(line string) (MountArgs, error) {
+	_, flags := ParseLine(line)
+	var args MountArgs
+
+	path, err := mustString(flags, "path")
+	if err != nil {
+		return args, err
+	}
+	args.Path = path
+
+	name, err := mustString(flags, "name")
+	if err != nil {
+		return args, err
+	}
+	args.Name = name
+
+	return args, nil
+}

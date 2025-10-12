@@ -1,5 +1,12 @@
 package models
 
+import "errors"
+
+// Errores comunes
+var (
+	ErrNoExtendedPartition = errors.New("no se encontró partición extendida")
+)
+
 // Constantes de tamaños (en bytes)
 const (
 	BlockSizeFile    = 64 // tamaño de bloque de archivo

@@ -11,6 +11,9 @@
 *.test
 *.out
 
+// --- Claude AI ---
+.claude/
+
 # --- Carpeta de build ---
 /bin/
 /build/

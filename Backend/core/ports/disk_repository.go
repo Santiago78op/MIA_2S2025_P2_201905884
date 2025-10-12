@@ -1,6 +1,6 @@
 package ports
 
-import "backend/core/models"
+import "Backend/core/models"
 
 // Acceso a MBR/particiones (crear discos, P/E/L, etc.)
 type DiskRepository interface {

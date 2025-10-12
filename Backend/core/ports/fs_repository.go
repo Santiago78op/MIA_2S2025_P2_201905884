@@ -1,6 +1,6 @@
 package ports
 
-import "backend/core/models"
+import "Backend/core/models"
 
 // Región (inicio y tamaño absolutos) de la partición formateada
 type Region struct {

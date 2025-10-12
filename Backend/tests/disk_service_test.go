@@ -4,7 +4,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	dcmd "backend/command/disk"
+	dcmd "Backend/command/disk"
 )
 
 // ----- Fakes para aislar la capa de aplicación -----

@@ -6,7 +6,7 @@ import (
 	"path/filepath"
 	"sync"
 
-	"backend/core/ports"
+	"Backend/core/ports"
 )
 
 const statePath = "/tmp/mia_mount_state.json"

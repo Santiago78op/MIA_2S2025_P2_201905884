@@ -1,6 +1,6 @@
 package services
 
-import "backend/core/ports"
+import "Backend/core/ports"
 
 type DiskService interface {
 	MkDisk(args any) (string, error) // usa tu DTO real (p.ej. command/disk.MkDiskArgs)

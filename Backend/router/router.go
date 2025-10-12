@@ -5,8 +5,8 @@ import (
 	"net/http"
 	"time"
 
-	"backend/config"
-	"backend/controllers"
+	"Backend/config"
+	"Backend/controllers"
 
 	"github.com/gin-gonic/gin"
 )

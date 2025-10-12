@@ -3,7 +3,7 @@ package controllers
 import (
 	"net/http"
 
-	"backend/config"
+	"Backend/config"
 
 	"github.com/gin-gonic/gin"
 )

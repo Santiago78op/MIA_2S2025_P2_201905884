@@ -38,7 +38,7 @@ func ErrorHandler() gin.HandlerFunc {
 			status = sc.StatusCode()
 		} else {
 			// Heurísticas simples
-			if errors.Is(err, gin.ErrorTypeBind) {
+			if c.Errors[0].Type == gin.ErrorTypeBind {
 				status = http.StatusBadRequest
 			}
 			// Se deben añadir más mapeos si te conviene (os.ErrNotExist -> 404, etc.)

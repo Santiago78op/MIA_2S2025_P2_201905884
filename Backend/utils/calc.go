@@ -1,7 +1,7 @@
 package utils
 
 import (
-	"backend/core/models"
+	"Backend/core/models"
 	"math"
 )
 
