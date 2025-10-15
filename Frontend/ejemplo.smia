@@ -1,0 +1,19 @@
+# Script de ejemplo MIA - Sistema de Archivos
+# Este script crea un disco, particiones y sistema de archivos
+
+# Crear disco
+mkdisk -size=10 -unit=M -path="/tmp/Disco1.mia"
+
+# Crear particiones
+fdisk -size=1024 -unit=K -type=P -path="/tmp/Disco1.mia" -name=Part1
+fdisk -add -size=2048 -unit=K -type=P -path="/tmp/Disco1.mia" -name=Part2
+
+# Montar partición (devuelve un ID como 841A)
+mount -path="/tmp/Disco1.mia" -name=Part1
+
+# Formatear con EXT3 (journaling)
+# Cambiar 841A por el ID que devolvió mount
+mkfs -id=841A -type=3fs
+
+# Nota: Después de ejecutar mount, use el ID retornado
+# para hacer login desde la GUI y crear usuarios/archivos
