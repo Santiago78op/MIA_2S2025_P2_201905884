@@ -1,0 +1,86 @@
+# Test script for user management and CAT commands
+# Focus: MKGRP, RMGRP, CAT with proper error handling
+
+#-----------------1. MKDISK-----------------
+mkdisk -size=50 -unit=M -path=/home/julian/Documents/MIA_2S2025_P2_201905884/Backend/cmd/server/Discos/TestDisk.mia
+
+#-----------------2. FDISK-----------------
+fdisk -type=P -unit=M -name=TestPart -size=20 -path=/home/julian/Documents/MIA_2S2025_P2_201905884/Backend/cmd/server/Discos/TestDisk.mia
+
+#-----------------3. MOUNT-----------------
+mount -path=/home/julian/Documents/MIA_2S2025_P2_201905884/Backend/cmd/server/Discos/TestDisk.mia -name=TestPart
+
+#-----------------4. MKFS-----------------
+mkfs -type=full -id=841A
+
+#-----------------5. LOGIN-----------------
+login -user=root -pass=123 -id=841A
+
+#-----------------6. MKGRP - CREATE GROUPS-----------------
+mkgrp -name=usuarios
+mkgrp -name=adm
+mkgrp -name=mail
+mkgrp -name=news
+mkgrp -name=sys
+
+#-----------------7. MKGRP - ERROR: GROUP EXISTS-----------------
+# This should fail with "el grupo ya existe"
+mkgrp -name=sys
+
+#-----------------8. CAT - VIEW users.txt AFTER MKGRP-----------------
+cat -file1=/users.txt
+
+#-----------------9. RMGRP - DELETE GROUP-----------------
+rmgrp -name=mail
+
+#-----------------10. CAT - VIEW users.txt AFTER RMGRP-----------------
+# Should show mail group with ID 0
+cat -file1=/users.txt
+
+#-----------------11. MKUSR - CREATE USERS-----------------
+mkusr -user="usuario1" -pass=password -grp=root
+mkusr -user="user1" -pass=abc -grp=usuarios
+mkusr -user="user2" -pass=abc -grp=usuarios
+
+#-----------------12. MKUSR - ERROR: USER EXISTS-----------------
+# Should fail with "el usuario ya existe"
+mkusr -user="user2" -pass=abc -grp=usuarios
+
+#-----------------13. MKUSR - ERROR: GROUP NOT EXISTS-----------------
+# Should fail with "el grupo no existe"
+mkusr -user="user3" -pass=abc -grp=system
+
+#-----------------14. CAT - VIEW users.txt AFTER MKUSR-----------------
+cat -file1=/users.txt
+
+#-----------------15. CHGRP - CHANGE USER GROUP-----------------
+chgrp -user=user2 -grp=adm
+
+#-----------------16. CAT - VIEW users.txt AFTER CHGRP-----------------
+cat -file1=/users.txt
+
+#-----------------17. RMUSR - DELETE USER-----------------
+rmusr -user=user2
+
+#-----------------18. CAT - VIEW users.txt AFTER RMUSR-----------------
+# Should show user2 with ID 0
+cat -file1=/users.txt
+
+#-----------------19. MKDIR - CREATE DIRECTORIES-----------------
+mkdir -path=/home
+mkdir -p -path=/home/archivos/user/docs
+
+#-----------------20. MKFILE - CREATE FILES-----------------
+mkfile -path=/home/test.txt -size=50
+
+#-----------------21. CAT - READ CREATED FILE-----------------
+cat -file1=/home/test.txt
+
+#-----------------22. CAT - MULTIPLE FILES-----------------
+# Create another file first
+mkfile -path=/home/test2.txt -size=30
+# Read both files
+cat -file1=/home/test.txt -file2=/home/test2.txt
+
+#-----------------23. LOGOUT-----------------
+logout

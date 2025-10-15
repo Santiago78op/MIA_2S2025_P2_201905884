@@ -1052,6 +1052,155 @@ func (r *FileFsRepository) Cat(id string, files [][]string) (string, error) {
 	return result.String(), nil
 }
 
+// UpdateFile actualiza el contenido de un archivo existente
+func (r *FileFsRepository) UpdateFile(id string, absPath []string, newContent string) error {
+	diskPath, region, err := r.resolve(id)
+	if err != nil {
+		return err
+	}
+
+	f, err := os.OpenFile(diskPath, os.O_RDWR, 0o644)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+
+	// Leer superblock
+	sb, err := readSuperBlock(f, region.Start)
+	if err != nil {
+		return fmt.Errorf("error leyendo superblock: %w", err)
+	}
+
+	// Leer bitmaps
+	bmBlock, err := readBitmap(f, sb.SBmBlockStart, int(sb.SBlocksCount), region)
+	if err != nil {
+		return fmt.Errorf("error leyendo bitmap bloques: %w", err)
+	}
+
+	// Navegar hasta el archivo
+	currentInodeIdx := int32(0) // raíz
+
+	for i, name := range absPath {
+		isLast := i == len(absPath)-1
+
+		// Leer inodo actual
+		currentInode, err := readInodeAt(f, sb.SInodeStart, int(currentInodeIdx), region)
+		if err != nil {
+			return fmt.Errorf("error leyendo inodo %d: %w", currentInodeIdx, err)
+		}
+
+		if !isLast {
+			// Debe ser un directorio
+			if currentInode.IType != models.FileTypeFolder {
+				return fmt.Errorf("'%s' no es un directorio", strings.Join(absPath[:i], "/"))
+			}
+
+			// Buscar siguiente componente
+			foundIdx, err := findEntryInDir(f, &currentInode, sb.SBlockStart, name, region)
+			if err != nil {
+				return fmt.Errorf("error buscando entrada: %w", err)
+			}
+			if foundIdx == -1 {
+				return fmt.Errorf("no existe: %s", strings.Join(absPath[:i+1], "/"))
+			}
+			currentInodeIdx = foundIdx
+		} else {
+			// Es el último componente, buscar el archivo
+			foundIdx, err := findEntryInDir(f, &currentInode, sb.SBlockStart, name, region)
+			if err != nil {
+				return fmt.Errorf("error buscando archivo: %w", err)
+			}
+			if foundIdx == -1 {
+				return fmt.Errorf("archivo no existe: %s", strings.Join(absPath, "/"))
+			}
+
+			// Leer inodo del archivo
+			fileInode, err := readInodeAt(f, sb.SInodeStart, int(foundIdx), region)
+			if err != nil {
+				return fmt.Errorf("error leyendo inodo de archivo: %w", err)
+			}
+
+			// Verificar que es un archivo
+			if fileInode.IType != models.FileTypeRegular {
+				return fmt.Errorf("no es un archivo regular: %s", strings.Join(absPath, "/"))
+			}
+
+			// Convertir contenido a bytes
+			content := []byte(newContent)
+			blocksNeeded := (len(content) + 63) / 64
+
+			// Liberar bloques antiguos si los hay
+			for i := 0; i < 12; i++ {
+				if fileInode.IBlock[i] != -1 {
+					bmBlock[fileInode.IBlock[i]] = 0
+					fileInode.IBlock[i] = -1
+				}
+			}
+
+			// Asignar nuevos bloques
+			blockIndices := make([]int32, 0, blocksNeeded)
+			for i := 0; i < blocksNeeded; i++ {
+				for j := 0; j < int(sb.SBlocksCount); j++ {
+					if bmBlock[j] == 0 {
+						bmBlock[j] = 1
+						blockIndices = append(blockIndices, int32(j))
+						break
+					}
+				}
+			}
+
+			if len(blockIndices) < blocksNeeded {
+				return fmt.Errorf("no hay suficientes bloques libres")
+			}
+
+			// Actualizar inodo
+			fileInode.ISize = int32(len(content))
+			fileInode.IMtime = time.Now().Unix()
+
+			// Asignar bloques al inodo
+			for i := 0; i < len(blockIndices) && i < 12; i++ {
+				fileInode.IBlock[i] = blockIndices[i]
+			}
+
+			// Escribir contenido en bloques
+			for i, blkIdx := range blockIndices {
+				start := i * 64
+				end := start + 64
+				if end > len(content) {
+					end = len(content)
+				}
+
+				var fileBlock models.FileBlock
+				copy(fileBlock.Content[:], content[start:end])
+
+				if err := writeBlockAt(f, sb.SBlockStart, int(blkIdx), &fileBlock, region); err != nil {
+					return fmt.Errorf("error escribiendo bloque de archivo: %w", err)
+				}
+			}
+
+			// Escribir inodo actualizado
+			if err := writeInodeAt(f, sb.SInodeStart, int(foundIdx), &fileInode, region); err != nil {
+				return fmt.Errorf("error escribiendo inodo actualizado: %w", err)
+			}
+
+			// Actualizar superblock
+			sb.SMtime = time.Now().Unix()
+		}
+	}
+
+	// Escribir bitmap actualizado
+	if _, err := SafeWriteAt(f, bmBlock, sb.SBmBlockStart, region); err != nil {
+		return fmt.Errorf("error actualizando bitmap bloques: %w", err)
+	}
+
+	// Escribir superblock actualizado
+	if err := writeSuperBlock(f, region.Start, &sb); err != nil {
+		return fmt.Errorf("error actualizando superblock: %w", err)
+	}
+
+	return nil
+}
+
 // -------- Lecturas/escrituras finas (SB/bitmaps/inodos/bloques) --------
 
 func (r *FileFsRepository) ReadSuper(id string) (models.SuperBlock, Region, error) {

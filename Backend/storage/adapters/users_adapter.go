@@ -122,10 +122,8 @@ func (a *UsersAdapter) Mkgrp(id, name string) error {
 	newLine := fmt.Sprintf("%d,G,%s\n", newID, name)
 	newContent := content + newLine
 
-	// TODO: Implementar escritura de archivo (por ahora solo validamos)
-	// Necesitaríamos implementar un método Write en FileFsRepository
-	_ = newContent
-	return fmt.Errorf("TODO: implementar escritura de archivo para Mkgrp")
+	// Escribir el archivo actualizado
+	return a.repo.UpdateFile(id, []string{"users.txt"}, newContent)
 }
 
 func (a *UsersAdapter) Rmgrp(id, name string) error {
@@ -145,6 +143,10 @@ func (a *UsersAdapter) Rmgrp(id, name string) error {
 		}
 		parts := strings.Split(line, ",")
 		if len(parts) >= 3 && parts[1] == "G" && parts[2] == name {
+			// Verificar que el ID no sea 0 (ya eliminado)
+			if parts[0] == "0" {
+				return fmt.Errorf("el grupo no existe: %s", name)
+			}
 			if name == "root" {
 				return fmt.Errorf("no se puede eliminar el grupo root")
 			}
@@ -157,14 +159,14 @@ func (a *UsersAdapter) Rmgrp(id, name string) error {
 		return fmt.Errorf("el grupo no existe: %s", name)
 	}
 
-	// Verificar que no hay usuarios usando este grupo
+	// Verificar que no hay usuarios activos usando este grupo
 	for _, line := range lines {
 		line = strings.TrimSpace(line)
 		if line == "" {
 			continue
 		}
 		parts := strings.Split(line, ",")
-		if len(parts) >= 4 && parts[1] == "U" && parts[3] == name {
+		if len(parts) >= 4 && parts[1] == "U" && parts[3] == name && parts[0] != "0" {
 			return fmt.Errorf("no se puede eliminar el grupo, hay usuarios asociados: %s", name)
 		}
 	}
@@ -185,8 +187,7 @@ func (a *UsersAdapter) Rmgrp(id, name string) error {
 	}
 
 	newContent := strings.Join(newLines, "\n") + "\n"
-	_ = newContent
-	return fmt.Errorf("TODO: implementar escritura de archivo para Rmgrp")
+	return a.repo.UpdateFile(id, []string{"users.txt"}, newContent)
 }
 
 func (a *UsersAdapter) Mkusr(id, user, pass, grp string) error {
@@ -197,14 +198,14 @@ func (a *UsersAdapter) Mkusr(id, user, pass, grp string) error {
 
 	lines := strings.Split(strings.TrimSpace(content), "\n")
 
-	// Verificar que el usuario no existe
+	// Verificar que el usuario no existe (incluyendo eliminados)
 	for _, line := range lines {
 		line = strings.TrimSpace(line)
 		if line == "" {
 			continue
 		}
 		parts := strings.Split(line, ",")
-		if len(parts) >= 3 && parts[1] == "U" && parts[2] == user {
+		if len(parts) >= 3 && parts[1] == "U" && parts[2] == user && parts[0] != "0" {
 			return fmt.Errorf("el usuario ya existe: %s", user)
 		}
 	}
@@ -251,8 +252,7 @@ func (a *UsersAdapter) Mkusr(id, user, pass, grp string) error {
 	newLine := fmt.Sprintf("%d,U,%s,%s,%s\n", newID, user, grp, pass)
 	newContent := content + newLine
 
-	_ = newContent
-	return fmt.Errorf("TODO: implementar escritura de archivo para Mkusr")
+	return a.repo.UpdateFile(id, []string{"users.txt"}, newContent)
 }
 
 func (a *UsersAdapter) Rmusr(id, user string) error {
@@ -272,6 +272,10 @@ func (a *UsersAdapter) Rmusr(id, user string) error {
 		}
 		parts := strings.Split(line, ",")
 		if len(parts) >= 3 && parts[1] == "U" && parts[2] == user {
+			// Verificar que el ID no sea 0 (ya eliminado)
+			if parts[0] == "0" {
+				return fmt.Errorf("el usuario no existe: %s", user)
+			}
 			if user == "root" {
 				return fmt.Errorf("no se puede eliminar el usuario root")
 			}
@@ -300,8 +304,7 @@ func (a *UsersAdapter) Rmusr(id, user string) error {
 	}
 
 	newContent := strings.Join(newLines, "\n") + "\n"
-	_ = newContent
-	return fmt.Errorf("TODO: implementar escritura de archivo para Rmusr")
+	return a.repo.UpdateFile(id, []string{"users.txt"}, newContent)
 }
 
 func (a *UsersAdapter) Chgrp(id, user, grp string) error {
@@ -321,6 +324,10 @@ func (a *UsersAdapter) Chgrp(id, user, grp string) error {
 		}
 		parts := strings.Split(line, ",")
 		if len(parts) >= 3 && parts[1] == "U" && parts[2] == user {
+			// Verificar que el ID no sea 0 (ya eliminado)
+			if parts[0] == "0" {
+				return fmt.Errorf("el usuario no existe: %s", user)
+			}
 			found = true
 			break
 		}
@@ -367,6 +374,5 @@ func (a *UsersAdapter) Chgrp(id, user, grp string) error {
 	}
 
 	newContent := strings.Join(newLines, "\n") + "\n"
-	_ = newContent
-	return fmt.Errorf("TODO: implementar escritura de archivo para Chgrp")
+	return a.repo.UpdateFile(id, []string{"users.txt"}, newContent)
 }
