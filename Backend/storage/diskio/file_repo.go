@@ -132,8 +132,8 @@ func (*FileDiskRepository) CreatePrimary(path string, part models.Partition) err
 	if slot == -1 {
 		return fmt.Errorf("MBR sin slots libres")
 	}
-	// Encuentra un hueco simple (después del MBR, ignorando EBRs para P simple)
-	start, ok := findSpaceFor(&m, part.Size)
+	// Encuentra un hueco según el algoritmo de fit
+	start, ok := findSpaceFor(&m, part.Size, part.Fit)
 	if !ok {
 		return fmt.Errorf("no hay espacio suficiente")
 	}
@@ -169,7 +169,7 @@ func (*FileDiskRepository) CreateExtended(path string, part models.Partition) er
 	if slot == -1 {
 		return fmt.Errorf("MBR sin slots libres")
 	}
-	start, ok := findSpaceFor(&m, part.Size)
+	start, ok := findSpaceFor(&m, part.Size, part.Fit)
 	if !ok {
 		return fmt.Errorf("no hay espacio suficiente")
 	}
@@ -297,8 +297,8 @@ func nameExistsInMBR(m *models.MBR, name [16]byte) bool {
 	return false
 }
 
-// Encuentra un hueco libre simple para 'size' bytes (naïve: después de los usados, ordenando por Start)
-func findSpaceFor(m *models.MBR, size int64) (int64, bool) {
+// Encuentra un hueco libre para 'size' bytes según el algoritmo de fit (FF, BF, WF)
+func findSpaceFor(m *models.MBR, size int64, fit byte) (int64, bool) {
 	type seg struct{ s, e int64 }
 	used := []seg{{0, int64(binary.Size(*m))}} // MBR reservado
 	for _, p := range m.Partitions {
@@ -314,11 +314,14 @@ func findSpaceFor(m *models.MBR, size int64) (int64, bool) {
 			}
 		}
 	}
-	// buscar huecos entre segmentos
+
+	// Recolectar todos los huecos disponibles
+	type gap struct{ start, size int64 }
+	var gaps []gap
 	var cur int64 = 0
 	for _, u := range used {
 		if u.s-cur >= size {
-			return cur, true
+			gaps = append(gaps, gap{cur, u.s - cur})
 		}
 		if u.e > cur {
 			cur = u.e
@@ -326,9 +329,37 @@ func findSpaceFor(m *models.MBR, size int64) (int64, bool) {
 	}
 	// hueco al final
 	if m.Size-cur >= size {
-		return cur, true
+		gaps = append(gaps, gap{cur, m.Size - cur})
 	}
-	return 0, false
+
+	if len(gaps) == 0 {
+		return 0, false
+	}
+
+	// Aplicar algoritmo de fit
+	switch fit {
+	case 'F': // First Fit
+		return gaps[0].start, true
+	case 'B': // Best Fit
+		bestIdx := 0
+		for i := 1; i < len(gaps); i++ {
+			if gaps[i].size < gaps[bestIdx].size {
+				bestIdx = i
+			}
+		}
+		return gaps[bestIdx].start, true
+	case 'W': // Worst Fit
+		worstIdx := 0
+		for i := 1; i < len(gaps); i++ {
+			if gaps[i].size > gaps[worstIdx].size {
+				worstIdx = i
+			}
+		}
+		return gaps[worstIdx].start, true
+	default:
+		// Por defecto First Fit
+		return gaps[0].start, true
+	}
 }
 
 // =====================================

@@ -210,7 +210,7 @@ func ParseFDisk(line string) (FDiskArgs, error) {
 	}
 	args.Size = size
 
-	unit, err := mustRune(flags, "unit", 'K', "KM")
+	unit, err := mustRune(flags, "unit", 'K', "BKM")
 	if err != nil {
 		return args, err
 	}

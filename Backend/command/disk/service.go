@@ -66,6 +66,23 @@ func (s *DiskService) RmDisk(a RmDiskArgs) (string, error) {
 }
 
 func (s *DiskService) FDisk(a FDiskArgs) (string, error) {
+	// Convertir size+unit a bytes
+	mult := int64(1)
+	switch a.Unit {
+	case 'B':
+		mult = 1
+	case 'K':
+		mult = 1024
+	case 'M':
+		mult = 1024 * 1024
+	default:
+		mult = 1024 // default K
+	}
+	a.Size = a.Size * mult
+	if a.Size <= 0 {
+		return "", fmt.Errorf("tamaño inválido")
+	}
+
 	switch a.Type {
 	case 'P':
 		return "Partición primaria creada", s.repo.FDiskPrimary(a.Path, a)
