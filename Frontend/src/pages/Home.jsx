@@ -14,18 +14,21 @@ export default function Home({session}){
           <div style={{marginLeft:'auto', display:'flex', gap:8, flexWrap:'wrap'}}>
             {!session && (
               <button className="btn" onClick={()=>navigate('/login')}>
-                🔑 Iniciar Sesión
+                Iniciar Sesión
               </button>
             )}
             <button className="btn alt" onClick={()=>navigate('/visualizer')}>
-              📁 Visualizador
+              Visualizador
+            </button>
+            <button className="btn" onClick={()=>navigate('/reports')}>
+              Reportes
             </button>
           </div>
         </div>
         {session && (
           <div className="body" style={{padding:'8px 12px', background:'var(--panel2)'}}>
             <div style={{display:'flex', gap:'12px', alignItems:'center', flexWrap:'wrap'}}>
-              <span className="badge">✓ Sesión: {session.user}</span>
+              <span className="badge">Sesión: {session.user}</span>
               <span className="badge">ID: {session.id}</span>
               <small className="muted">
                 Los comandos que requieren sesión están habilitados
@@ -80,7 +83,7 @@ export default function Home({session}){
           </div>
           <hr style={{border:'none', borderTop:'1px solid var(--border)', margin:'12px 0'}}/>
           <small className="muted">
-            💡 <b>Tip:</b> Use el botón "Cargar Archivo" para ejecutar scripts .smia |
+            <b>Tip:</b> Use el botón "Cargar Archivo" para ejecutar scripts .smia |
             Presione Ctrl+Enter en el área de entrada para ejecutar todos los comandos
           </small>
         </div>

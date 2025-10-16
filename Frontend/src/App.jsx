@@ -5,6 +5,7 @@ import Topbar from './components/Topbar'
 import LoginPage from './pages/LoginPage'
 import Home from './pages/Home'
 import Visualizer from './pages/Visualizer'
+import Reports from './pages/Reports'
 import { API } from './lib/api'
 
 export default function App(){
@@ -23,6 +24,7 @@ export default function App(){
           <Route path="/" element={<Home session={session}/>}/>
           <Route path="/login" element={<LoginPage setSession={setSession}/>}/>
           <Route path="/visualizer" element={<Visualizer session={session}/>}/>
+          <Route path="/reports" element={<Reports session={session}/>}/>
         </Routes>
       </div>
     </BrowserRouter>

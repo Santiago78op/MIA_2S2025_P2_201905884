@@ -39,8 +39,9 @@ export default function Visualizer({session}){
       <div className="card">
         <div className="head">
           <b>Visualizador del Sistema de Archivos</b>
-          <div style={{marginLeft:'auto', display:'flex', gap:8}}>
+          <div style={{marginLeft:'auto', display:'flex', gap:8, flexWrap:'wrap'}}>
             {step > 1 && <button className="btn alt" onClick={reset}>Reiniciar</button>}
+            <button className="btn" onClick={()=>navigate('/reports')}>Reportes</button>
             <button className="btn alt" onClick={()=>navigate('/')}>Volver a Terminal</button>
           </div>
         </div>
@@ -87,7 +88,7 @@ export default function Visualizer({session}){
               <div className="muted">Tipo</div><div>{partition.type}</div>
               <div className="muted">Tamaño</div><div>{partition.size}</div>
               <div className="muted">Fit</div><div>{partition.fit}</div>
-              <div className="muted">Sesión</div><div>✓ {session.user} (ID: {session.id})</div>
+              <div className="muted">Sesión</div><div>{session.user} (ID: {session.id})</div>
             </div>
           </div>
 

@@ -27,13 +27,13 @@ export default function Topbar({session, onLogout}) {
       </div>
       <div style={{display:'flex', gap:10, alignItems:'center', flexWrap:'wrap'}}>
         <button className="theme-toggle" onClick={toggleTheme}>
-          {theme==='neo'?'🟢 Neo':'🟣 Aurora'}
+          {theme==='neo'?'Neo Green':'Aurora Purple'}
         </button>
         {h && <span className="badge mono">Backend: {h.status}</span>}
         {session?.user ? (
           <>
-            <span className="badge">📂 ID: {session.id}</span>
-            <span className="badge">👤 {session.user}</span>
+            <span className="badge">ID: {session.id}</span>
+            <span className="badge">User: {session.user}</span>
             <button className="btn" onClick={onLogout} style={{fontSize:'12px', padding:'6px 12px'}}>
               Cerrar Sesión
             </button>

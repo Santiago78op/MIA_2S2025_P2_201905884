@@ -131,7 +131,7 @@ export default function Terminal({session}){
       const content = evt.target?.result
       if(typeof content === 'string'){
         setCommandArea(content)
-        setLines(p=>[...p,{t:`📁 Archivo cargado: ${file.name} (${content.split('\n').length} líneas)`,k:'sys'}])
+        setLines(p=>[...p,{t:`Archivo cargado: ${file.name} (${content.split('\n').length} líneas)`,k:'sys'}])
       }
     }
     reader.readAsText(file)
@@ -152,7 +152,7 @@ export default function Terminal({session}){
 
   function resetStats(){
     setStats({total:0, success:0, errors:0})
-    setLines(p=>[...p,{t:'📊 Estadísticas reseteadas',k:'sys'}])
+    setLines(p=>[...p,{t:'Estadísticas reseteadas',k:'sys'}])
   }
 
   return (
@@ -189,13 +189,13 @@ export default function Terminal({session}){
           </div>
           <div style={{display:'flex', gap:'12px', fontSize:'11px'}}>
             <span className="badge" style={{background:'var(--panel)', borderColor:'var(--muted)'}}>
-              📊 Total: {stats.total}
+              Total: {stats.total}
             </span>
             <span className="badge" style={{background:'#001f14', borderColor:'#00c77a'}}>
-              ✓ Éxito: {stats.success}
+              OK: {stats.success}
             </span>
             <span className="badge" style={{background:'#1f0010', borderColor:'#ff5c7c'}}>
-              ✗ Error: {stats.errors}
+              ERR: {stats.errors}
             </span>
             <button
               onClick={resetStats}
@@ -209,12 +209,12 @@ export default function Terminal({session}){
               }}
               title="Resetear estadísticas"
             >
-              🔄
+              Reset
             </button>
           </div>
         </div>
         {lines.map((ln,i)=><div key={i} className={`line ${ln.k}`}>{ln.t}</div>)}
-        {busy && <div className="line sys">⏳ Ejecutando comandos...</div>}
+        {busy && <div className="line sys">Ejecutando comandos...</div>}
       </div>
 
       {/* Input Area */}
@@ -245,7 +245,7 @@ export default function Terminal({session}){
               disabled={busy}
               style={{fontSize:'12px', padding:'6px 12px'}}
             >
-              📁 Cargar Archivo
+              Cargar Archivo
             </button>
             <button
               className="btn"
@@ -253,7 +253,7 @@ export default function Terminal({session}){
               disabled={busy || !commandArea.trim()}
               style={{fontSize:'12px', padding:'6px 12px'}}
             >
-              ▶️ Ejecutar
+              Ejecutar
             </button>
             <button
               className="btn alt"
@@ -261,7 +261,7 @@ export default function Terminal({session}){
               disabled={busy}
               style={{fontSize:'12px', padding:'6px 12px'}}
             >
-              🗑️ Limpiar
+              Limpiar
             </button>
           </div>
         </div>
@@ -285,7 +285,7 @@ mount -path="/tmp/Disco1.mia" -name=Part1
         />
 
         <small className="muted" style={{fontSize:'11px'}}>
-          💡 <b>Tip:</b> Use # para comentarios | Ctrl+Enter para ejecutar | Las estadísticas se mantienen entre sesiones
+          <b>Tip:</b> Use # para comentarios | Ctrl+Enter para ejecutar | Las estadísticas se mantienen entre sesiones
         </small>
       </div>
     </div>

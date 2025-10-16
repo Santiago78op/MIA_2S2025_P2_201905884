@@ -62,7 +62,7 @@ export default function Explorer({id}){
             <div className="list">
               {items.map(x=>(
                 <div key={x.name} className="item">
-                  <div className="nm">{x.type==='dir' ? '📁' : '📄'} {x.name}</div>
+                  <div className="nm">{x.type==='dir' ? '[DIR]' : '[FILE]'} {x.name}</div>
                   <div className="perm mono">
                     {x.perm} · uid:{x.uid} · gid:{x.gid}
                     {x.size && ` · ${x.size} bytes`}

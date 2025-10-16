@@ -123,10 +123,30 @@ func mustString(flags map[string]string, key string) (string, error) {
 	return v, nil
 }
 
+// validateNoUnknownFlags valida que no haya parámetros desconocidos
+func validateNoUnknownFlags(flags map[string]string, allowedKeys []string) error {
+	allowed := make(map[string]bool)
+	for _, k := range allowedKeys {
+		allowed[strings.ToLower(k)] = true
+	}
+
+	for key := range flags {
+		if !allowed[key] {
+			return fmt.Errorf("parámetro desconocido: -%s", key)
+		}
+	}
+	return nil
+}
+
 // ParseMkDisk parsea un comando mkdisk
 func ParseMkDisk(line string) (MkDiskArgs, error) {
 	_, flags := ParseLine(line)
 	var args MkDiskArgs
+
+	// Validar que no haya parámetros desconocidos
+	if err := validateNoUnknownFlags(flags, []string{"size", "unit", "fit", "path"}); err != nil {
+		return args, err
+	}
 
 	size, err := mustInt64(flags, "size")
 	if err != nil {
@@ -160,6 +180,11 @@ func ParseRmDisk(line string) (RmDiskArgs, error) {
 	_, flags := ParseLine(line)
 	var args RmDiskArgs
 
+	// Validar que no haya parámetros desconocidos
+	if err := validateNoUnknownFlags(flags, []string{"path"}); err != nil {
+		return args, err
+	}
+
 	path, err := mustString(flags, "path")
 	if err != nil {
 		return args, err
@@ -173,6 +198,11 @@ func ParseRmDisk(line string) (RmDiskArgs, error) {
 func ParseFDisk(line string) (FDiskArgs, error) {
 	_, flags := ParseLine(line)
 	var args FDiskArgs
+
+	// Validar que no haya parámetros desconocidos
+	if err := validateNoUnknownFlags(flags, []string{"size", "unit", "type", "fit", "path", "name"}); err != nil {
+		return args, err
+	}
 
 	size, err := mustInt64(flags, "size")
 	if err != nil {
@@ -217,6 +247,11 @@ func ParseFDisk(line string) (FDiskArgs, error) {
 func ParseMount(line string) (MountArgs, error) {
 	_, flags := ParseLine(line)
 	var args MountArgs
+
+	// Validar que no haya parámetros desconocidos
+	if err := validateNoUnknownFlags(flags, []string{"path", "name"}); err != nil {
+		return args, err
+	}
 
 	path, err := mustString(flags, "path")
 	if err != nil {
