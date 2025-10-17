@@ -35,5 +35,11 @@ export const API = {
     const data = await r.json();
     if(!r.ok) throw new Error(data.message || 'Error generando reporte');
     return data.path; // path creado por el backend
+  },
+
+  async listReports(){
+    const r = await fetch('/api/reports/list');
+    if(!r.ok) throw new Error('Error listando reportes');
+    return r.json(); // { files: [...], count: N }
   }
 }

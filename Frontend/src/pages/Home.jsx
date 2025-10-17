@@ -7,7 +7,7 @@ export default function Home({session}){
   return (
     <div style={{padding:'12px', minHeight:'calc(100vh - 60px)', display:'flex', flexDirection:'column', gap:'12px'}}>
       {/* Action Bar */}
-      <div className="card">
+      <div className="card" style={{flexShrink: 0}}>
         <div className="head" style={{flexWrap:'wrap'}}>
           <b>MIA - Manejo e Implementación de Archivos</b>
           <span className="badge">Proyecto 2</span>
@@ -26,7 +26,7 @@ export default function Home({session}){
           </div>
         </div>
         {session && (
-          <div className="body" style={{padding:'8px 12px', background:'var(--panel2)'}}>
+          <div className="body" style={{padding:'8px 12px', background:'var(--panel2)', minHeight:'auto'}}>
             <div style={{display:'flex', gap:'12px', alignItems:'center', flexWrap:'wrap'}}>
               <span className="badge">Sesión: {session.user}</span>
               <span className="badge">ID: {session.id}</span>
@@ -50,11 +50,11 @@ export default function Home({session}){
       </div>
 
       {/* Info Card */}
-      <div className="card">
+      <div className="card" style={{flexShrink: 0}}>
         <div className="head">
           <b>Información y Comandos Disponibles</b>
         </div>
-        <div className="body">
+        <div className="body" style={{minHeight:'auto'}}>
           <div className="grid cols-2" style={{gap:'12px'}}>
             <div>
               <h4 style={{margin:'0 0 8px 0', color:'var(--neon)'}}>Gestión de Discos y Particiones</h4>

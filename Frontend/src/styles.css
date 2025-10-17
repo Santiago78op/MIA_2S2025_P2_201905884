@@ -19,6 +19,7 @@
 *{box-sizing:border-box; transition: background-color 0.3s ease, border-color 0.3s ease, color 0.3s ease;}
 html,body,#root{height:100%;margin:0;background:radial-gradient(1400px 800px at 10% -10%, var(--bg-grad-1) 0%, var(--bg-grad-2) 60%);}
 body{color:var(--txt);font-family:Inter, system-ui, Segoe UI, Roboto, Helvetica, Arial}
+body.lb-open{overflow:hidden;padding-right:0;}
 .mono{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
 
 .app{display:flex; flex-direction:column; min-height:100%;}
@@ -181,7 +182,7 @@ linear-gradient(90deg, var(--topbar-grad-1), var(--topbar-grad-2) 60%, transpare
   display: flex;
   align-items: center;
   justify-content: center;
-  overflow: hidden;
+  overflow: visible;
   padding: 30px 0;
   margin: 0 auto;
   width: 100%;
@@ -337,17 +338,30 @@ linear-gradient(90deg, var(--topbar-grad-1), var(--topbar-grad-2) 60%, transpare
 
 /* Lightbox */
 .lb {
-  position: fixed; inset: 0; background: rgba(0,0,0,.75);
-  display: grid; place-items: center; z-index: 60;
+  position: fixed; inset: 0; background: rgba(0,0,0,.85);
+  display: grid; place-items: center; z-index: 9999;
+  backdrop-filter: blur(4px);
+  overflow-y: auto;
+  overflow-x: hidden;
 }
 .lb .box {
   background: #02060acc; border:1px solid #0a2731; border-radius:12px;
   width:min(94vw,1100px); height:min(90vh,800px); display:grid; grid-template-rows:auto 1fr; gap:8px;
+  overflow: hidden;
+  max-height: 90vh;
 }
-.lb .box .top { display:flex; align-items:center; justify-content:space-between; padding:8px 12px; }
-.lb .box .area { background:#031017; border:1px solid #0c2b38; border-radius:10px; overflow:auto; display:grid; place-items:center; }
-.lb .box img { max-width:100%; max-height:100%; }
-.lb .zoom { display:flex; gap:8px }
+.lb .box .top {
+  display:flex; align-items:center; justify-content:space-between; padding:8px 12px;
+  flex-shrink: 0;
+}
+.lb .box .area {
+  background:#031017; border:1px solid #0c2b38; border-radius:10px;
+  overflow:auto; display:grid; place-items:center;
+  min-height: 0;
+  max-height: 100%;
+}
+.lb .box img { max-width:100%; max-height:100%; object-fit: contain; }
+.lb .zoom { display:flex; gap:8px; flex-wrap: wrap; }
 
 /* Toolbar and Pills */
 .toolbar { display:flex; gap:10px; align-items:center; flex-wrap:wrap; }

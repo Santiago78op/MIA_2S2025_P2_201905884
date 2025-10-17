@@ -12,17 +12,17 @@ import (
 const statePath = "/tmp/mia_mount_state.json"
 
 type State struct {
-	DiskLetter map[string]string `json:"disk_letter"` // firma -> letra
-	DiskSeq    map[string]int    `json:"disk_seq"`    // firma -> correlativo
-	mu         sync.Mutex
-	entries    []ports.MountedEntry
+	DiskLetter map[string]string    `json:"disk_letter"` // firma -> letra
+	DiskSeq    map[string]int       `json:"disk_seq"`    // firma -> correlativo
+	Entries    []ports.MountedEntry `json:"entries"`     // lista de montajes
+	mu         sync.Mutex           `json:"-"`
 }
 
 func NewState() *State {
 	return &State{
 		DiskLetter: map[string]string{},
 		DiskSeq:    map[string]int{},
-		entries:    []ports.MountedEntry{},
+		Entries:    []ports.MountedEntry{},
 	}
 }
 
@@ -58,13 +58,18 @@ func (s *State) NextID(carnet2, diskSignature string) (string, error) {
 	if len(s.DiskLetter) == 0 && len(s.DiskSeq) == 0 {
 		s.load()
 	}
+
+	// Asignar letra si es la primera vez que vemos este disco
 	letter, ok := s.DiskLetter[diskSignature]
 	if !ok {
 		letter = nextLetter(s.DiskLetter)
 		s.DiskLetter[diskSignature] = letter
+		s.DiskSeq[diskSignature] = 0 // Inicializar contador para este disco
 	}
-	seq := s.DiskSeq[diskSignature] + 1
-	s.DiskSeq[diskSignature] = seq
+
+	// Incrementar el contador de particiones para este disco específico
+	s.DiskSeq[diskSignature]++
+	seq := s.DiskSeq[diskSignature]
 
 	id := carnet2 + itoa(seq) + letter // "84" + "1" + "A" => "841A"
 	s.save()
@@ -74,15 +79,22 @@ func (s *State) NextID(carnet2, diskSignature string) (string, error) {
 func (s *State) SetMounted(id, path, name string) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	s.entries = append(s.entries, ports.MountedEntry{ID: id, Path: path, Name: name})
+	s.Entries = append(s.Entries, ports.MountedEntry{ID: id, Path: path, Name: name})
+	s.save()
 	return nil
 }
 
 func (s *State) List() []ports.MountedEntry {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	out := make([]ports.MountedEntry, len(s.entries))
-	copy(out, s.entries)
+
+	// Cargar estado si está vacío
+	if len(s.Entries) == 0 && len(s.DiskLetter) == 0 {
+		s.load()
+	}
+
+	out := make([]ports.MountedEntry, len(s.Entries))
+	copy(out, s.Entries)
 	return out
 }
 

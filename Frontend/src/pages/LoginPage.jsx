@@ -32,12 +32,12 @@ export default function LoginPage({setSession}){
       padding:'20px',
       background:'var(--bg)'
     }}>
-      <div className="card" style={{width:'100%', maxWidth:'480px'}}>
+      <div className="card" style={{width:'100%', maxWidth:'480px', flexShrink: 0}}>
         <div className="head">
           <b>Iniciar Sesión</b>
           <span className="badge">Login GUI</span>
         </div>
-        <div className="body">
+        <div className="body" style={{minHeight:'auto'}}>
           <form onSubmit={handleLogin} className="grid">
             <div className="field">
               <label><b>ID de Montaje</b></label>

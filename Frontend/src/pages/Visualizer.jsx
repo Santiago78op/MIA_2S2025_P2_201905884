@@ -34,9 +34,9 @@ export default function Visualizer({session}){
   }
 
   return (
-    <div style={{padding:'12px', display:'flex', flexDirection:'column', gap:'12px'}}>
+    <div style={{padding:'12px', minHeight:'calc(100vh - 60px)', display:'flex', flexDirection:'column', gap:'12px'}}>
       {/* Breadcrumb / Steps */}
-      <div className="card">
+      <div className="card" style={{flexShrink: 0}}>
         <div className="head">
           <b>Visualizador del Sistema de Archivos</b>
           <div style={{marginLeft:'auto', display:'flex', gap:8, flexWrap:'wrap'}}>
@@ -45,7 +45,7 @@ export default function Visualizer({session}){
             <button className="btn alt" onClick={()=>navigate('/')}>Volver a Terminal</button>
           </div>
         </div>
-        <div className="body">
+        <div className="body" style={{minHeight:'auto'}}>
           <div className="breadcrumb" style={{justifyContent:'center'}}>
             <div className={`cr ${step>=1?'active':''}`}>1. Disco</div>
             <div className={`cr ${step>=2?'active':''}`}>2. Partición</div>
@@ -60,12 +60,12 @@ export default function Visualizer({session}){
       {/* Step 2: Partition Selection */}
       {step === 2 && disk && (
         <>
-          <div className="card">
+          <div className="card" style={{flexShrink: 0}}>
             <div className="head">
               <b>Disco Seleccionado</b>
               <span className="badge mono">{disk.path}</span>
             </div>
-            <div className="body kv">
+            <div className="body kv" style={{minHeight:'auto'}}>
               <div className="muted">Capacidad</div><div>{disk.size}</div>
               <div className="muted">Fit</div><div>{disk.fit}</div>
               <div className="muted">Particiones Montadas</div><div>{disk.mounted?.length || 0}</div>
@@ -78,12 +78,12 @@ export default function Visualizer({session}){
       {/* Step 3: Filesystem Explorer */}
       {step === 3 && partition && session && (
         <>
-          <div className="card">
+          <div className="card" style={{flexShrink: 0}}>
             <div className="head">
               <b>Partición Seleccionada</b>
               <span className="badge">{partition.name}</span>
             </div>
-            <div className="body kv">
+            <div className="body kv" style={{minHeight:'auto'}}>
               <div className="muted">Disco</div><div className="mono">{disk.path}</div>
               <div className="muted">Tipo</div><div>{partition.type}</div>
               <div className="muted">Tamaño</div><div>{partition.size}</div>

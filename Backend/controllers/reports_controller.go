@@ -2,7 +2,10 @@ package controllers
 
 import (
 	"net/http"
+	"os"
+	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/gin-gonic/gin"
 )
@@ -17,11 +20,12 @@ type ReportService interface {
 }
 
 type ReportsController struct {
-	svc ReportService
+	svc         ReportService
+	reportsPath string
 }
 
-func NewReportsController(svc ReportService) *ReportsController {
-	return &ReportsController{svc: svc}
+func NewReportsController(svc ReportService, reportsPath string) *ReportsController {
+	return &ReportsController{svc: svc, reportsPath: reportsPath}
 }
 
 type reportReq struct {
@@ -57,5 +61,60 @@ func (r *ReportsController) Generate(ctx *gin.Context) {
 	ctx.JSON(http.StatusOK, reportRes{
 		Path: path,
 		Note: "reporte generado",
+	})
+}
+
+// FileInfo representa un archivo en la carpeta Reports
+type FileInfo struct {
+	Name     string    `json:"name"`
+	Size     int64     `json:"size"`
+	ModTime  time.Time `json:"mod_time"`
+	IsImage  bool      `json:"is_image"`
+	Ext      string    `json:"ext"`
+	URL      string    `json:"url"`
+}
+
+// List devuelve todos los archivos en la carpeta Reports
+func (r *ReportsController) List(ctx *gin.Context) {
+	if r.reportsPath == "" {
+		ctx.JSON(http.StatusInternalServerError, gin.H{"message": "reportsPath no configurado"})
+		return
+	}
+
+	entries, err := os.ReadDir(r.reportsPath)
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, gin.H{"message": "error leyendo carpeta Reports: " + err.Error()})
+		return
+	}
+
+	var files []FileInfo
+	imageExts := map[string]bool{".jpg": true, ".jpeg": true, ".png": true, ".gif": true, ".svg": true, ".webp": true}
+
+	for _, entry := range entries {
+		if entry.IsDir() {
+			continue
+		}
+
+		info, err := entry.Info()
+		if err != nil {
+			continue
+		}
+
+		ext := strings.ToLower(filepath.Ext(entry.Name()))
+		isImage := imageExts[ext]
+
+		files = append(files, FileInfo{
+			Name:    entry.Name(),
+			Size:    info.Size(),
+			ModTime: info.ModTime(),
+			IsImage: isImage,
+			Ext:     ext,
+			URL:     "/reports/static/" + entry.Name(),
+		})
+	}
+
+	ctx.JSON(http.StatusOK, gin.H{
+		"files": files,
+		"count": len(files),
 	})
 }

@@ -206,40 +206,126 @@ func (*FileDiskRepository) CreateLogical(path string, extStart int64, ebrNew mod
 	}
 	defer f.Close()
 
-	// Recorre lista de EBRs
+	// Leer MBR para obtener el tamaño de la partición extendida
+	var m models.MBR
+	if err := readMBR(f, &m); err != nil {
+		return err
+	}
+
+	// Encontrar la partición extendida
+	var extPart models.Partition
+	found := false
+	for _, p := range m.Partitions {
+		if p.Status == models.PartStatusUsed && p.Type == models.PartTypeExtend {
+			extPart = p
+			found = true
+			break
+		}
+	}
+	if !found {
+		return fmt.Errorf("no se encontró partición extendida")
+	}
+
+	// Recolectar todos los EBRs existentes
+	var ebrs []ebrInfo
+
 	cur := extStart
-	var prev models.EBR
 	for {
 		var e models.EBR
 		if err := readEBR(f, &e, cur); err != nil {
 			return err
 		}
+
+		// Si es el primer EBR vacío, la lista está vacía
 		if e.Status == models.PartStatusFree && e.Size == 0 && e.Start == extStart {
-			// Lista vacía → el primer EBR es el nuevo
-			ebrNew.Next = -1
-			if err := writeEBR(f, &ebrNew, extStart); err != nil {
-				return err
-			}
 			break
 		}
+
+		// Agregar EBR a la lista
+		ebrs = append(ebrs, ebrInfo{ebr: e, pos: cur})
+
+		// Si no hay siguiente, terminamos
 		if e.Next == -1 {
-			// Insertar al final
-			prev = e
 			break
 		}
+
 		cur = e.Next
 	}
 
-	// prev es el último EBR “real”
-	// Escribe nuevo ebr al final (al offset ebrNew.Start)
-	if err := writeEBR(f, &ebrNew, ebrNew.Start); err != nil {
-		return err
+	// Encontrar espacio libre para el nuevo EBR
+	newStart, ok := findSpaceForLogical(extPart, ebrs, ebrNew.Size, ebrNew.Fit)
+	if !ok {
+		return fmt.Errorf("no hay espacio suficiente en la partición extendida")
 	}
-	prev.Next = ebrNew.Start
-	// Actualiza “prev” en disco
-	if err := writeEBR(f, &prev, prev.Start); err != nil {
-		return err
+
+	// Asignar el Start calculado al nuevo EBR
+	ebrNew.Start = newStart
+	ebrNew.Status = models.PartStatusUsed
+	ebrNew.Next = -1
+
+	// Si no hay EBRs, este es el primero
+	if len(ebrs) == 0 {
+		// Escribir el primer EBR
+		if err := writeEBR(f, &ebrNew, extStart); err != nil {
+			return err
+		}
+		return nil
 	}
+
+	// Insertar el nuevo EBR en la posición correcta (ordenado por Start)
+	// Encontrar dónde insertarlo
+	insertIdx := -1
+	for i, info := range ebrs {
+		if ebrNew.Start < info.ebr.Start {
+			insertIdx = i
+			break
+		}
+	}
+
+	if insertIdx == -1 {
+		// Insertar al final
+		lastIdx := len(ebrs) - 1
+		prev := ebrs[lastIdx].ebr
+
+		// Escribir nuevo EBR
+		if err := writeEBR(f, &ebrNew, ebrNew.Start); err != nil {
+			return err
+		}
+
+		// Actualizar el anterior para que apunte al nuevo
+		prev.Next = ebrNew.Start
+		if err := writeEBR(f, &prev, ebrs[lastIdx].pos); err != nil {
+			return err
+		}
+	} else if insertIdx == 0 {
+		// Insertar al principio
+		// El nuevo EBR apunta al que estaba primero
+		ebrNew.Next = ebrs[0].ebr.Start
+
+		// Escribir el nuevo EBR al inicio de la extendida
+		if err := writeEBR(f, &ebrNew, extStart); err != nil {
+			return err
+		}
+	} else {
+		// Insertar en medio
+		prev := ebrs[insertIdx-1].ebr
+		next := ebrs[insertIdx].ebr
+
+		// El nuevo apunta al siguiente
+		ebrNew.Next = next.Start
+
+		// Escribir nuevo EBR
+		if err := writeEBR(f, &ebrNew, ebrNew.Start); err != nil {
+			return err
+		}
+
+		// El anterior apunta al nuevo
+		prev.Next = ebrNew.Start
+		if err := writeEBR(f, &prev, ebrs[insertIdx-1].pos); err != nil {
+			return err
+		}
+	}
+
 	return nil
 }
 
@@ -330,6 +416,90 @@ func findSpaceFor(m *models.MBR, size int64, fit byte) (int64, bool) {
 	// hueco al final
 	if m.Size-cur >= size {
 		gaps = append(gaps, gap{cur, m.Size - cur})
+	}
+
+	if len(gaps) == 0 {
+		return 0, false
+	}
+
+	// Aplicar algoritmo de fit
+	switch fit {
+	case 'F': // First Fit
+		return gaps[0].start, true
+	case 'B': // Best Fit
+		bestIdx := 0
+		for i := 1; i < len(gaps); i++ {
+			if gaps[i].size < gaps[bestIdx].size {
+				bestIdx = i
+			}
+		}
+		return gaps[bestIdx].start, true
+	case 'W': // Worst Fit
+		worstIdx := 0
+		for i := 1; i < len(gaps); i++ {
+			if gaps[i].size > gaps[worstIdx].size {
+				worstIdx = i
+			}
+		}
+		return gaps[worstIdx].start, true
+	default:
+		// Por defecto First Fit
+		return gaps[0].start, true
+	}
+}
+
+// ebrInfo contiene información sobre un EBR existente
+type ebrInfo struct {
+	ebr models.EBR
+	pos int64
+}
+
+// findSpaceForLogical encuentra espacio libre dentro de una partición extendida para una partición lógica
+func findSpaceForLogical(extPart models.Partition, ebrs []ebrInfo, size int64, fit byte) (int64, bool) {
+	type seg struct{ s, e int64 }
+
+	// Calcular el tamaño de un EBR
+	ebrSize := int64(binary.Size(models.EBR{}))
+
+	// Áreas ocupadas dentro de la extendida
+	var used []seg
+
+	// Agregar todas las particiones lógicas existentes
+	for _, info := range ebrs {
+		// Cada partición lógica ocupa: EBR + datos
+		start := info.ebr.Start
+		end := start + ebrSize + info.ebr.Size
+		used = append(used, seg{start, end})
+	}
+
+	// Ordenar por inicio
+	for i := 0; i < len(used); i++ {
+		for j := i + 1; j < len(used); j++ {
+			if used[j].s < used[i].s {
+				used[i], used[j] = used[j], used[i]
+			}
+		}
+	}
+
+	// Recolectar huecos disponibles
+	type gap struct{ start, size int64 }
+	var gaps []gap
+
+	cur := extPart.Start
+	extEnd := extPart.Start + extPart.Size
+
+	for _, u := range used {
+		if u.s-cur >= size+ebrSize {
+			gaps = append(gaps, gap{cur, u.s - cur})
+		}
+		if u.e > cur {
+			cur = u.e
+		}
+	}
+
+	// Hueco al final
+	if extEnd-cur >= size+ebrSize {
+		gaps = append(gaps, gap{cur, extEnd - cur})
 	}
 
 	if len(gaps) == 0 {

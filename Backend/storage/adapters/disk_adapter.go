@@ -62,10 +62,11 @@ func (a *DiskAdapter) FDiskLogical(path string, args disk.FDiskArgs) error {
 	}
 
 	// Crear EBR para la partición lógica
+	// NOTA: Start se calculará dentro de CreateLogical
 	ebr := models.EBR{
-		Status: models.PartStatusUsed,
+		Status: models.PartStatusFree, // Se establecerá a Used dentro de CreateLogical
 		Fit:    byte(args.Fit),
-		Start:  extPart.Start, // Se ajustará dentro de CreateLogical
+		Start:  0, // Se calculará dentro de CreateLogical usando el algoritmo de fit
 		Size:   args.Size,
 		Next:   -1,
 	}

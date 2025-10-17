@@ -64,20 +64,28 @@ func (g *ReportGenerator) MBR(id, out string) (string, error) {
 		return "", fmt.Errorf("error leyendo MBR: %w", err)
 	}
 
-	// Crear contenido del reporte
-	content := fmt.Sprintf("MBR Report (ID: %s)\n", id)
-	content += fmt.Sprintf("Disk Path: %s\n", diskPath)
-	content += "================================\n\n"
-	content += fmt.Sprintf("Size:         %d bytes\n", mbr.Size)
-	content += fmt.Sprintf("Timestamp:    %d\n", mbr.Timestamp)
-	content += fmt.Sprintf("Signature:    %d\n", mbr.Signature)
-	content += fmt.Sprintf("Fit:          %c\n\n", mbr.Fit)
+	// Leer EBRs si hay partición extendida
+	var extIndex int = -1
+	for i, part := range mbr.Partitions {
+		if part.Status == models.PartStatusUsed && part.Type == models.PartTypeExtend {
+			extIndex = i
+			break
+		}
+	}
 
-	content += "Partitions:\n"
-	content += "===========\n"
+	// Generar DOT para Graphviz
+	var dotContent strings.Builder
+	dotContent.WriteString("digraph MBR {\n")
+	dotContent.WriteString("  rankdir=LR;\n")
+	dotContent.WriteString("  node [shape=record];\n\n")
+
+	// Nodo del MBR principal
+	mbrLabel := fmt.Sprintf("MBR|Size: %d bytes|Fit: %c|Signature: %d", mbr.Size, mbr.Fit, mbr.Signature)
+	dotContent.WriteString(fmt.Sprintf("  mbr [label=\"%s\"];\n\n", mbrLabel))
+
+	// Procesar particiones
 	for i, part := range mbr.Partitions {
 		if part.Status == 0 {
-			content += fmt.Sprintf("\nPartition %d: [FREE]\n", i+1)
 			continue
 		}
 
@@ -90,20 +98,64 @@ func (g *ReportGenerator) MBR(id, out string) (string, error) {
 			}
 		}
 
-		content += fmt.Sprintf("\nPartition %d:\n", i+1)
-		content += fmt.Sprintf("  Status:     %d (USED)\n", part.Status)
-		content += fmt.Sprintf("  Type:       %c\n", part.Type)
-		content += fmt.Sprintf("  Fit:        %c\n", part.Fit)
-		content += fmt.Sprintf("  Start:      %d\n", part.Start)
-		content += fmt.Sprintf("  Size:       %d bytes\n", part.Size)
-		content += fmt.Sprintf("  Name:       %s\n", name)
+		nodeID := fmt.Sprintf("part%d", i)
+		partLabel := fmt.Sprintf("Partition %d|Name: %s|Type: %c|Start: %d|Size: %d bytes|Fit: %c",
+			i+1, name, part.Type, part.Start, part.Size, part.Fit)
+		dotContent.WriteString(fmt.Sprintf("  %s [label=\"%s\"];\n", nodeID, partLabel))
+		dotContent.WriteString(fmt.Sprintf("  mbr -> %s;\n", nodeID))
+
+		// Si es partición extendida, leer sus EBRs
+		if part.Type == models.PartTypeExtend && extIndex != -1 && i == extIndex {
+			// Abrir archivo del disco para leer EBRs
+			f, err := os.OpenFile(diskPath, os.O_RDONLY, 0o644)
+			if err == nil {
+				defer f.Close()
+
+				// Leer cadena de EBRs
+				currentPos := part.Start
+				ebrCount := 0
+				prevEbrID := nodeID
+
+				for currentPos != -1 {
+					var ebr models.EBR
+					if _, err := f.Seek(currentPos, 0); err != nil {
+						break
+					}
+					if err := binary.Read(f, binary.LittleEndian, &ebr); err != nil {
+						break
+					}
+
+					// Verificar si es un EBR válido
+					if ebr.Status == 0 && ebr.Size == 0 {
+						break
+					}
+
+					ebrName := string(ebr.Name[:])
+					for j, c := range ebrName {
+						if c == 0 {
+							ebrName = ebrName[:j]
+							break
+						}
+					}
+
+					ebrID := fmt.Sprintf("ebr%d", ebrCount)
+					ebrLabel := fmt.Sprintf("EBR %d|Name: %s|Start: %d|Size: %d|Fit: %c|Next: %d",
+						ebrCount+1, ebrName, ebr.Start, ebr.Size, ebr.Fit, ebr.Next)
+					dotContent.WriteString(fmt.Sprintf("  %s [label=\"%s\"];\n", ebrID, ebrLabel))
+					dotContent.WriteString(fmt.Sprintf("  %s -> %s;\n", prevEbrID, ebrID))
+
+					prevEbrID = ebrID
+					ebrCount++
+					currentPos = ebr.Next
+				}
+			}
+		}
 	}
 
-	if err := os.WriteFile(out, []byte(content), 0o644); err != nil {
-		return "", err
-	}
+	dotContent.WriteString("}\n")
 
-	return out, nil
+	// Generar imagen usando Graphviz
+	return g.gv.Generate(dotContent.String(), out)
 }
 
 func (g *ReportGenerator) Disk(id, out string) (string, error) {

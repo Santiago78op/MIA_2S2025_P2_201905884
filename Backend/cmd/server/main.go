@@ -50,7 +50,7 @@ func main() {
 	// === Capa de presentación (controllers HTTP) ===
 	cs := controllers.NewCommandsController(cmdRunner)
 	ss := controllers.NewScriptController(&scriptRunnerAdapter{cmdRunner}) // Adaptador para ScriptRunner
-	rs := controllers.NewReportsController(reportSvc)
+	rs := controllers.NewReportsController(reportSvc, cfg.ReportsPath)
 
 	// === Router y servidor HTTP ===
 	r := router.SetupRouter(cfg, cs, ss, rs)

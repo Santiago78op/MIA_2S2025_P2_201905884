@@ -3,6 +3,7 @@ package config
 import (
 	"log"
 	"os"
+	"path/filepath"
 )
 
 // Config almacena los valores globales de configuración del backend.
@@ -16,10 +17,39 @@ type Config struct {
 
 // Load lee las variables de entorno o usa valores por defecto.
 func Load() *Config {
+	// Determinar el directorio base del proyecto (Backend/)
+	// Si DISKS_PATH o REPORTS_PATH no son rutas absolutas, se resuelven desde Backend/
+	baseDir := getEnv("BASE_DIR", "")
+	if baseDir == "" {
+		// Intentar detectar la raíz del proyecto
+		if wd, err := os.Getwd(); err == nil {
+			// Si estamos en Backend/cmd/server, subir dos niveles
+			if filepath.Base(wd) == "server" && filepath.Base(filepath.Dir(wd)) == "cmd" {
+				baseDir = filepath.Join(filepath.Dir(filepath.Dir(wd)))
+			} else if filepath.Base(wd) == "Backend" {
+				baseDir = wd
+			} else {
+				// Por defecto, asumir que estamos en Backend/
+				baseDir = wd
+			}
+		}
+	}
+
+	disksPath := getEnv("DISKS_PATH", "./Discos")
+	reportsPath := getEnv("REPORTS_PATH", "./Reports")
+
+	// Convertir rutas relativas a absolutas desde baseDir
+	if !filepath.IsAbs(disksPath) && baseDir != "" {
+		disksPath = filepath.Join(baseDir, disksPath)
+	}
+	if !filepath.IsAbs(reportsPath) && baseDir != "" {
+		reportsPath = filepath.Join(baseDir, reportsPath)
+	}
+
 	cfg := &Config{
 		Port:          getEnv("PORT", "8080"),
-		DisksPath:     getEnv("DISKS_PATH", "./Discos"),
-		ReportsPath:   getEnv("REPORTS_PATH", "./Reports"),
+		DisksPath:     disksPath,
+		ReportsPath:   reportsPath,
 		CarnetLastTwo: getEnv("CARNET_LAST_TWO", "84"), // 201905884 → "84"
 		Debug:         getEnv("DEBUG", "false") == "true",
 	}

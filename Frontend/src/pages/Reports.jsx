@@ -1,29 +1,30 @@
 import { useNavigate } from 'react-router-dom'
-import ReportsCarousel3D from '../components/ReportsCarousel3D'
+import ReportsGallery from '../components/ReportsGallery'
 
 export default function Reports(){
   const navigate = useNavigate()
 
   return (
-    <div style={{padding:'12px', minHeight:'calc(100vh - 60px)', display:'flex', flexDirection:'column'}}>
-      <div className="card">
+    <div style={{padding:'12px', minHeight:'calc(100vh - 60px)', display:'flex', flexDirection:'column', gap:'12px'}}>
+      <div className="card" style={{flexShrink: 0}}>
         <div className="head">
-          <b>Centro de Reportes</b>
-          <span className="badge">3D Coverflow</span>
+          <b>Galería de Reportes</b>
+          <span className="badge">Visualización 3D</span>
           <div style={{marginLeft:'auto', display:'flex', gap:8, flexWrap:'wrap'}}>
             <button className="btn" onClick={()=>navigate('/visualizer')}>Visualizador</button>
             <button className="btn alt" onClick={()=>navigate('/')}>Volver a Terminal</button>
           </div>
         </div>
-        <div className="body">
-          <p className="muted" style={{marginBottom: '8px', fontSize:'13px', lineHeight:'1.6'}}>
-            Genera reportes visuales y textuales del sistema de archivos con un carrusel 3D interactivo.
+        <div className="body" style={{minHeight: 'auto'}}>
+          <p className="muted" style={{marginBottom: '0', fontSize:'13px', lineHeight:'1.6'}}>
+            Visualiza todos los archivos generados en la carpeta <code>Backend/Reports</code>.
+            La galería se actualiza automáticamente cada 5 segundos para mostrar nuevos reportes.
             Usa las flechas del teclado, botones de navegación, rueda del mouse o los indicadores para navegar.
-            Haz clic en las imágenes para verlas en pantalla completa con zoom.
           </p>
         </div>
       </div>
-      <ReportsCarousel3D/>
+
+      <ReportsGallery/>
     </div>
   )
 }

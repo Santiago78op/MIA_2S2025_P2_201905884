@@ -100,6 +100,15 @@ func (s *DiskService) Mount(a MountArgs) (string, error) {
 	if err := s.repo.ValidatePrimaryForMount(a.Path, a.Name); err != nil {
 		return "", err
 	}
+
+	// Verificar si la partición ya está montada
+	mounted := s.mounts.List()
+	for _, entry := range mounted {
+		if entry.Path == a.Path && entry.Name == a.Name {
+			return "", fmt.Errorf("la partición ya está montada con ID: %s", entry.ID)
+		}
+	}
+
 	sig, err := s.repo.DiskSignature(a.Path)
 	if err != nil {
 		return "", err

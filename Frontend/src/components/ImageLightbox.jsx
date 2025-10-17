@@ -1,7 +1,25 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 
 export default function ImageLightbox({open, src, title, onClose}) {
   const [scale,setScale] = useState(1)
+
+  // Resetear escala cuando se abre/cierra o cambia la imagen
+  useEffect(() => {
+    if (open) {
+      setScale(1)
+    }
+  }, [open, src])
+
+  // Prevenir scroll del body cuando el lightbox está abierto
+  useEffect(() => {
+    if (open) {
+      document.body.classList.add('lb-open')
+      return () => {
+        document.body.classList.remove('lb-open')
+      }
+    }
+  }, [open])
+
   if(!open) return null
   return (
     <div className="lb" onClick={onClose}>

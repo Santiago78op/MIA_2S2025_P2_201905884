@@ -120,6 +120,10 @@ func SetupRouter(cfg *config.Config,
 		// Generar reporte (mbr, disk, inode, block, bm_inode, bm_block, tree, sb, file, ls)
 		// Body: { "name": "mbr", "id": "841A", "out": "/abs/or/rel/path.jpg", "extra": "" }
 		api.POST("/reports", rc.Generate)
+
+		// Listar todos los archivos en la carpeta Reports
+		// Response: { "files": [...], "count": N }
+		api.GET("/reports/list", rc.List)
 	}
 
 	// 404 Handler
