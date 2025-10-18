@@ -573,10 +573,15 @@ func (r *FileFsRepository) resolve(id string) (diskPath string, region Region, e
 
 // -------- API de alto nivel --------
 
-func (r *FileFsRepository) Mkfs(id string) error {
+func (r *FileFsRepository) Mkfs(id string, formatType string) error {
 	diskPath, region, err := r.resolve(id)
 	if err != nil {
 		return err
+	}
+
+	// Validar tipo de formateo (por ahora solo soportamos "full")
+	if formatType != "full" && formatType != "" {
+		return fmt.Errorf("tipo de formateo no soportado: %s", formatType)
 	}
 
 	// Calcular n usando utils.ComputeLayout
@@ -1141,7 +1146,7 @@ func (r *FileFsRepository) Mkfile(id string, absPath []string, size int, content
 	return nil
 }
 
-func (r *FileFsRepository) Cat(id string, files [][]string) (string, error) {
+func (r *FileFsRepository) Cat(id string, files [][]string, uid int, gid int) (string, error) {
 	diskPath, region, err := r.resolve(id)
 	if err != nil {
 		return "", err
@@ -1212,6 +1217,11 @@ func (r *FileFsRepository) Cat(id string, files [][]string) (string, error) {
 				// Verificar que es un archivo
 				if fileInode.IType != models.FileTypeRegular {
 					return "", fmt.Errorf("no es un archivo regular: %s", strings.Join(filePath, "/"))
+				}
+
+				// Verificar permisos de lectura
+				if !hasReadPermission(fileInode, int32(uid), int32(gid)) {
+					return "", fmt.Errorf("no tiene permiso de lectura para el archivo: %s", strings.Join(filePath, "/"))
 				}
 
 				// Leer contenido de los bloques
@@ -1884,4 +1894,29 @@ func addEntryToDir(f *os.File, dirInode *models.Inode, blockAreaStart int64, nam
 	}
 
 	return fmt.Errorf("directorio lleno (no hay slots libres)")
+}
+
+// hasReadPermission verifica si el usuario tiene permiso de lectura sobre un archivo
+// basándose en los permisos Unix (owner-group-others)
+func hasReadPermission(fileInode models.Inode, uid int32, gid int32) bool {
+	// Los permisos están en formato UGO: IPerm[0] = owner, IPerm[1] = group, IPerm[2] = others
+	// Cada byte es un carácter ASCII ('0'-'7')
+
+	// Si el usuario es el dueño del archivo
+	if fileInode.IUid == uid {
+		// Verificar bit de lectura del owner (bit 2: 4 = read)
+		ownerPerm := int(fileInode.IPerm[0] - '0')
+		return (ownerPerm & 4) != 0 // bit de lectura en owner
+	}
+
+	// Si el usuario pertenece al grupo del archivo
+	if fileInode.IGid == gid {
+		// Verificar bit de lectura del group (bit 2: 4 = read)
+		groupPerm := int(fileInode.IPerm[1] - '0')
+		return (groupPerm & 4) != 0 // bit de lectura en group
+	}
+
+	// Otherwise, verificar permisos de others
+	othersPerm := int(fileInode.IPerm[2] - '0')
+	return (othersPerm & 4) != 0 // bit de lectura en others
 }

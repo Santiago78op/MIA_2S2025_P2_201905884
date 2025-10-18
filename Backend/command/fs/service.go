@@ -7,11 +7,11 @@ import (
 
 // Interfaces (puertos) que tu repo de EXT2 implementa.
 type FsRepository interface {
-	Mkfs(id string) error
+	Mkfs(id string, formatType string) error
 
 	Mkdir(id string, absPath []string, parents bool, now time.Time) error
 	Mkfile(id string, absPath []string, size int, contentHostPath string, recursive bool, now time.Time) error
-	Cat(id string, files [][]string) (string, error)
+	Cat(id string, files [][]string, uid int, gid int) (string, error)
 }
 
 type SessionStore interface {
@@ -27,11 +27,21 @@ func NewFsService(repo FsRepository, sess SessionStore) *FsService {
 	return &FsService{repo: repo, sess: sess}
 }
 
-func (s *FsService) Mkfs(id string) (string, error) {
-	if err := s.repo.Mkfs(id); err != nil {
+func (s *FsService) Mkfs(id string, formatType string) (string, error) {
+	// Validar tipo de formateo
+	if formatType != "full" && formatType != "" {
+		return "", fmt.Errorf("tipo de formateo no soportado: %s (solo se acepta 'full')", formatType)
+	}
+
+	// Por defecto usar "full" si no se especifica
+	if formatType == "" {
+		formatType = "full"
+	}
+
+	if err := s.repo.Mkfs(id, formatType); err != nil {
 		return "", err
 	}
-	return "Partición formateada EXT2", nil
+	return fmt.Sprintf("Partición formateada EXT2 (tipo: %s)", formatType), nil
 }
 
 func (s *FsService) Mkdir(id, p string, parents bool) (string, error) {
@@ -60,6 +70,12 @@ func (s *FsService) Mkfile(id, p string, size int, cont string, recursive bool) 
 }
 
 func (s *FsService) Cat(id string, files []string) (string, error) {
+	// Verificar que hay una sesión activa y obtener uid/gid del usuario
+	logged, _, uid, gid, _ := s.sess.Current()
+	if !logged {
+		return "", fmt.Errorf("debe iniciar sesión para ejecutar este comando")
+	}
+
 	if len(files) == 0 {
 		return "", fmt.Errorf("sin archivos")
 	}
@@ -71,5 +87,5 @@ func (s *FsService) Cat(id string, files []string) (string, error) {
 		}
 		paths = append(paths, parts)
 	}
-	return s.repo.Cat(id, paths)
+	return s.repo.Cat(id, paths, uid, gid)
 }

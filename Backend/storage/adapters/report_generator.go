@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"Backend/command/reports"
 	"Backend/core/models"
@@ -64,33 +65,46 @@ func (g *ReportGenerator) MBR(id, out string) (string, error) {
 		return "", fmt.Errorf("error leyendo MBR: %w", err)
 	}
 
-	// Leer EBRs si hay partición extendida
-	var extIndex int = -1
-	for i, part := range mbr.Partitions {
-		if part.Status == models.PartStatusUsed && part.Type == models.PartTypeExtend {
-			extIndex = i
-			break
-		}
-	}
+	// Convertir timestamp a fecha legible
+	timestamp := time.Unix(mbr.Timestamp, 0)
+	fechaFormateada := timestamp.Format("02/01/2006 15:04:05")
 
-	// Generar DOT para Graphviz
+	// Generar DOT para Graphviz con formato HTML table
 	var dotContent strings.Builder
-	dotContent.WriteString("digraph MBR {\n")
-	dotContent.WriteString("  rankdir=LR;\n")
-	dotContent.WriteString("  node [shape=record];\n\n")
+	dotContent.WriteString("digraph {\n")
+	dotContent.WriteString("  node [shape=plaintext]\n\n")
+	dotContent.WriteString("  TablaReportNodo [\n")
+	dotContent.WriteString("    label=<\n")
+	dotContent.WriteString("      <table border=\"1\" cellborder=\"1\" cellspacing=\"0\">\n")
+	dotContent.WriteString("        <tr>\n")
+	dotContent.WriteString("          <td bgcolor=\"SlateBlue\" colspan=\"2\"><b>Reporte MBR</b></td>\n")
+	dotContent.WriteString("        </tr>\n")
 
-	// Nodo del MBR principal
-	mbrLabel := fmt.Sprintf("MBR|Size: %d bytes|Fit: %c|Signature: %d", mbr.Size, mbr.Fit, mbr.Signature)
-	dotContent.WriteString(fmt.Sprintf("  mbr [label=\"%s\"];\n\n", mbrLabel))
+	// Información del MBR
+	dotContent.WriteString(fmt.Sprintf("        <tr>\n          <td bgcolor=\"Azure\">mbr_tamano</td>\n          <td bgcolor=\"Azure\">%d</td>\n        </tr>\n", mbr.Size))
+	dotContent.WriteString(fmt.Sprintf("        <tr>\n          <td bgcolor=\"#AFA1D1\">mbr_fecha_creacion</td>\n          <td bgcolor=\"#AFA1D1\">%s</td>\n        </tr>\n", fechaFormateada))
+	dotContent.WriteString(fmt.Sprintf("        <tr>\n          <td bgcolor=\"Azure\">mbr_disk_signature</td>\n          <td bgcolor=\"Azure\">%d</td>\n        </tr>\n", mbr.Signature))
 
-	// Procesar particiones
+	// Abrir archivo del disco para leer EBRs si es necesario
+	f, err := os.OpenFile(diskPath, os.O_RDONLY, 0o644)
+	if err != nil {
+		return "", fmt.Errorf("error abriendo disco: %w", err)
+	}
+	defer f.Close()
+
+	// Procesar particiones primarias y extendidas
+	partitionCount := 0
+	logicalPartitionCount := 0
+
 	for i, part := range mbr.Partitions {
-		if part.Status == 0 {
+		if part.Status == 0 || part.Status != models.PartStatusUsed {
 			continue
 		}
 
+		partitionCount++
+
+		// Limpiar nombre
 		name := string(part.Name[:])
-		// Trim null bytes
 		for j, c := range name {
 			if c == 0 {
 				name = name[:j]
@@ -98,37 +112,42 @@ func (g *ReportGenerator) MBR(id, out string) (string, error) {
 			}
 		}
 
-		nodeID := fmt.Sprintf("part%d", i)
-		partLabel := fmt.Sprintf("Partition %d|Name: %s|Type: %c|Start: %d|Size: %d bytes|Fit: %c",
-			i+1, name, part.Type, part.Start, part.Size, part.Fit)
-		dotContent.WriteString(fmt.Sprintf("  %s [label=\"%s\"];\n", nodeID, partLabel))
-		dotContent.WriteString(fmt.Sprintf("  mbr -> %s;\n", nodeID))
+		// Calcular porcentaje del disco
+		porcentaje := float64(part.Size) / float64(mbr.Size) * 100.0
 
-		// Si es partición extendida, leer sus EBRs
-		if part.Type == models.PartTypeExtend && extIndex != -1 && i == extIndex {
-			// Abrir archivo del disco para leer EBRs
-			f, err := os.OpenFile(diskPath, os.O_RDONLY, 0o644)
-			if err == nil {
-				defer f.Close()
+		// Si es partición extendida, procesar primero sus lógicas
+		if part.Type == models.PartTypeExtend {
+			// Primero el header de la partición extendida
+			dotContent.WriteString(fmt.Sprintf("        <tr>\n          <td bgcolor=\"LightCoral\" colspan=\"2\"><b>Partición %d</b></td>\n        </tr>\n", i+1))
+			dotContent.WriteString(fmt.Sprintf("        <tr>\n          <td bgcolor=\"MistyRose\">part_status</td>\n          <td bgcolor=\"MistyRose\">Activo</td>\n        </tr>\n"))
+			dotContent.WriteString(fmt.Sprintf("        <tr>\n          <td bgcolor=\"#FFB6C1\">part_type</td>\n          <td bgcolor=\"#FFB6C1\">%c</td>\n        </tr>\n", part.Type))
+			dotContent.WriteString(fmt.Sprintf("        <tr>\n          <td bgcolor=\"MistyRose\">part_fit</td>\n          <td bgcolor=\"MistyRose\">%c</td>\n        </tr>\n", part.Fit))
+			dotContent.WriteString(fmt.Sprintf("        <tr>\n          <td bgcolor=\"#FFB6C1\">part_start</td>\n          <td bgcolor=\"#FFB6C1\">%d</td>\n        </tr>\n", part.Start))
+			dotContent.WriteString(fmt.Sprintf("        <tr>\n          <td bgcolor=\"MistyRose\">part_size</td>\n          <td bgcolor=\"MistyRose\">%d</td>\n        </tr>\n", part.Size))
+			dotContent.WriteString(fmt.Sprintf("        <tr>\n          <td bgcolor=\"#FFB6C1\">part_name</td>\n          <td bgcolor=\"#FFB6C1\">%s</td>\n        </tr>\n", name))
+			dotContent.WriteString(fmt.Sprintf("        <tr>\n          <td bgcolor=\"Azure\">porcentaje_disco</td>\n          <td bgcolor=\"Azure\">%.2f%%</td>\n        </tr>\n", porcentaje))
 
-				// Leer cadena de EBRs
-				currentPos := part.Start
-				ebrCount := 0
-				prevEbrID := nodeID
+			// Leer y procesar EBRs (particiones lógicas)
+			currentPos := part.Start
+			localLogicalCount := 0
 
-				for currentPos != -1 {
-					var ebr models.EBR
-					if _, err := f.Seek(currentPos, 0); err != nil {
-						break
-					}
-					if err := binary.Read(f, binary.LittleEndian, &ebr); err != nil {
-						break
-					}
+			for currentPos != -1 {
+				var ebr models.EBR
+				if _, err := f.Seek(currentPos, 0); err != nil {
+					break
+				}
+				if err := binary.Read(f, binary.LittleEndian, &ebr); err != nil {
+					break
+				}
 
-					// Verificar si es un EBR válido
-					if ebr.Status == 0 && ebr.Size == 0 {
-						break
-					}
+				// Verificar si es un EBR válido
+				if ebr.Status == 0 && ebr.Size == 0 {
+					break
+				}
+
+				if ebr.Status == models.PartStatusUsed && ebr.Size > 0 {
+					localLogicalCount++
+					logicalPartitionCount++
 
 					ebrName := string(ebr.Name[:])
 					for j, c := range ebrName {
@@ -138,21 +157,41 @@ func (g *ReportGenerator) MBR(id, out string) (string, error) {
 						}
 					}
 
-					ebrID := fmt.Sprintf("ebr%d", ebrCount)
-					ebrLabel := fmt.Sprintf("EBR %d|Name: %s|Start: %d|Size: %d|Fit: %c|Next: %d",
-						ebrCount+1, ebrName, ebr.Start, ebr.Size, ebr.Fit, ebr.Next)
-					dotContent.WriteString(fmt.Sprintf("  %s [label=\"%s\"];\n", ebrID, ebrLabel))
-					dotContent.WriteString(fmt.Sprintf("  %s -> %s;\n", prevEbrID, ebrID))
+					ebrPorcentaje := float64(ebr.Size) / float64(mbr.Size) * 100.0
 
-					prevEbrID = ebrID
-					ebrCount++
-					currentPos = ebr.Next
+					dotContent.WriteString(fmt.Sprintf("        <tr>\n          <td bgcolor=\"LightBlue\" colspan=\"2\"><b>Partición Lógica #%d</b></td>\n        </tr>\n", localLogicalCount+1))
+					dotContent.WriteString(fmt.Sprintf("        <tr>\n          <td bgcolor=\"LightCyan\">part_status</td>\n          <td bgcolor=\"LightCyan\">Activo</td>\n        </tr>\n"))
+					dotContent.WriteString(fmt.Sprintf("        <tr>\n          <td bgcolor=\"#B0E0E6\">part_type</td>\n          <td bgcolor=\"#B0E0E6\">L</td>\n        </tr>\n"))
+					dotContent.WriteString(fmt.Sprintf("        <tr>\n          <td bgcolor=\"LightCyan\">part_start</td>\n          <td bgcolor=\"LightCyan\">%d</td>\n        </tr>\n", ebr.Start))
+					dotContent.WriteString(fmt.Sprintf("        <tr>\n          <td bgcolor=\"#B0E0E6\">part_size</td>\n          <td bgcolor=\"#B0E0E6\">%d</td>\n        </tr>\n", ebr.Size))
+					dotContent.WriteString(fmt.Sprintf("        <tr>\n          <td bgcolor=\"LightCyan\">part_name</td>\n          <td bgcolor=\"LightCyan\">%s</td>\n        </tr>\n", ebrName))
+					dotContent.WriteString(fmt.Sprintf("        <tr>\n          <td bgcolor=\"Azure\">porcentaje_disco</td>\n          <td bgcolor=\"Azure\">%.2f%%</td>\n        </tr>\n", ebrPorcentaje))
 				}
+
+				currentPos = ebr.Next
 			}
+		} else {
+			// Partición primaria
+			dotContent.WriteString(fmt.Sprintf("        <tr>\n          <td bgcolor=\"LightCoral\" colspan=\"2\"><b>Partición %d</b></td>\n        </tr>\n", i+1))
+			dotContent.WriteString(fmt.Sprintf("        <tr>\n          <td bgcolor=\"MistyRose\">part_status</td>\n          <td bgcolor=\"MistyRose\">Activo</td>\n        </tr>\n"))
+			dotContent.WriteString(fmt.Sprintf("        <tr>\n          <td bgcolor=\"#FFB6C1\">part_type</td>\n          <td bgcolor=\"#FFB6C1\">%c</td>\n        </tr>\n", part.Type))
+			dotContent.WriteString(fmt.Sprintf("        <tr>\n          <td bgcolor=\"MistyRose\">part_fit</td>\n          <td bgcolor=\"MistyRose\">%c</td>\n        </tr>\n", part.Fit))
+			dotContent.WriteString(fmt.Sprintf("        <tr>\n          <td bgcolor=\"#FFB6C1\">part_start</td>\n          <td bgcolor=\"#FFB6C1\">%d</td>\n        </tr>\n", part.Start))
+			dotContent.WriteString(fmt.Sprintf("        <tr>\n          <td bgcolor=\"MistyRose\">part_size</td>\n          <td bgcolor=\"MistyRose\">%d</td>\n        </tr>\n", part.Size))
+			dotContent.WriteString(fmt.Sprintf("        <tr>\n          <td bgcolor=\"#FFB6C1\">part_name</td>\n          <td bgcolor=\"#FFB6C1\">%s</td>\n        </tr>\n", name))
+			dotContent.WriteString(fmt.Sprintf("        <tr>\n          <td bgcolor=\"Azure\">porcentaje_disco</td>\n          <td bgcolor=\"Azure\">%.2f%%</td>\n        </tr>\n", porcentaje))
 		}
 	}
 
-	dotContent.WriteString("}\n")
+	// Agregar particiones libres
+	for i := partitionCount; i < 4; i++ {
+		dotContent.WriteString(fmt.Sprintf("        <tr>\n          <td bgcolor=\"LightGray\" colspan=\"2\">Partición %d - Libre</td>\n        </tr>\n", i+1))
+	}
+
+	dotContent.WriteString("      </table>\n")
+	dotContent.WriteString("    >\n")
+	dotContent.WriteString("  ]\n")
+	dotContent.WriteString("}")
 
 	// Generar imagen usando Graphviz
 	return g.gv.Generate(dotContent.String(), out)
@@ -165,9 +204,13 @@ func (g *ReportGenerator) Disk(id, out string) (string, error) {
 
 	// Buscar la partición montada
 	var diskPath string
+	var diskName string
 	for _, mount := range g.mountStore.List() {
 		if mount.ID == id {
 			diskPath = mount.Path
+			// Extraer nombre del disco
+			parts := strings.Split(diskPath, "/")
+			diskName = strings.TrimSuffix(parts[len(parts)-1], filepath.Ext(parts[len(parts)-1]))
 			break
 		}
 	}
@@ -181,28 +224,78 @@ func (g *ReportGenerator) Disk(id, out string) (string, error) {
 		return "", fmt.Errorf("error leyendo MBR: %w", err)
 	}
 
-	// Generar DOT para Graphviz
+	// Abrir archivo del disco para leer EBRs si es necesario
+	f, err := os.OpenFile(diskPath, os.O_RDONLY, 0o644)
+	if err != nil {
+		return "", fmt.Errorf("error abriendo disco: %w", err)
+	}
+	defer f.Close()
+
+	// Generar DOT para Graphviz con visualización de bloques
 	var dotContent strings.Builder
 	dotContent.WriteString("digraph G {\n")
-	dotContent.WriteString("  node [shape=box];\n")
+	dotContent.WriteString("  rankdir=LR;\n")
+	dotContent.WriteString("  node [shape=none];\n")
+	dotContent.WriteString("  labelloc=\"t\";\n")
+	dotContent.WriteString(fmt.Sprintf("  label=\"Reporte de Disco: %s\";\n", diskName))
+	dotContent.WriteString("  diskStructure [label=<\n")
+	dotContent.WriteString("    <table border=\"0\" cellborder=\"1\" cellspacing=\"0\" width=\"1000\">\n")
+	dotContent.WriteString("      <tr>\n")
 
-	// Calcular espacio usado y libre
-	type segment struct {
-		start int64
-		end   int64
-		label string
+	// Calcular tamaño del MBR (típicamente los primeros bytes)
+	sizeMBR := int64(binary.Size(mbr))
+	porcentajeMBR := float64(sizeMBR) / float64(mbr.Size) * 100
+	anchoMBR := int(porcentajeMBR * 10)
+	if anchoMBR < 1 {
+		anchoMBR = 1
+	}
+	dotContent.WriteString(fmt.Sprintf("        <td bgcolor=\"#87CEFA\" width=\"%d\">MBR<br/></td>\n", anchoMBR))
+
+	// Estructura para ordenar particiones por posición
+	type PartInfo struct {
+		Index int
+		Start int64
+		Size  int64
+	}
+	var particiones []PartInfo
+	for i := 0; i < 4; i++ {
+		if mbr.Partitions[i].Status == models.PartStatusUsed && mbr.Partitions[i].Size > 0 {
+			particiones = append(particiones, PartInfo{
+				Index: i,
+				Start: mbr.Partitions[i].Start,
+				Size:  mbr.Partitions[i].Size,
+			})
+		}
 	}
 
-	segments := []segment{
-		{0, 512, "MBR"}, // Típicamente el MBR ocupa 512 bytes
+	// Ordenar por posición de inicio
+	for i := 0; i < len(particiones); i++ {
+		for j := i + 1; j < len(particiones); j++ {
+			if particiones[j].Start < particiones[i].Start {
+				particiones[i], particiones[j] = particiones[j], particiones[i]
+			}
+		}
 	}
 
-	// Agregar particiones
-	for i, part := range mbr.Partitions {
-		if part.Status == 0 {
-			continue
+	// Posición actual en el disco
+	posActual := sizeMBR
+
+	// Procesar cada partición en orden
+	for _, partInfo := range particiones {
+		part := mbr.Partitions[partInfo.Index]
+
+		// Si hay espacio libre antes de esta partición
+		if part.Start > posActual {
+			espacioLibre := part.Start - posActual
+			porcentajeLibre := float64(espacioLibre) / float64(mbr.Size) * 100
+			anchoLibre := int(porcentajeLibre * 10)
+			if anchoLibre < 1 {
+				anchoLibre = 1
+			}
+			dotContent.WriteString(fmt.Sprintf("        <td bgcolor=\"#D3D3D3\" width=\"%d\">Libre<br/>%.2f%% del disco</td>\n", anchoLibre, porcentajeLibre))
 		}
 
+		// Limpiar nombre
 		name := string(part.Name[:])
 		for j, c := range name {
 			if c == 0 {
@@ -211,54 +304,130 @@ func (g *ReportGenerator) Disk(id, out string) (string, error) {
 			}
 		}
 
-		nodeID := fmt.Sprintf("part%d", i)
-		label := fmt.Sprintf("%s\\n%c\\n%.2f MB", name, part.Type, float64(part.Size)/(1024*1024))
-		dotContent.WriteString(fmt.Sprintf("  %s [label=\"%s\"];\n", nodeID, label))
-		dotContent.WriteString(fmt.Sprintf("  mbr -> %s;\n", nodeID))
-
-		segments = append(segments, segment{
-			start: part.Start,
-			end:   part.Start + part.Size,
-			label: name,
-		})
-	}
-
-	// Calcular espacio libre
-	// Ordenar segmentos por start
-	for i := 0; i < len(segments); i++ {
-		for j := i + 1; j < len(segments); j++ {
-			if segments[j].start < segments[i].start {
-				segments[i], segments[j] = segments[j], segments[i]
-			}
+		porcentajePart := float64(part.Size) / float64(mbr.Size) * 100
+		anchoParticion := int(porcentajePart * 10)
+		if anchoParticion < 1 {
+			anchoParticion = 1
 		}
-	}
 
-	// Buscar huecos
-	freeCount := 0
-	for i := 0; i < len(segments)-1; i++ {
-		gap := segments[i+1].start - segments[i].end
-		if gap > 0 {
-			freeCount++
-			nodeID := fmt.Sprintf("free%d", freeCount)
-			label := fmt.Sprintf("Free\\n%.2f MB", float64(gap)/(1024*1024))
-			dotContent.WriteString(fmt.Sprintf("  %s [label=\"%s\"];\n", nodeID, label))
-			dotContent.WriteString(fmt.Sprintf("  mbr -> %s;\n", nodeID))
+		if part.Type == models.PartTypeExtend {
+			// Partición extendida con tabla interna para EBRs
+			dotContent.WriteString(fmt.Sprintf("        <td width=\"%d\">\n", anchoParticion))
+			dotContent.WriteString("          <table border=\"0\" cellborder=\"1\" cellspacing=\"0\" width=\"100%\">\n")
+			dotContent.WriteString("            <tr>\n")
+			dotContent.WriteString(fmt.Sprintf("              <td bgcolor=\"#FFFACD\" colspan=\"10\">Extendida<br/>%s<br/>%.2f%% del disco</td>\n", name, porcentajePart))
+			dotContent.WriteString("            </tr>\n")
+			dotContent.WriteString("            <tr>\n")
+
+			// Procesar particiones lógicas dentro de la extendida
+			g.processLogicalPartitions(f, part, mbr.Size, &dotContent)
+
+			dotContent.WriteString("            </tr>\n")
+			dotContent.WriteString("          </table>\n")
+			dotContent.WriteString("        </td>\n")
+		} else {
+			// Partición primaria
+			dotContent.WriteString(fmt.Sprintf("        <td bgcolor=\"#98FB98\" width=\"%d\">Primaria<br/>%s<br/>%.2f%% del disco</td>\n", anchoParticion, name, porcentajePart))
 		}
+
+		posActual = part.Start + part.Size
 	}
 
 	// Espacio libre al final
-	lastEnd := segments[len(segments)-1].end
-	if mbr.Size > lastEnd {
-		gap := mbr.Size - lastEnd
-		freeCount++
-		nodeID := fmt.Sprintf("free%d", freeCount)
-		label := fmt.Sprintf("Free\\n%.2f MB", float64(gap)/(1024*1024))
-		dotContent.WriteString(fmt.Sprintf("  %s [label=\"%s\"];\n", nodeID, label))
-		dotContent.WriteString(fmt.Sprintf("  mbr -> %s;\n", nodeID))
+	if posActual < mbr.Size {
+		espacioLibre := mbr.Size - posActual
+		porcentajeLibre := float64(espacioLibre) / float64(mbr.Size) * 100
+		anchoLibre := int(porcentajeLibre * 10)
+		if anchoLibre < 1 {
+			anchoLibre = 1
+		}
+		dotContent.WriteString(fmt.Sprintf("        <td bgcolor=\"#D3D3D3\" width=\"%d\">Libre<br/>%.2f%% del disco</td>\n", anchoLibre, porcentajeLibre))
 	}
 
+	dotContent.WriteString("      </tr>\n")
+	dotContent.WriteString("    </table>\n")
+	dotContent.WriteString("  >];\n")
 	dotContent.WriteString("}\n")
+
+	// Generar imagen usando Graphviz
 	return g.gv.Generate(dotContent.String(), out)
+}
+
+// processLogicalPartitions procesa las particiones lógicas dentro de una extendida
+func (g *ReportGenerator) processLogicalPartitions(f *os.File, extPart models.Partition, diskSize int64, dotContent *strings.Builder) {
+	currentPos := extPart.Start
+	posActual := extPart.Start
+
+	for currentPos != -1 {
+		var ebr models.EBR
+		if _, err := f.Seek(currentPos, 0); err != nil {
+			break
+		}
+		if err := binary.Read(f, binary.LittleEndian, &ebr); err != nil {
+			break
+		}
+
+		// Verificar si es un EBR válido
+		if ebr.Status == 0 && ebr.Size == 0 {
+			break
+		}
+
+		if ebr.Status == models.PartStatusUsed && ebr.Size > 0 {
+			// Espacio libre antes del EBR (si existe)
+			if currentPos > posActual && posActual != extPart.Start {
+				espacioLibre := currentPos - posActual
+				porcentajeLibre := float64(espacioLibre) / float64(diskSize) * 100
+				if porcentajeLibre > 0.01 {
+					anchoLibre := int(porcentajeLibre * 10)
+					if anchoLibre < 1 {
+						anchoLibre = 1
+					}
+					dotContent.WriteString(fmt.Sprintf("              <td bgcolor=\"#E6E6FA\" width=\"%d\">Libre<br/>%.2f%%</td>\n", anchoLibre, porcentajeLibre))
+				}
+			}
+
+			// EBR header
+			porcentajeEBR := 0.5 // Pequeño espacio fijo para el EBR
+			anchoEBR := int(porcentajeEBR * 10)
+			if anchoEBR < 5 {
+				anchoEBR = 5
+			}
+			dotContent.WriteString(fmt.Sprintf("              <td bgcolor=\"#B0C4DE\" width=\"%d\">EBR</td>\n", anchoEBR))
+
+			// Partición lógica
+			ebrName := string(ebr.Name[:])
+			for j, c := range ebrName {
+				if c == 0 {
+					ebrName = ebrName[:j]
+					break
+				}
+			}
+			porcentajeLogica := float64(ebr.Size) / float64(diskSize) * 100
+			anchoLogica := int(porcentajeLogica * 10)
+			if anchoLogica < 1 {
+				anchoLogica = 1
+			}
+			dotContent.WriteString(fmt.Sprintf("              <td bgcolor=\"#ADD8E6\" width=\"%d\">Lógica<br/>%s<br/>%.2f%%</td>\n", anchoLogica, ebrName, porcentajeLogica))
+
+			posActual = ebr.Start + ebr.Size
+		}
+
+		currentPos = ebr.Next
+	}
+
+	// Espacio libre al final de la partición extendida
+	finExtendida := extPart.Start + extPart.Size
+	if posActual < finExtendida {
+		espacioLibre := finExtendida - posActual
+		porcentajeLibre := float64(espacioLibre) / float64(diskSize) * 100
+		if porcentajeLibre > 0.01 {
+			anchoLibre := int(porcentajeLibre * 10)
+			if anchoLibre < 1 {
+				anchoLibre = 1
+			}
+			dotContent.WriteString(fmt.Sprintf("              <td bgcolor=\"#E6E6FA\" width=\"%d\">Libre<br/>%.2f%%</td>\n", anchoLibre, porcentajeLibre))
+		}
+	}
 }
 
 func (g *ReportGenerator) Inode(id, out string) (string, error) {
@@ -614,8 +783,9 @@ func (g *ReportGenerator) File(id, out, filePath string) (string, error) {
 		pathParts = pathParts[1:]
 	}
 
-	// Usar Cat para leer el contenido del archivo
-	content, err := g.fsRepo.Cat(id, [][]string{pathParts})
+	// Usar Cat para leer el contenido del archivo como root (uid=1, gid=1)
+	// ya que es un reporte del sistema
+	content, err := g.fsRepo.Cat(id, [][]string{pathParts}, 1, 1)
 	if err != nil {
 		return "", fmt.Errorf("error leyendo archivo: %w", err)
 	}

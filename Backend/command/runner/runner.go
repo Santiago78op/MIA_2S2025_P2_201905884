@@ -102,7 +102,7 @@ func (r *Runner) Run(line string) (string, error) {
 		if err != nil {
 			return "", err
 		}
-		return r.fsSvc.Mkfs(args.ID)
+		return r.fsSvc.Mkfs(args.ID, args.Type)
 
 	case "mkdir":
 		args, err := fs.ParseMkdir(line)

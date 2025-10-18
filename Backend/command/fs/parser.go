@@ -6,7 +6,8 @@ import (
 )
 
 type MkfsArgs struct {
-	ID string
+	ID   string
+	Type string // "full" (por defecto)
 }
 
 type MkdirArgs struct {
@@ -114,6 +115,19 @@ func ParseMkfs(line string) (MkfsArgs, error) {
 		return args, err
 	}
 	args.ID = id
+
+	// Parsear tipo de formateo (opcional, por defecto "full")
+	typeVal := strings.ToLower(flags["type"])
+	if typeVal == "" {
+		typeVal = "full" // Valor por defecto
+	}
+
+	// Validar que el tipo sea válido
+	if typeVal != "full" {
+		return args, fmt.Errorf("tipo de formateo no válido: %s (solo se acepta 'full')", typeVal)
+	}
+
+	args.Type = typeVal
 
 	return args, nil
 }

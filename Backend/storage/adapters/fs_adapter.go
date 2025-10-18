@@ -16,8 +16,8 @@ func NewFsAdapter(repo *diskio.FileFsRepository) fs.FsRepository {
 	return &FsAdapter{repo: repo}
 }
 
-func (a *FsAdapter) Mkfs(id string) error {
-	return a.repo.Mkfs(id)
+func (a *FsAdapter) Mkfs(id string, formatType string) error {
+	return a.repo.Mkfs(id, formatType)
 }
 
 func (a *FsAdapter) Mkdir(id string, absPath []string, parents bool, now time.Time) error {
@@ -32,6 +32,6 @@ func (a *FsAdapter) Mkfile(id string, absPath []string, size int, contentHostPat
 	return a.repo.Mkfile(id, absPath, size, contentHostPath, recursive)
 }
 
-func (a *FsAdapter) Cat(id string, files [][]string) (string, error) {
-	return a.repo.Cat(id, files)
+func (a *FsAdapter) Cat(id string, files [][]string, uid int, gid int) (string, error) {
+	return a.repo.Cat(id, files, uid, gid)
 }

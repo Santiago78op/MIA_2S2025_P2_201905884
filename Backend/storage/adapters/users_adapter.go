@@ -19,7 +19,8 @@ func NewUsersAdapter(repo *diskio.FileFsRepository) users.FsUsersRepository {
 }
 
 func (a *UsersAdapter) Login(id, user, pass string) (uid, gid int, isRoot bool, err error) {
-	content, err := a.repo.Cat(id, [][]string{{"users.txt"}})
+	// Leer users.txt como root (uid=1, gid=1) ya que es una operación del sistema
+	content, err := a.repo.Cat(id, [][]string{{"users.txt"}}, 1, 1)
 	if err != nil {
 		return 0, 0, false, fmt.Errorf("error leyendo users.txt: %w", err)
 	}
@@ -48,8 +49,9 @@ func (a *UsersAdapter) Login(id, user, pass string) (uid, gid int, isRoot bool, 
 			continue
 		}
 
-		username := parts[2]
-		groupname := parts[3]
+		// Formato correcto: UID,Tipo,Grupo,Usuario,Contraseña
+		groupname := parts[2]
+		username := parts[3]
 		password := parts[4]
 
 		if username == user && password == pass {
@@ -82,7 +84,13 @@ func (a *UsersAdapter) Login(id, user, pass string) (uid, gid int, isRoot bool, 
 }
 
 func (a *UsersAdapter) Mkgrp(id, name string) error {
-	content, err := a.repo.Cat(id, [][]string{{"users.txt"}})
+	// Validar longitud del nombre del grupo (máximo 10 caracteres)
+	if len(name) > 10 {
+		return fmt.Errorf("el nombre del grupo excede el máximo de 10 caracteres")
+	}
+
+	// Leer users.txt como root (uid=1, gid=1) ya que es una operación del sistema
+	content, err := a.repo.Cat(id, [][]string{{"users.txt"}}, 1, 1)
 	if err != nil {
 		return fmt.Errorf("error leyendo users.txt: %w", err)
 	}
@@ -127,7 +135,8 @@ func (a *UsersAdapter) Mkgrp(id, name string) error {
 }
 
 func (a *UsersAdapter) Rmgrp(id, name string) error {
-	content, err := a.repo.Cat(id, [][]string{{"users.txt"}})
+	// Leer users.txt como root (uid=1, gid=1) ya que es una operación del sistema
+	content, err := a.repo.Cat(id, [][]string{{"users.txt"}}, 1, 1)
 	if err != nil {
 		return fmt.Errorf("error leyendo users.txt: %w", err)
 	}
@@ -160,13 +169,14 @@ func (a *UsersAdapter) Rmgrp(id, name string) error {
 	}
 
 	// Verificar que no hay usuarios activos usando este grupo
+	// Formato: UID,Tipo,Grupo,Usuario,Contraseña - verificar parts[2] (Grupo)
 	for _, line := range lines {
 		line = strings.TrimSpace(line)
 		if line == "" {
 			continue
 		}
 		parts := strings.Split(line, ",")
-		if len(parts) >= 4 && parts[1] == "U" && parts[3] == name && parts[0] != "0" {
+		if len(parts) >= 4 && parts[1] == "U" && parts[2] == name && parts[0] != "0" {
 			return fmt.Errorf("no se puede eliminar el grupo, hay usuarios asociados: %s", name)
 		}
 	}
@@ -191,7 +201,19 @@ func (a *UsersAdapter) Rmgrp(id, name string) error {
 }
 
 func (a *UsersAdapter) Mkusr(id, user, pass, grp string) error {
-	content, err := a.repo.Cat(id, [][]string{{"users.txt"}})
+	// Validar longitudes (máximo 10 caracteres cada uno)
+	if len(user) > 10 {
+		return fmt.Errorf("el nombre del usuario excede el máximo de 10 caracteres")
+	}
+	if len(pass) > 10 {
+		return fmt.Errorf("la contraseña excede el máximo de 10 caracteres")
+	}
+	if len(grp) > 10 {
+		return fmt.Errorf("el nombre del grupo excede el máximo de 10 caracteres")
+	}
+
+	// Leer users.txt como root (uid=1, gid=1) ya que es una operación del sistema
+	content, err := a.repo.Cat(id, [][]string{{"users.txt"}}, 1, 1)
 	if err != nil {
 		return fmt.Errorf("error leyendo users.txt: %w", err)
 	}
@@ -199,13 +221,14 @@ func (a *UsersAdapter) Mkusr(id, user, pass, grp string) error {
 	lines := strings.Split(strings.TrimSpace(content), "\n")
 
 	// Verificar que el usuario no existe (incluyendo eliminados)
+	// Formato: UID,Tipo,Grupo,Usuario,Contraseña
 	for _, line := range lines {
 		line = strings.TrimSpace(line)
 		if line == "" {
 			continue
 		}
 		parts := strings.Split(line, ",")
-		if len(parts) >= 3 && parts[1] == "U" && parts[2] == user && parts[0] != "0" {
+		if len(parts) >= 4 && parts[1] == "U" && parts[3] == user && parts[0] != "0" {
 			return fmt.Errorf("el usuario ya existe: %s", user)
 		}
 	}
@@ -248,15 +271,16 @@ func (a *UsersAdapter) Mkusr(id, user, pass, grp string) error {
 	}
 	newID := maxID + 1
 
-	// Agregar nueva línea
-	newLine := fmt.Sprintf("%d,U,%s,%s,%s\n", newID, user, grp, pass)
+	// Agregar nueva línea con formato correcto: UID,Tipo,Grupo,Usuario,Contraseña
+	newLine := fmt.Sprintf("%d,U,%s,%s,%s\n", newID, grp, user, pass)
 	newContent := content + newLine
 
 	return a.repo.UpdateFile(id, []string{"users.txt"}, newContent)
 }
 
 func (a *UsersAdapter) Rmusr(id, user string) error {
-	content, err := a.repo.Cat(id, [][]string{{"users.txt"}})
+	// Leer users.txt como root (uid=1, gid=1) ya que es una operación del sistema
+	content, err := a.repo.Cat(id, [][]string{{"users.txt"}}, 1, 1)
 	if err != nil {
 		return fmt.Errorf("error leyendo users.txt: %w", err)
 	}
@@ -264,6 +288,7 @@ func (a *UsersAdapter) Rmusr(id, user string) error {
 	lines := strings.Split(strings.TrimSpace(content), "\n")
 
 	// Verificar que el usuario existe y no es root
+	// Formato: UID,Tipo,Grupo,Usuario,Contraseña
 	found := false
 	for _, line := range lines {
 		line = strings.TrimSpace(line)
@@ -271,7 +296,7 @@ func (a *UsersAdapter) Rmusr(id, user string) error {
 			continue
 		}
 		parts := strings.Split(line, ",")
-		if len(parts) >= 3 && parts[1] == "U" && parts[2] == user {
+		if len(parts) >= 4 && parts[1] == "U" && parts[3] == user {
 			// Verificar que el ID no sea 0 (ya eliminado)
 			if parts[0] == "0" {
 				return fmt.Errorf("el usuario no existe: %s", user)
@@ -288,7 +313,8 @@ func (a *UsersAdapter) Rmusr(id, user string) error {
 		return fmt.Errorf("el usuario no existe: %s", user)
 	}
 
-	// Marcar usuario como eliminado (cambiar a 0,U,nombre,grupo,pass)
+	// Marcar usuario como eliminado (cambiar a 0,U,grupo,nombre,pass)
+	// Formato: UID,Tipo,Grupo,Usuario,Contraseña
 	var newLines []string
 	for _, line := range lines {
 		line = strings.TrimSpace(line)
@@ -296,7 +322,7 @@ func (a *UsersAdapter) Rmusr(id, user string) error {
 			continue
 		}
 		parts := strings.Split(line, ",")
-		if len(parts) >= 5 && parts[1] == "U" && parts[2] == user {
+		if len(parts) >= 5 && parts[1] == "U" && parts[3] == user {
 			newLines = append(newLines, fmt.Sprintf("0,U,%s,%s,%s", parts[2], parts[3], parts[4]))
 		} else {
 			newLines = append(newLines, line)
@@ -308,7 +334,13 @@ func (a *UsersAdapter) Rmusr(id, user string) error {
 }
 
 func (a *UsersAdapter) Chgrp(id, user, grp string) error {
-	content, err := a.repo.Cat(id, [][]string{{"users.txt"}})
+	// Validar longitud del nombre del grupo (máximo 10 caracteres)
+	if len(grp) > 10 {
+		return fmt.Errorf("el nombre del grupo excede el máximo de 10 caracteres")
+	}
+
+	// Leer users.txt como root (uid=1, gid=1) ya que es una operación del sistema
+	content, err := a.repo.Cat(id, [][]string{{"users.txt"}}, 1, 1)
 	if err != nil {
 		return fmt.Errorf("error leyendo users.txt: %w", err)
 	}
@@ -316,6 +348,7 @@ func (a *UsersAdapter) Chgrp(id, user, grp string) error {
 	lines := strings.Split(strings.TrimSpace(content), "\n")
 
 	// Verificar que el usuario existe
+	// Formato: UID,Tipo,Grupo,Usuario,Contraseña
 	found := false
 	for _, line := range lines {
 		line = strings.TrimSpace(line)
@@ -323,7 +356,7 @@ func (a *UsersAdapter) Chgrp(id, user, grp string) error {
 			continue
 		}
 		parts := strings.Split(line, ",")
-		if len(parts) >= 3 && parts[1] == "U" && parts[2] == user {
+		if len(parts) >= 4 && parts[1] == "U" && parts[3] == user {
 			// Verificar que el ID no sea 0 (ya eliminado)
 			if parts[0] == "0" {
 				return fmt.Errorf("el usuario no existe: %s", user)
@@ -359,6 +392,7 @@ func (a *UsersAdapter) Chgrp(id, user, grp string) error {
 	}
 
 	// Cambiar grupo del usuario
+	// Formato: UID,Tipo,Grupo,Usuario,Contraseña
 	var newLines []string
 	for _, line := range lines {
 		line = strings.TrimSpace(line)
@@ -366,8 +400,8 @@ func (a *UsersAdapter) Chgrp(id, user, grp string) error {
 			continue
 		}
 		parts := strings.Split(line, ",")
-		if len(parts) >= 5 && parts[1] == "U" && parts[2] == user {
-			newLines = append(newLines, fmt.Sprintf("%s,U,%s,%s,%s", parts[0], user, grp, parts[4]))
+		if len(parts) >= 5 && parts[1] == "U" && parts[3] == user {
+			newLines = append(newLines, fmt.Sprintf("%s,U,%s,%s,%s", parts[0], grp, user, parts[4]))
 		} else {
 			newLines = append(newLines, line)
 		}
