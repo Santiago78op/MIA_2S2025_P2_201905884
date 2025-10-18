@@ -1347,6 +1347,21 @@ func (g *ReportGenerator) File(id, out, filePath string) (string, error) {
 		return "", err
 	}
 
+	// Buscar información del disco y partición montada
+	var diskPath, diskName string
+	for _, mount := range g.mountStore.List() {
+		if mount.ID == id {
+			diskPath = mount.Path
+			// Extraer nombre del disco del path
+			parts := strings.Split(diskPath, "/")
+			diskName = strings.TrimSuffix(parts[len(parts)-1], filepath.Ext(parts[len(parts)-1]))
+			break
+		}
+	}
+	if diskPath == "" {
+		return "", fmt.Errorf("id no montado: %s", id)
+	}
+
 	// Parsear el path
 	pathParts := strings.Split(strings.Trim(filePath, "/"), "/")
 	if pathParts[0] == "" {
@@ -1355,13 +1370,29 @@ func (g *ReportGenerator) File(id, out, filePath string) (string, error) {
 
 	// Usar Cat para leer el contenido del archivo como root (uid=1, gid=1)
 	// ya que es un reporte del sistema
-	content, err := g.fsRepo.Cat(id, [][]string{pathParts}, 1, 1)
+	fileContent, err := g.fsRepo.Cat(id, [][]string{pathParts}, 1, 1)
 	if err != nil {
 		return "", fmt.Errorf("error leyendo archivo: %w", err)
 	}
 
-	// Escribir contenido al archivo de salida
-	if err := os.WriteFile(out, []byte(content), 0o644); err != nil {
+	// Crear el reporte con formato profesional
+	var report strings.Builder
+	report.WriteString("REPORTE DE ARCHIVO\n")
+	report.WriteString("=================\n\n")
+	report.WriteString(fmt.Sprintf("Disco: %s\n", diskName))
+	report.WriteString(fmt.Sprintf("Partición: %s\n", id))
+	report.WriteString(fmt.Sprintf("Archivo: %s\n\n", filePath))
+	report.WriteString("CONTENIDO:\n")
+	report.WriteString("----------\n\n")
+	report.WriteString(fileContent)
+
+	// Asegurar que termina con salto de línea
+	if !strings.HasSuffix(fileContent, "\n") {
+		report.WriteString("\n")
+	}
+
+	// Escribir reporte al archivo de salida
+	if err := os.WriteFile(out, []byte(report.String()), 0o644); err != nil {
 		return "", err
 	}
 
@@ -1407,6 +1438,7 @@ func (g *ReportGenerator) LS(id, out, pathForLs string) (string, error) {
 
 	// Navegar hasta el directorio
 	currentInodeIdx := int32(0) // raíz
+	constructedPath := ""
 
 	for _, name := range pathParts {
 		if name == "" {
@@ -1415,12 +1447,20 @@ func (g *ReportGenerator) LS(id, out, pathForLs string) (string, error) {
 
 		// Leer inodo actual
 		var currentInode models.Inode
-		offset := sb.SInodeStart + int64(currentInodeIdx)*64
+		inodeSize := int64(binary.Size(currentInode))
+		offset := sb.SInodeStart + int64(currentInodeIdx)*inodeSize
 		if _, err := f.Seek(offset, 0); err != nil {
-			return "", fmt.Errorf("error navegando: %w", err)
+			return "", fmt.Errorf("error navegando (inodo %d): %w", currentInodeIdx, err)
 		}
 		if err := binary.Read(f, binary.LittleEndian, &currentInode); err != nil {
-			return "", fmt.Errorf("error leyendo inodo: %w", err)
+			return "", fmt.Errorf("error leyendo inodo %d: %w", currentInodeIdx, err)
+		}
+
+		// Verificar que es un directorio (el inodo actual debe ser directorio para buscar dentro)
+		// IType puede ser byte binario (0/1) O carácter ASCII ('0'/'1')
+		if currentInode.IType != models.FileTypeFolder && currentInode.IType != '0' {
+			return "", fmt.Errorf("'%s' (inodo %d, tipo=%d/'%c') no es un directorio, no se puede buscar '%s' dentro",
+				constructedPath, currentInodeIdx, currentInode.IType, currentInode.IType, name)
 		}
 
 		// Buscar entrada en el directorio
@@ -1428,7 +1468,7 @@ func (g *ReportGenerator) LS(id, out, pathForLs string) (string, error) {
 		for i := 0; i < 12; i++ {
 			blkIdx := currentInode.IBlock[i]
 			if blkIdx == -1 {
-				break
+				continue // Seguir buscando en otros bloques
 			}
 
 			var dirBlk models.FolderBlock
@@ -1457,13 +1497,21 @@ func (g *ReportGenerator) LS(id, out, pathForLs string) (string, error) {
 		}
 
 		if !found {
-			return "", fmt.Errorf("directorio no encontrado: %s", name)
+			return "", fmt.Errorf("no se encontró '%s' en '%s' (inodo %d)", name, constructedPath, currentInodeIdx)
+		}
+
+		// Actualizar la ruta construida
+		if constructedPath == "" {
+			constructedPath = "/" + name
+		} else {
+			constructedPath = constructedPath + "/" + name
 		}
 	}
 
 	// Leer el directorio final
 	var dirInode models.Inode
-	offset := sb.SInodeStart + int64(currentInodeIdx)*64
+	inodeSize := int64(binary.Size(dirInode))
+	offset := sb.SInodeStart + int64(currentInodeIdx)*inodeSize
 	if _, err := f.Seek(offset, 0); err != nil {
 		return "", err
 	}
@@ -1471,13 +1519,19 @@ func (g *ReportGenerator) LS(id, out, pathForLs string) (string, error) {
 		return "", err
 	}
 
-	if dirInode.IType != models.FileTypeFolder {
-		return "", fmt.Errorf("no es un directorio")
+	// Verificar que el inodo final es un directorio
+	if dirInode.IType != models.FileTypeFolder && dirInode.IType != '0' {
+		return "", fmt.Errorf("'%s' no es un directorio (tipo=%d)", pathForLs, dirInode.IType)
 	}
 
-	// Crear contenido del reporte
-	content := fmt.Sprintf("Directory Listing (ID: %s, Path: %s)\n", id, pathForLs)
-	content += "================================\n\n"
+	// Crear contenido del reporte con formato mejorado
+	content := fmt.Sprintf("Directory Listing Report\n")
+	content += fmt.Sprintf("ID: %s\n", id)
+	content += fmt.Sprintf("Path: %s\n", pathForLs)
+	content += "================================================================================\n\n"
+	content += fmt.Sprintf("%-4s %-15s %-6s %-8s %-5s %-6s %-19s %-19s %-19s\n",
+		"Type", "Name", "Perms", "Owner", "Group", "Size", "Created", "Modified", "Accessed")
+	content += strings.Repeat("-", 120) + "\n"
 
 	// Listar entradas
 	for i := 0; i < 12; i++ {
@@ -1502,9 +1556,10 @@ func (g *ReportGenerator) LS(id, out, pathForLs string) (string, error) {
 
 			entryName := strings.TrimRight(string(entry.BName[:]), "\x00")
 
-			// Leer inodo de la entrada para obtener tipo y tamaño
+			// Leer inodo de la entrada para obtener toda la información
 			var entryInode models.Inode
-			entryOffset := sb.SInodeStart + int64(entry.BInodo)*64
+			entryInodeSize := int64(binary.Size(entryInode))
+			entryOffset := sb.SInodeStart + int64(entry.BInodo)*entryInodeSize
 			if _, err := f.Seek(entryOffset, 0); err != nil {
 				continue
 			}
@@ -1512,13 +1567,39 @@ func (g *ReportGenerator) LS(id, out, pathForLs string) (string, error) {
 				continue
 			}
 
+			// Tipo (puede ser byte binario 0/1 o carácter ASCII '0'/'1')
 			typeStr := "file"
-			if entryInode.IType == models.FileTypeFolder {
-				typeStr = "dir "
+			if entryInode.IType == models.FileTypeFolder || entryInode.IType == '0' {
+				typeStr = "dir"
 			}
 
-			content += fmt.Sprintf("[%s] %-12s  Size: %6d  Inode: %d  Perms: %s\n",
-				typeStr, entryName, entryInode.ISize, entry.BInodo, string(entryInode.IPerm[:]))
+			// Permisos
+			permsStr := strings.TrimRight(string(entryInode.IPerm[:]), "\x00")
+			if permsStr == "" {
+				if entryInode.IType == models.FileTypeFolder || entryInode.IType == '0' {
+					permsStr = "755"
+				} else {
+					permsStr = "664"
+				}
+			}
+
+			// Propietario y Grupo
+			ownerStr := fmt.Sprintf("uid:%d", entryInode.IUid)
+			groupStr := fmt.Sprintf("gid:%d", entryInode.IGid)
+
+			// Fechas formateadas
+			createdTime := time.Unix(entryInode.ICtime, 0)
+			modifiedTime := time.Unix(entryInode.IMtime, 0)
+			accessedTime := time.Unix(entryInode.IAtime, 0)
+
+			createdStr := createdTime.Format("2006-01-02 15:04:05")
+			modifiedStr := modifiedTime.Format("2006-01-02 15:04:05")
+			accessedStr := accessedTime.Format("2006-01-02 15:04:05")
+
+			// Formatear línea con toda la información
+			content += fmt.Sprintf("%-4s %-15s %-6s %-8s %-5s %6d %-19s %-19s %-19s\n",
+				typeStr, entryName, permsStr, ownerStr, groupStr, entryInode.ISize,
+				createdStr, modifiedStr, accessedStr)
 		}
 	}
 
