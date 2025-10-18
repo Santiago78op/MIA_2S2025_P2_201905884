@@ -9,13 +9,13 @@ import (
 type FsRepository interface {
 	Mkfs(id string, formatType string) error
 
-	Mkdir(id string, absPath []string, parents bool, now time.Time) error
-	Mkfile(id string, absPath []string, size int, contentHostPath string, recursive bool, now time.Time) error
+	Mkdir(id string, absPath []string, parents bool, uid int, gid int, now time.Time) error
+	Mkfile(id string, absPath []string, size int, contentHostPath string, recursive bool, uid int, gid int, now time.Time) error
 	Cat(id string, files [][]string, uid int, gid int) (string, error)
 }
 
 type SessionStore interface {
-	Current() (logged bool, user string, uid int, gid int, isRoot bool)
+	Current() (logged bool, user string, uid int, gid int, isRoot bool, partitionId string)
 }
 
 type FsService struct {
@@ -45,17 +45,39 @@ func (s *FsService) Mkfs(id string, formatType string) (string, error) {
 }
 
 func (s *FsService) Mkdir(id, p string, parents bool) (string, error) {
+	// Verificar que hay una sesión activa y obtener uid/gid del usuario
+	logged, _, uid, gid, _, partitionId := s.sess.Current()
+	if !logged {
+		return "", fmt.Errorf("debe iniciar sesión para ejecutar este comando")
+	}
+
+	// Si no se proporciona id, usar el de la sesión actual
+	if id == "" {
+		id = partitionId
+	}
+
 	parts := SplitPath(p)
 	if len(parts) == 0 {
 		return "", fmt.Errorf("path inválido")
 	}
-	if err := s.repo.Mkdir(id, parts, parents, time.Now()); err != nil {
+	if err := s.repo.Mkdir(id, parts, parents, uid, gid, time.Now()); err != nil {
 		return "", err
 	}
 	return "Directorio creado", nil
 }
 
 func (s *FsService) Mkfile(id, p string, size int, cont string, recursive bool) (string, error) {
+	// Verificar que hay una sesión activa y obtener uid/gid del usuario
+	logged, _, uid, gid, _, partitionId := s.sess.Current()
+	if !logged {
+		return "", fmt.Errorf("debe iniciar sesión para ejecutar este comando")
+	}
+
+	// Si no se proporciona id, usar el de la sesión actual
+	if id == "" {
+		id = partitionId
+	}
+
 	parts := SplitPath(p)
 	if len(parts) == 0 {
 		return "", fmt.Errorf("path inválido")
@@ -63,7 +85,7 @@ func (s *FsService) Mkfile(id, p string, size int, cont string, recursive bool) 
 	if size < 0 {
 		return "", fmt.Errorf("size inválido")
 	}
-	if err := s.repo.Mkfile(id, parts, size, cont, recursive, time.Now()); err != nil {
+	if err := s.repo.Mkfile(id, parts, size, cont, recursive, uid, gid, time.Now()); err != nil {
 		return "", err
 	}
 	return "Archivo creado", nil
@@ -71,9 +93,14 @@ func (s *FsService) Mkfile(id, p string, size int, cont string, recursive bool) 
 
 func (s *FsService) Cat(id string, files []string) (string, error) {
 	// Verificar que hay una sesión activa y obtener uid/gid del usuario
-	logged, _, uid, gid, _ := s.sess.Current()
+	logged, _, uid, gid, _, partitionId := s.sess.Current()
 	if !logged {
 		return "", fmt.Errorf("debe iniciar sesión para ejecutar este comando")
+	}
+
+	// Si no se proporciona id, usar el de la sesión actual
+	if id == "" {
+		id = partitionId
 	}
 
 	if len(files) == 0 {

@@ -1,0 +1,63 @@
+# Test MKUSR - Validación según la guía
+# Preparación
+mkdisk -size=10 -unit=M -path=/home/julian/test_mkusr.dsk
+fdisk -size=5 -unit=M -path=/home/julian/test_mkusr.dsk -type=P -fit=WF -name=Part1
+mount -path=/home/julian/test_mkusr.dsk -name=Part1
+mkfs -id=A1 -type=full
+
+# Login como root
+login -id=A1 -user=root -pass=123
+
+# Crear grupos para las pruebas
+mkgrp -id=A1 -name=admin
+mkgrp -id=A1 -name=users
+
+# Caso 1: Crear usuario válido
+mkusr -id=A1 -user=juan -pass=123456 -grp=admin
+
+# Caso 2: Intentar crear usuario que ya existe (debe mostrar error)
+mkusr -id=A1 -user=juan -pass=654321 -grp=users
+
+# Caso 3: Crear usuario con nombre de 10 caracteres (límite máximo)
+mkusr -id=A1 -user=abcdefghij -pass=pass123 -grp=users
+
+# Caso 4: Intentar crear usuario con nombre > 10 caracteres (debe mostrar error)
+mkusr -id=A1 -user=abcdefghijk -pass=pass123 -grp=users
+
+# Caso 5: Intentar crear usuario con contraseña > 10 caracteres (debe mostrar error)
+mkusr -id=A1 -user=maria -pass=12345678901 -grp=admin
+
+# Caso 6: Intentar crear usuario con grupo que no existe (debe mostrar error)
+mkusr -id=A1 -user=pedro -pass=123 -grp=noexiste
+
+# Caso 7: Intentar crear usuario con grupo de 10 caracteres (límite máximo)
+mkgrp -id=A1 -name=1234567890
+mkusr -id=A1 -user=carlos -pass=abc -grp=1234567890
+
+# Caso 8: Intentar crear usuario con grupo > 10 caracteres (debe mostrar error)
+mkusr -id=A1 -user=ana -pass=123 -grp=12345678901
+
+# Caso 9: Logout y intentar crear usuario sin ser root (debe mostrar error)
+logout
+mkusr -id=A1 -user=test -pass=123 -grp=admin
+
+# Caso 10: Login con usuario no root y intentar crear usuario (debe mostrar error)
+login -id=A1 -user=juan -pass=123456
+mkusr -id=A1 -user=nuevo -pass=123 -grp=users
+
+# Caso 11: Volver a login como root y crear usuario válido
+logout
+login -id=A1 -user=root -pass=123
+mkusr -id=A1 -user=luis -pass=pass -grp=users
+
+# Caso 12: Eliminar un usuario y verificar que se puede crear de nuevo
+rmusr -id=A1 -user=luis
+mkusr -id=A1 -user=luis -pass=newpass -grp=admin
+
+# Caso 13: Parámetros faltantes (debe mostrar error)
+# mkusr -id=A1 -user=test (falta pass y grp)
+# mkusr -id=A1 -pass=123 -grp=admin (falta user)
+
+# Limpieza
+logout
+unmount -id=A1

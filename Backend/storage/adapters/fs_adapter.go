@@ -20,16 +20,16 @@ func (a *FsAdapter) Mkfs(id string, formatType string) error {
 	return a.repo.Mkfs(id, formatType)
 }
 
-func (a *FsAdapter) Mkdir(id string, absPath []string, parents bool, now time.Time) error {
+func (a *FsAdapter) Mkdir(id string, absPath []string, parents bool, uid int, gid int, now time.Time) error {
 	// La implementación actual no usa el parámetro now, pero está preparado para cuando se implemente
 	_ = now
-	return a.repo.Mkdir(id, absPath, parents)
+	return a.repo.Mkdir(id, absPath, parents, uid, gid)
 }
 
-func (a *FsAdapter) Mkfile(id string, absPath []string, size int, contentHostPath string, recursive bool, now time.Time) error {
+func (a *FsAdapter) Mkfile(id string, absPath []string, size int, contentHostPath string, recursive bool, uid int, gid int, now time.Time) error {
 	// La implementación actual no usa el parámetro now, pero está preparado para cuando se implemente
 	_ = now
-	return a.repo.Mkfile(id, absPath, size, contentHostPath, recursive)
+	return a.repo.Mkfile(id, absPath, size, contentHostPath, recursive, uid, gid)
 }
 
 func (a *FsAdapter) Cat(id string, files [][]string, uid int, gid int) (string, error) {

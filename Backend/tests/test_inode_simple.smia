@@ -1,0 +1,14 @@
+# Script simple para generar reporte de inodos
+# Asume que Disco1 ya está montado y formateado
+
+# Montar partición
+mount -path=/home/julian/Documents/MIA_2S2025_P2_201905884/Backend/Discos/Disco1.mia -name=Part11
+
+# Login
+login -user=root -pass=123 -id=841A
+
+# Generar reporte de inodos
+rep -id=841A -path=/home/julian/Documents/MIA_2S2025_P2_201905884/Backend/Reports/test_inode_nuevo.jpg -name=inode
+
+# Logout
+logout

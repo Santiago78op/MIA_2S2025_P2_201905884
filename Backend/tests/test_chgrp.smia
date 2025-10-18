@@ -1,0 +1,83 @@
+# Test CHGRP - Validación según la guía
+# Preparación
+mkdisk -size=10 -unit=M -path=/home/julian/test_chgrp.dsk
+fdisk -size=5 -unit=M -path=/home/julian/test_chgrp.dsk -type=P -fit=WF -name=Part1
+mount -path=/home/julian/test_chgrp.dsk -name=Part1
+mkfs -id=A1 -type=full
+
+# Login como root
+login -id=A1 -user=root -pass=123
+
+# Crear grupos de prueba
+mkgrp -id=A1 -name=usuarios
+mkgrp -id=A1 -name=grupo1
+mkgrp -id=A1 -name=grupo2
+
+# Crear usuarios en diferentes grupos
+mkusr -id=A1 -user=user1 -pass=usuario -grp=usuarios
+mkusr -id=A1 -user=user2 -pass=usuario -grp=usuarios
+
+# Caso 1: Cambiar grupo de user2 a grupo1 (ejemplo de la guía)
+chgrp -id=A1 -user=user2 -grp=grupo1
+
+# Caso 2: Cambiar grupo de user1 a grupo2 (ejemplo de la guía)
+chgrp -id=A1 -user=user1 -grp=grupo2
+
+# Caso 3: Intentar cambiar grupo de usuario que no existe (debe mostrar error)
+chgrp -id=A1 -user=noexiste -grp=grupo1
+
+# Caso 4: Intentar cambiar a grupo que no existe (debe mostrar error)
+chgrp -id=A1 -user=user1 -grp=noexiste
+
+# Caso 5: Crear usuario y luego eliminarlo, intentar cambiar su grupo (debe mostrar error)
+mkusr -id=A1 -user=temporal -pass=123 -grp=usuarios
+rmusr -id=A1 -user=temporal
+chgrp -id=A1 -user=temporal -grp=grupo1
+
+# Caso 6: Crear grupo y eliminarlo, intentar cambiar usuario a ese grupo (debe mostrar error)
+mkgrp -id=A1 -name=eliminado
+rmgrp -id=A1 -name=eliminado
+chgrp -id=A1 -user=user1 -grp=eliminado
+
+# Caso 7: Intentar cambiar grupo con nombre > 10 caracteres (debe mostrar error)
+chgrp -id=A1 -user=user1 -grp=12345678901
+
+# Caso 8: Cambiar usuario de un grupo a otro y de vuelta
+chgrp -id=A1 -user=user1 -grp=grupo1
+chgrp -id=A1 -user=user1 -grp=usuarios
+
+# Caso 9: Intentar cambiar grupo sin ser root (debe mostrar error)
+logout
+login -id=A1 -user=user1 -pass=usuario
+chgrp -id=A1 -user=user2 -grp=grupo1
+
+# Caso 10: Intentar cambiar grupo sin sesión activa (debe mostrar error)
+logout
+chgrp -id=A1 -user=user1 -grp=grupo1
+
+# Caso 11: Cambiar el mismo usuario múltiples veces
+login -id=A1 -user=root -pass=123
+chgrp -id=A1 -user=user1 -grp=grupo1
+chgrp -id=A1 -user=user1 -grp=grupo2
+chgrp -id=A1 -user=user1 -grp=usuarios
+
+# Caso 12: Verificar que el usuario no puede cambiar su propio grupo sin ser root
+logout
+login -id=A1 -user=user1 -pass=usuario
+chgrp -id=A1 -user=user1 -grp=grupo1
+
+# Caso 13: Parámetros faltantes (debe mostrar error)
+login -id=A1 -user=root -pass=123
+# chgrp -id=A1 -user=user1 (falta -grp)
+# chgrp -id=A1 -grp=grupo1 (falta -user)
+
+# Caso 14: Verificar formato final de users.txt según la guía
+# Crear escenario de la guía:
+# 1,G,root
+# 1,U,root,root,123
+# 2,G,usuarios
+# 2,U,usuarios,user1,usuario
+
+# Limpieza
+logout
+unmount -id=A1

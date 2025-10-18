@@ -25,9 +25,9 @@ type fakeFsRepo struct {
 	catCalls [][]string
 }
 
-func (f *fakeFsRepo) Mkfs(id string) error { f.mkfsCount++; return nil }
+func (f *fakeFsRepo) Mkfs(id string, formatType string) error { f.mkfsCount++; return nil }
 
-func (f *fakeFsRepo) Mkdir(id string, absPath []string, parents bool, now time.Time) error {
+func (f *fakeFsRepo) Mkdir(id string, absPath []string, parents bool, uid int, gid int, now time.Time) error {
 	f.mkdirCalls = append(f.mkdirCalls, struct {
 		id   string
 		path []string
@@ -36,7 +36,7 @@ func (f *fakeFsRepo) Mkdir(id string, absPath []string, parents bool, now time.T
 	return nil
 }
 
-func (f *fakeFsRepo) Mkfile(id string, absPath []string, size int, contentHostPath string, recursive bool, now time.Time) error {
+func (f *fakeFsRepo) Mkfile(id string, absPath []string, size int, contentHostPath string, recursive bool, uid int, gid int, now time.Time) error {
 	f.mkfileCalls = append(f.mkfileCalls, struct {
 		id   string
 		path []string
@@ -47,7 +47,7 @@ func (f *fakeFsRepo) Mkfile(id string, absPath []string, size int, contentHostPa
 	return nil
 }
 
-func (f *fakeFsRepo) Cat(id string, files [][]string) (string, error) {
+func (f *fakeFsRepo) Cat(id string, files [][]string, uid int, gid int) (string, error) {
 	f.catCalls = append(f.catCalls, []string{}) // solo marca llamada
 	return "contenido-a\ncontenido-b", nil
 }
@@ -65,7 +65,7 @@ func TestFsService_MkfsMkdirMkfileCat(t *testing.T) {
 	svc := fscmd.NewFsService(repo, sess)
 
 	// mkfs
-	out, err := svc.Mkfs("841A")
+	out, err := svc.Mkfs("841A", "full")
 	if err != nil || out == "" {
 		t.Fatalf("mkfs err=%v out=%q", err, out)
 	}

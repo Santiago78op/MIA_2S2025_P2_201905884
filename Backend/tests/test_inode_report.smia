@@ -1,0 +1,38 @@
+# Script de prueba para reporte de inodos
+# Crear disco
+mkdisk -size=30 -unit=M -path=/home/julian/Documents/MIA_2S2025_P2_201905884/Backend/Discos/DiscoTest.mia
+
+# Crear partición
+fdisk -type=P -unit=M -name=PartTest -size=20 -path=/home/julian/Documents/MIA_2S2025_P2_201905884/Backend/Discos/DiscoTest.mia
+
+# Montar partición
+mount -path=/home/julian/Documents/MIA_2S2025_P2_201905884/Backend/Discos/DiscoTest.mia -name=PartTest
+
+# Formatear partición
+mkfs -type=full -id=841A
+
+# Login como root
+login -user=root -pass=123 -id=841A
+
+# Crear grupos
+mkgrp -name=usuarios
+mkgrp -name=admin
+
+# Crear usuarios
+mkusr -user=user1 -pass=123 -grp=usuarios
+
+# Crear estructura de directorios
+mkdir -p -path=/home/user1/documentos
+mkdir -p -path=/home/user1/imagenes
+mkdir -p -path=/home/archivos/datos
+
+# Crear algunos archivos
+mkfile -path=/home/user1/documentos/archivo1.txt -size=100
+mkfile -path=/home/user1/documentos/archivo2.txt -size=200
+mkfile -path=/home/archivos/datos/data.txt -size=150
+
+# Generar reporte de inodos
+rep -id=841A -path=/home/julian/Documents/MIA_2S2025_P2_201905884/Backend/Reports/test_inode.jpg -name=inode
+
+# Logout
+logout

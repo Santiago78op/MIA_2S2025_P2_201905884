@@ -134,7 +134,7 @@ func (r *Runner) Run(line string) (string, error) {
 		return r.usersSvc.Login(args.ID, args.User, args.Pass)
 
 	case "logout":
-		return r.usersSvc.Logout(), nil
+		return r.usersSvc.Logout()
 
 	case "mkgrp":
 		args, err := users.ParseMkgrp(line)

@@ -97,19 +97,61 @@ func (a *UsersAdapter) Mkgrp(id, name string) error {
 
 	lines := strings.Split(strings.TrimSpace(content), "\n")
 
-	// Verificar que el grupo no existe
-	for _, line := range lines {
+	// Verificar que el grupo no existe (ignorando grupos eliminados con GID=0)
+	// y buscar si hay un espacio reutilizable con GID=0 y el mismo nombre
+	reuseLineIndex := -1
+	for i, line := range lines {
 		line = strings.TrimSpace(line)
 		if line == "" {
 			continue
 		}
 		parts := strings.Split(line, ",")
 		if len(parts) >= 3 && parts[1] == "G" && parts[2] == name {
-			return fmt.Errorf("el grupo ya existe: %s", name)
+			gid, err := strconv.Atoi(parts[0])
+			if err == nil && gid > 0 {
+				// El grupo existe y está activo
+				return fmt.Errorf("el grupo ya existe: %s", name)
+			}
+			// Encontramos un grupo eliminado (GID=0) con el mismo nombre, podemos reutilizarlo
+			if gid == 0 {
+				reuseLineIndex = i
+			}
 		}
 	}
 
-	// Encontrar el próximo ID disponible
+	// Si encontramos un espacio reutilizable, actualizar esa línea
+	if reuseLineIndex >= 0 {
+		// Encontrar el próximo ID disponible
+		maxID := 0
+		for _, line := range lines {
+			line = strings.TrimSpace(line)
+			if line == "" {
+				continue
+			}
+			parts := strings.Split(line, ",")
+			if len(parts) >= 1 {
+				idNum, err := strconv.Atoi(parts[0])
+				if err == nil && idNum > maxID {
+					maxID = idNum
+				}
+			}
+		}
+		newID := maxID + 1
+
+		// Actualizar la línea reutilizable
+		var newLines []string
+		for i, line := range lines {
+			if i == reuseLineIndex {
+				newLines = append(newLines, fmt.Sprintf("%d,G,%s", newID, name))
+			} else {
+				newLines = append(newLines, strings.TrimSpace(line))
+			}
+		}
+		newContent := strings.Join(newLines, "\n") + "\n"
+		return a.repo.UpdateFile(id, []string{"users.txt"}, newContent)
+	}
+
+	// No hay espacio reutilizable, encontrar el próximo ID disponible y agregar al final
 	maxID := 0
 	for _, line := range lines {
 		line = strings.TrimSpace(line)

@@ -132,11 +132,8 @@ func ParseMkgrp(line string) (MkgrpArgs, error) {
 	_, flags := parseLine(line)
 	var args MkgrpArgs
 
-	id, err := mustString(flags, "id")
-	if err != nil {
-		return args, err
-	}
-	args.ID = id
+	// -id es opcional, se usará el de la sesión actual si no se especifica
+	args.ID = flags["id"]
 
 	name, err := mustString(flags, "name")
 	if err != nil {
@@ -151,11 +148,8 @@ func ParseRmgrp(line string) (RmgrpArgs, error) {
 	_, flags := parseLine(line)
 	var args RmgrpArgs
 
-	id, err := mustString(flags, "id")
-	if err != nil {
-		return args, err
-	}
-	args.ID = id
+	// -id es opcional, se usará el de la sesión actual si no se especifica
+	args.ID = flags["id"]
 
 	name, err := mustString(flags, "name")
 	if err != nil {
@@ -170,11 +164,8 @@ func ParseMkusr(line string) (MkusrArgs, error) {
 	_, flags := parseLine(line)
 	var args MkusrArgs
 
-	id, err := mustString(flags, "id")
-	if err != nil {
-		return args, err
-	}
-	args.ID = id
+	// -id es opcional, se usará el de la sesión actual si no se especifica
+	args.ID = flags["id"]
 
 	user, err := mustString(flags, "user")
 	if err != nil {
@@ -201,11 +192,8 @@ func ParseRmusr(line string) (RmusrArgs, error) {
 	_, flags := parseLine(line)
 	var args RmusrArgs
 
-	id, err := mustString(flags, "id")
-	if err != nil {
-		return args, err
-	}
-	args.ID = id
+	// -id es opcional, se usará el de la sesión actual si no se especifica
+	args.ID = flags["id"]
 
 	user, err := mustString(flags, "user")
 	if err != nil {
@@ -220,11 +208,8 @@ func ParseChgrp(line string) (ChgrpArgs, error) {
 	_, flags := parseLine(line)
 	var args ChgrpArgs
 
-	id, err := mustString(flags, "id")
-	if err != nil {
-		return args, err
-	}
-	args.ID = id
+	// -id es opcional, se usará el de la sesión actual si no se especifica
+	args.ID = flags["id"]
 
 	user, err := mustString(flags, "user")
 	if err != nil {

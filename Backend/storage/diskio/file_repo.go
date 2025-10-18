@@ -744,7 +744,7 @@ func (r *FileFsRepository) Mkfs(id string, formatType string) error {
 	return nil
 }
 
-func (r *FileFsRepository) Mkdir(id string, absPath []string, parents bool) error {
+func (r *FileFsRepository) Mkdir(id string, absPath []string, parents bool, uid int, gid int) error {
 	diskPath, region, err := r.resolve(id)
 	if err != nil {
 		return err
@@ -789,6 +789,15 @@ func (r *FileFsRepository) Mkdir(id string, absPath []string, parents bool) erro
 			return fmt.Errorf("'%s' no es un directorio", strings.Join(absPath[:i], "/"))
 		}
 
+		// Verificar permisos de escritura en el directorio padre (antes de crear)
+		if !hasWritePermission(currentInode, int32(uid), int32(gid)) {
+			parentPath := "/"
+			if i > 0 {
+				parentPath = "/" + strings.Join(absPath[:i], "/")
+			}
+			return fmt.Errorf("no tiene permiso de escritura en: %s", parentPath)
+		}
+
 		// Buscar entrada 'name' en el directorio actual
 		foundIdx, err := findEntryInDir(f, &currentInode, sb.SBlockStart, name, region)
 		if err != nil {
@@ -810,14 +819,14 @@ func (r *FileFsRepository) Mkdir(id string, absPath []string, parents bool) erro
 			// Crear inodo para el nuevo directorio
 			now := time.Now().Unix()
 			newInode := models.Inode{
-				IUid:   1, // TODO: usar uid/gid de sesión
-				IGid:   1,
+				IUid:   int32(uid), // UID del usuario que crea el directorio
+				IGid:   int32(gid), // GID del usuario que crea el directorio
 				ISize:  0,
 				IAtime: now,
 				ICtime: now,
 				IMtime: now,
 				IType:  models.FileTypeFolder,
-				IPerm:  [3]byte{'7', '5', '5'},
+				IPerm:  [3]byte{'6', '6', '4'}, // Permisos 664 según la guía
 			}
 			for j := range newInode.IBlock {
 				newInode.IBlock[j] = -1
@@ -887,7 +896,7 @@ func (r *FileFsRepository) Mkdir(id string, absPath []string, parents bool) erro
 	return nil
 }
 
-func (r *FileFsRepository) Mkfile(id string, absPath []string, size int, contentHostPath string, recursive bool) error {
+func (r *FileFsRepository) Mkfile(id string, absPath []string, size int, contentHostPath string, recursive bool, uid int, gid int) error {
 	diskPath, region, err := r.resolve(id)
 	if err != nil {
 		return err
@@ -938,6 +947,15 @@ func (r *FileFsRepository) Mkfile(id string, absPath []string, size int, content
 			return fmt.Errorf("'%s' no es un directorio", strings.Join(parentPath[:i], "/"))
 		}
 
+		// Verificar permisos de escritura en el directorio
+		if !hasWritePermission(currentInode, int32(uid), int32(gid)) {
+			dirPath := "/"
+			if i > 0 {
+				dirPath = "/" + strings.Join(parentPath[:i], "/")
+			}
+			return fmt.Errorf("no tiene permiso de escritura en: %s", dirPath)
+		}
+
 		// Buscar entrada
 		foundIdx, err := findEntryInDir(f, &currentInode, sb.SBlockStart, name, region)
 		if err != nil {
@@ -958,14 +976,14 @@ func (r *FileFsRepository) Mkfile(id string, absPath []string, size int, content
 
 			now := time.Now().Unix()
 			newInode := models.Inode{
-				IUid:   1, // TODO: usar uid/gid de sesión
-				IGid:   1,
+				IUid:   int32(uid), // UID del usuario que crea el directorio
+				IGid:   int32(gid), // GID del usuario que crea el directorio
 				ISize:  0,
 				IAtime: now,
 				ICtime: now,
 				IMtime: now,
 				IType:  models.FileTypeFolder,
-				IPerm:  [3]byte{'7', '5', '5'},
+				IPerm:  [3]byte{'6', '6', '4'}, // Permisos 664 según la guía
 			}
 			for j := range newInode.IBlock {
 				newInode.IBlock[j] = -1
@@ -1024,7 +1042,7 @@ func (r *FileFsRepository) Mkfile(id string, absPath []string, size int, content
 		return fmt.Errorf("el archivo ya existe: %s", fileName)
 	}
 
-	// Leer contenido desde archivo host si se especifica
+	// Leer contenido desde archivo host si se especifica (prioridad sobre -size)
 	var content []byte
 	if contentHostPath != "" {
 		content, err = os.ReadFile(contentHostPath)
@@ -1032,8 +1050,12 @@ func (r *FileFsRepository) Mkfile(id string, absPath []string, size int, content
 			return fmt.Errorf("error leyendo archivo host: %w", err)
 		}
 	} else {
-		// Crear archivo vacío o del tamaño especificado
+		// Generar contenido con números 0-9 repetidos según el tamaño
+		// Según la guía: "El contenido serán números del 0 al 9 cuantas veces sea necesario"
 		content = make([]byte, size)
+		for i := 0; i < size; i++ {
+			content[i] = byte('0' + (i % 10))
+		}
 	}
 
 	// Calcular cuántos bloques necesitamos
@@ -1075,14 +1097,14 @@ func (r *FileFsRepository) Mkfile(id string, absPath []string, size int, content
 	// Crear inodo del archivo
 	now := time.Now().Unix()
 	fileInode := models.Inode{
-		IUid:   1, // TODO: usar uid/gid de sesión
-		IGid:   1,
+		IUid:   int32(uid), // UID del usuario que crea el archivo
+		IGid:   int32(gid), // GID del usuario que crea el archivo
 		ISize:  int32(len(content)),
 		IAtime: now,
 		ICtime: now,
 		IMtime: now,
 		IType:  models.FileTypeRegular,
-		IPerm:  [3]byte{'6', '6', '4'},
+		IPerm:  [3]byte{'6', '6', '4'}, // Permisos 664 según la guía
 	}
 	for j := range fileInode.IBlock {
 		fileInode.IBlock[j] = -1
@@ -1254,13 +1276,45 @@ func (r *FileFsRepository) Cat(id string, files [][]string, uid int, gid int) (s
 				}
 
 				// Agregar al resultado
-				result.Write(content)
+				// Si es users.txt, filtrar líneas con ID=0 (eliminadas)
+				fileName := strings.Join(filePath, "/")
+				if fileName == "users.txt" || fileName == "/users.txt" {
+					filteredContent := filterDeletedEntries(string(content))
+					result.WriteString(filteredContent)
+				} else {
+					result.Write(content)
+				}
 				result.WriteString("\n")
 			}
 		}
 	}
 
 	return result.String(), nil
+}
+
+// filterDeletedEntries filtra las líneas de users.txt que tienen ID=0 (eliminadas)
+func filterDeletedEntries(content string) string {
+	lines := strings.Split(strings.TrimSpace(content), "\n")
+	var filtered []string
+
+	for _, line := range lines {
+		line = strings.TrimSpace(line)
+		if line == "" {
+			continue
+		}
+
+		// Extraer el primer campo (ID)
+		parts := strings.Split(line, ",")
+		if len(parts) >= 2 {
+			id := strings.TrimSpace(parts[0])
+			// Solo incluir si el ID no es "0"
+			if id != "0" {
+				filtered = append(filtered, line)
+			}
+		}
+	}
+
+	return strings.Join(filtered, "\n")
 }
 
 // UpdateFile actualiza el contenido de un archivo existente
@@ -1902,6 +1956,11 @@ func hasReadPermission(fileInode models.Inode, uid int32, gid int32) bool {
 	// Los permisos están en formato UGO: IPerm[0] = owner, IPerm[1] = group, IPerm[2] = others
 	// Cada byte es un carácter ASCII ('0'-'7')
 
+	// Root siempre tiene todos los permisos (bypass)
+	if uid == 1 {
+		return true
+	}
+
 	// Si el usuario es el dueño del archivo
 	if fileInode.IUid == uid {
 		// Verificar bit de lectura del owner (bit 2: 4 = read)
@@ -1919,4 +1978,32 @@ func hasReadPermission(fileInode models.Inode, uid int32, gid int32) bool {
 	// Otherwise, verificar permisos de others
 	othersPerm := int(fileInode.IPerm[2] - '0')
 	return (othersPerm & 4) != 0 // bit de lectura en others
+}
+
+func hasWritePermission(dirInode models.Inode, uid int32, gid int32) bool {
+	// Los permisos están en formato UGO: IPerm[0] = owner, IPerm[1] = group, IPerm[2] = others
+	// Cada byte es un carácter ASCII ('0'-'7')
+
+	// Root siempre tiene todos los permisos (bypass)
+	if uid == 1 {
+		return true
+	}
+
+	// Si el usuario es el dueño del directorio
+	if dirInode.IUid == uid {
+		// Verificar bit de escritura del owner (bit 1: 2 = write)
+		ownerPerm := int(dirInode.IPerm[0] - '0')
+		return (ownerPerm & 2) != 0 // bit de escritura en owner
+	}
+
+	// Si el usuario pertenece al grupo del directorio
+	if dirInode.IGid == gid {
+		// Verificar bit de escritura del group (bit 1: 2 = write)
+		groupPerm := int(dirInode.IPerm[1] - '0')
+		return (groupPerm & 2) != 0 // bit de escritura en group
+	}
+
+	// Otherwise, verificar permisos de others
+	othersPerm := int(dirInode.IPerm[2] - '0')
+	return (othersPerm & 2) != 0 // bit de escritura en others
 }

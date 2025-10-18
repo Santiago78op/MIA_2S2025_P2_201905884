@@ -136,11 +136,8 @@ func ParseMkdir(line string) (MkdirArgs, error) {
 	_, flags := parseLine(line)
 	var args MkdirArgs
 
-	id, err := mustString(flags, "id")
-	if err != nil {
-		return args, err
-	}
-	args.ID = id
+	// -id es opcional, se usará el de la sesión actual si no se especifica
+	args.ID = flags["id"]
 
 	path, err := mustString(flags, "path")
 	if err != nil {
@@ -157,11 +154,8 @@ func ParseMkfile(line string) (MkfileArgs, error) {
 	_, flags := parseLine(line)
 	var args MkfileArgs
 
-	id, err := mustString(flags, "id")
-	if err != nil {
-		return args, err
-	}
-	args.ID = id
+	// -id es opcional, se usará el de la sesión actual si no se especifica
+	args.ID = flags["id"]
 
 	path, err := mustString(flags, "path")
 	if err != nil {
@@ -169,11 +163,16 @@ func ParseMkfile(line string) (MkfileArgs, error) {
 	}
 	args.Path = path
 
-	size, err := mustInt(flags, "size")
-	if err != nil {
-		return args, err
+	// -size es opcional, por defecto 0
+	if sizeStr, ok := flags["size"]; ok && sizeStr != "" {
+		size, err := mustInt(flags, "size")
+		if err != nil {
+			return args, err
+		}
+		args.Size = size
+	} else {
+		args.Size = 0 // Valor por defecto según la guía
 	}
-	args.Size = size
 
 	args.Cont = flags["cont"] // opcional
 	args.Recursive = flags["r"] == "true"
@@ -185,11 +184,8 @@ func ParseCat(line string) (CatArgs, error) {
 	_, flags := parseLine(line)
 	var args CatArgs
 
-	id, err := mustString(flags, "id")
-	if err != nil {
-		return args, err
-	}
-	args.ID = id
+	// -id es opcional, se usará el de la sesión actual si no se especifica
+	args.ID = flags["id"]
 
 	// Los archivos pueden venir en múltiples flags file1, file2, etc.
 	// o como valores separados

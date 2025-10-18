@@ -1,0 +1,98 @@
+# Test LOGOUT - Validación según la guía
+# Preparación
+mkdisk -size=10 -unit=M -path=/home/julian/test_logout.dsk
+fdisk -size=5 -unit=M -path=/home/julian/test_logout.dsk -type=P -fit=WF -name=Part1
+mount -path=/home/julian/test_logout.dsk -name=Part1
+mkfs -id=A1 -type=full
+
+# Caso 1: Intentar hacer logout sin sesión activa (debe mostrar error)
+# Ejemplo de la guía: "Si se vuelve a ejecutar deberá mostrar un error ya que no hay sesión actualmente"
+logout
+
+# Caso 2: Login como root y luego logout (debe funcionar)
+login -id=A1 -user=root -pass=123
+logout
+
+# Caso 3: Intentar logout nuevamente sin sesión activa (debe mostrar error)
+# Ejemplo de la guía: "Si se vuelve a ejecutar deberá mostrar un error"
+logout
+
+# Caso 4: Login como root, hacer algo y logout
+login -id=A1 -user=root -pass=123
+mkgrp -id=A1 -name=usuarios
+mkusr -id=A1 -user=juan -pass=123 -grp=usuarios
+logout
+
+# Caso 5: Intentar ejecutar comando que requiere sesión después de logout (debe mostrar error)
+mkgrp -id=A1 -name=admin
+
+# Caso 6: Login como usuario normal y logout
+login -id=A1 -user=juan -pass=123
+logout
+
+# Caso 7: Intentar logout sin sesión (debe mostrar error)
+logout
+
+# Caso 8: Login, crear archivos/directorios, logout
+login -id=A1 -user=root -pass=123
+mkdir -id=A1 -p -path=/home/test
+mkfile -id=A1 -size=10 -path=/home/test/archivo.txt -r
+logout
+
+# Caso 9: Intentar crear archivo sin sesión activa (debe mostrar error)
+mkfile -id=A1 -size=5 -path=/home/test2.txt
+
+# Caso 10: Múltiples login/logout en secuencia
+login -id=A1 -user=root -pass=123
+logout
+login -id=A1 -user=root -pass=123
+logout
+login -id=A1 -user=root -pass=123
+logout
+
+# Caso 11: Intentar logout múltiples veces seguidas (todas después de la primera deben mostrar error)
+logout
+logout
+logout
+
+# Caso 12: Verificar que después de logout no se puede ejecutar cat
+login -id=A1 -user=root -pass=123
+logout
+cat -id=A1 -file1=/home/test/archivo.txt
+
+# Caso 13: Verificar que después de logout no se puede ejecutar mkdir
+mkdir -id=A1 -path=/home/test3
+
+# Caso 14: Login de nuevo y verificar que funciona después de logout previo
+login -id=A1 -user=root -pass=123
+mkgrp -id=A1 -name=test
+logout
+
+# Caso 15: Crear usuario, login con él, logout
+login -id=A1 -user=root -pass=123
+mkgrp -id=A1 -name=devs
+mkusr -id=A1 -user=developer -pass=dev123 -grp=devs
+logout
+login -id=A1 -user=developer -pass=dev123
+logout
+
+# Caso 16: Intentar logout sin sesión nuevamente
+logout
+
+# Caso 17: Verificar que logout no acepta parámetros (según guía: "no recibe parámetros")
+# Si se pasan parámetros, deberían ser ignorados o mostrar error
+login -id=A1 -user=root -pass=123
+# logout -id=A1  # Esto debería ignorarse o dar error
+
+# Caso 18: Logout normal
+logout
+
+# Caso 19: Verificar estado final sin sesión
+# Intentar cualquier comando que requiera sesión (debe fallar)
+mkgrp -id=A1 -name=final
+
+# Limpieza
+# No se puede hacer unmount sin sesión activa si mount lo requiere
+login -id=A1 -user=root -pass=123
+unmount -id=A1
+logout

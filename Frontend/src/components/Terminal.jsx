@@ -1,8 +1,6 @@
 import { useRef, useState, useEffect } from 'react'
 import { API } from '../lib/api'
 
-const SESSION_REQUIRED_CMDS = ['mkgrp', 'rmgrp', 'mkusr', 'rmusr', 'chmod', 'mkfile', 'cat', 'remove', 'edit', 'rename', 'mkdir', 'copy', 'move', 'find', 'chgrp', 'chown']
-
 // Persistent storage keys
 const TERMINAL_HISTORY_KEY = 'mia_terminal_history'
 const TERMINAL_LINES_KEY = 'mia_terminal_lines'
@@ -62,19 +60,8 @@ export default function Terminal({session}){
     localStorage.setItem(TERMINAL_STATS_KEY, JSON.stringify(stats))
   },[stats])
 
-  function requiresSession(line){
-    const cmd = line.trim().split(/\s+/)[0].toLowerCase()
-    return SESSION_REQUIRED_CMDS.includes(cmd)
-  }
-
   async function executeCommand(line){
     if(!line.trim()) return { success: false, skipped: true }
-
-    // Check if command requires session
-    if(requiresSession(line) && !session){
-      setLines(p=>[...p,{t:`$ ${line}`,k:'cmd'},{t:'ERROR: Este comando requiere iniciar sesión primero',k:'err'}])
-      return { success: false, skipped: false }
-    }
 
     setLines(p=>[...p,{t:`$ ${line}`,k:'cmd'}])
     try{

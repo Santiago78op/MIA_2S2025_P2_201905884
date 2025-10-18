@@ -1,0 +1,6 @@
+# Test: Validar que login funciona y permite ejecutar comandos que requieren sesión
+login -user=root -pass=123 -id=841A
+mkgrp -name=usuarios
+mkgrp -name=adm
+mkgrp -name=mail
+logout

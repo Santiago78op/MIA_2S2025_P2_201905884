@@ -19,17 +19,15 @@ func NewSessionAdapter(sess ports.SessionStore) interface {
 	return &SessionAdapter{sess: sess}
 }
 
-func (a *SessionAdapter) Login(user string, uid int, gid int) {
-	isRoot := user == "root"
-	a.sess.Login(user, uid, gid)
-	_ = isRoot // La interfaz ports.SessionStore no requiere isRoot en Login
+func (a *SessionAdapter) Login(user string, uid int, gid int, partitionId string) {
+	a.sess.Login(user, uid, gid, partitionId)
 }
 
 func (a *SessionAdapter) Logout() {
 	a.sess.Logout()
 }
 
-func (a *SessionAdapter) Current() (logged bool, user string, uid int, gid int, isRoot bool) {
+func (a *SessionAdapter) Current() (logged bool, user string, uid int, gid int, isRoot bool, partitionId string) {
 	return a.sess.Current()
 }
 
