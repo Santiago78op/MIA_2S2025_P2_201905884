@@ -2,7 +2,6 @@ Perfecto, Julián ✅
 Puedo integrarte **todo el nuevo contenido (estructura extendida del backend y los diagramas de arquitectura)** dentro de tu documento principal del proyecto **sin alterar su formato ni romper la coherencia técnica**.
 A continuación te dejo **la versión unificada y actualizada del README completo**, con las nuevas secciones embebidas de forma natural y jerárquica:
 
----
 
 # 🧠 Proyecto MIA – Sistema de Archivos EXT2
 
@@ -15,7 +14,6 @@ A continuación te dejo **la versión unificada y actualizada del README complet
 * Mejoras en validación, logging y estructura de servicios.
 * Roadmap actualizado en `docs/ROADMAP.md`.
 
----
 
 ## 📋 **Resumen del Proyecto**
 
@@ -23,7 +21,6 @@ Simulador de **sistema de archivos EXT2** con backend en **Go (Golang)** y front
 
 **Fecha de entrega:** 7 de septiembre de 2025, 23:59 horas
 
----
 
 ## 🚀 **Instalación y Ejecución**
 
@@ -55,7 +52,7 @@ bash run-frontend.sh
 * Backend API: `http://localhost:8080`
 * WebSocket: `ws://localhost:8080/ws`
 
----
+
 
 ## 🗂️ **Arquitectura del Proyecto (Actualizada)**
 
@@ -142,7 +139,7 @@ Estructura modular con componentes reutilizables:
 * `/hooks`: useApi, useWebSocket, useNotifications
 * `/services`: apiService.ts (fetch + error handling)
 
----
+
 
 ## 🧩 **Diagramas de Arquitectura y Flujos**
 
@@ -159,19 +156,19 @@ Incluyen:
 6. Flujo de generación de reportes con Graphviz
 7. Despliegue local y Dockerizado
 
----
+
 
 ## 📊 **Reportes Obligatorios**
 
 | Comando        | Reportes Requeridos                    | Estado |
-| -------------- | -------------------------------------- | ------ |
+| -- | -- |  |
 | mkdisk / fdisk | mbr, disk                              | ✅      |
 | mount          | mounted                                | 🔄     |
 | mkfs           | bm_inode, bm_block, inode, block, tree | 🔄     |
 | mkgrp / mkusr  | cat users.txt                          | 🔄     |
 | mkdir / mkfile | tree completo                          | 🔄     |
 
----
+
 
 ## 🧠 **Capa de Dominio – Sistema EXT2**
 
@@ -187,7 +184,7 @@ Incluyen:
 n = floor((part_size - sizeof(Superblock)) / (4 + 3*sizeof(Block) + sizeof(Inode)))
 ```
 
----
+
 
 ## 🌐 **Frontend Requirements**
 
@@ -196,7 +193,7 @@ n = floor((part_size - sizeof(Superblock)) / (4 + 3*sizeof(Block) + sizeof(Inode
 * Visualización de reportes (tree, mbr, disk)
 * Logs en tiempo real con WebSocket
 
----
+
 
 ## 📚 **Documentación Requerida**
 
@@ -204,19 +201,19 @@ n = floor((part_size - sizeof(Superblock)) / (4 + 3*sizeof(Block) + sizeof(Inode
 * `Manual de Usuario`: instalación, uso, resolución de errores
 * `ARQUITECTURA_DIAGRAMAS.md`: diagramas visuales
 
----
+
 
 ## 🧩 **Calificación y Ponderación**
 
 | Área          | Puntos  | Descripción         |
-| ------------- | ------- | ------------------- |
+| - | - | - |
 | Funcionalidad | 80      | Comandos y reportes |
 | Procedimiento | 10      | Código estructurado |
 | Preguntas     | 5       | Conocimiento        |
 | Documentación | 5       | Manuales completos  |
 | **Total**     | **100** |                     |
 
----
+
 
 ## ✅ **Checklist Final**
 
@@ -225,7 +222,7 @@ n = floor((part_size - sizeof(Superblock)) / (4 + 3*sizeof(Block) + sizeof(Inode
 * [ ] Documentación en `/docs` completa
 * [ ] Repositorio GitHub actualizado antes del 7/9/2025
 
----
+
 
 ## 📞 **Contacto y Soporte**
 
@@ -238,7 +235,7 @@ A: joshi20022021 | B: melladodaniel | C: SaulCerezo | D: kmsu
 Perfecto, Julián. Aquí tienes **el paquete completo de diagramas técnicos** totalmente integrados para tu Proyecto MIA — Sistema de Archivos EXT2.
 Incluye **7 archivos `.dot` (Graphviz)** y **1 archivo `.mmd` (Mermaid)**, con instrucciones de compilación, jerarquía de carpetas y propósito de cada uno.
 
----
+
 
 # 🧠 **DIAGRAMAS COMPLETOS – Sistema de Archivos EXT2 Simulado**
 
@@ -256,7 +253,7 @@ docs/
 └─ SECUENCIA_WEBSOCKET.mmd
 ```
 
----
+
 
 ## 🧩 1. `docs/ARQUITECTURA_GENERAL.dot`
 
@@ -327,7 +324,7 @@ digraph ArquitecturaGeneral {
 dot -Tpng docs/ARQUITECTURA_GENERAL.dot -o docs/ARQUITECTURA_GENERAL.png
 ```
 
----
+
 
 ## 🧮 2. `docs/FLUJO_MKFS.dot`
 
@@ -355,7 +352,7 @@ digraph FlujoMKFS {
 🖼 **Render:**
 `dot -Tpng docs/FLUJO_MKFS.dot -o docs/FLUJO_MKFS.png`
 
----
+
 
 ## ⚙️ 3. `docs/FLUJO_FDISK.dot`
 
@@ -385,7 +382,7 @@ digraph FlujoFDISK {
 }
 ```
 
----
+
 
 ## 🧱 4. `docs/ESTADOS_PARTICION.dot`
 
@@ -409,7 +406,7 @@ digraph EstadosParticion {
 }
 ```
 
----
+
 
 ## 👤 5. `docs/ESTADOS_SESION.dot`
 
@@ -429,7 +426,7 @@ digraph EstadosSesion {
 }
 ```
 
----
+
 
 ## 🧾 6. `docs/FLUJO_REPORTE.dot`
 
@@ -451,7 +448,7 @@ digraph FlujoReporte {
 }
 ```
 
----
+
 
 ## 💻 7. `docs/DESPLIEGUE_DESARROLLO.dot`
 
@@ -475,7 +472,7 @@ digraph Despliegue {
 }
 ```
 
----
+
 
 ## 🌐 8. `docs/SECUENCIA_WEBSOCKET.mmd`
 
@@ -499,7 +496,7 @@ sequenceDiagram
   B-->>F: {"level":"SUCCESS","msg":"Comando completado"}
 ```
 
----
+
 
 # 🖥️ **Cómo Generar Todos**
 
@@ -516,7 +513,7 @@ Y si deseas PDF:
 for f in *.dot; do dot -Tpdf "$f" -o "${f%.dot}.pdf"; done
 ```
 
----
+
 
 # 🧾 **Integración en README.md**
 
@@ -524,7 +521,7 @@ for f in *.dot; do dot -Tpdf "$f" -o "${f%.dot}.pdf"; done
 ## 🖼 Diagramas Técnicos
 
 | Tipo | Archivo | Descripción |
-|------|----------|-------------|
+||-|-|
 | 🧩 Arquitectura | `ARQUITECTURA_GENERAL.png` | Capas frontend/backend/datos |
 | ⚙️ Flujo MKFS | `FLUJO_MKFS.png` | Inicialización de EXT2 |
 | 📦 Flujo FDISK | `FLUJO_FDISK.png` | Creación de particiones |
@@ -535,4 +532,4 @@ for f in *.dot; do dot -Tpdf "$f" -o "${f%.dot}.pdf"; done
 | 🔌 Secuencia WS | `SECUENCIA_WEBSOCKET.mmd` | Comunicación en tiempo real |
 ```
 
----
+
