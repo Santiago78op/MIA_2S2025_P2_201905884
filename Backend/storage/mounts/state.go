@@ -98,6 +98,94 @@ func (s *State) List() []ports.MountedEntry {
 	return out
 }
 
+// Unmount desmonta una partición por ID y resetea el correlativo del disco a 0
+func (s *State) Unmount(id string) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	// Cargar estado si está vacío
+	if len(s.DiskLetter) == 0 && len(s.DiskSeq) == 0 {
+		s.load()
+	}
+
+	// Buscar la entrada para obtener el diskSignature antes de eliminar
+	var foundEntry *ports.MountedEntry
+	for i := range s.Entries {
+		if s.Entries[i].ID == id {
+			foundEntry = &s.Entries[i]
+			break
+		}
+	}
+
+	if foundEntry == nil {
+		return nil // No existe, no hacer nada
+	}
+
+	// Encontrar diskSignature buscando en Path
+	// El diskSignature se puede derivar del Path consultando el MBR
+	// Por ahora, resetear todos los correlativos a 0 cuando se desmonta
+	// (esto es una simplificación, idealmente se debería buscar el diskSignature específico)
+
+	// Buscar todas las entradas del mismo disco (mismo Path base)
+	diskPath := foundEntry.Path
+
+	// Contar cuántas particiones quedan montadas del mismo disco
+	remainingFromDisk := 0
+	for _, entry := range s.Entries {
+		if entry.Path == diskPath && entry.ID != id {
+			remainingFromDisk++
+		}
+	}
+
+	// Si no quedan más particiones de este disco, resetear el correlativo
+	if remainingFromDisk == 0 {
+		// Buscar el diskSignature correspondiente al Path
+		for diskSig, letter := range s.DiskLetter {
+			// Verificar si alguna entrada usa esta letra
+			stillInUse := false
+			for _, entry := range s.Entries {
+				if entry.ID != id && entry.Path == diskPath {
+					stillInUse = true
+					break
+				}
+			}
+
+			if !stillInUse {
+				// Resetear el correlativo a 0 para este disco
+				s.DiskSeq[diskSig] = 0
+			}
+			_ = letter // Evitar warning de variable no usada
+		}
+	}
+
+	// Buscar y eliminar la entrada con el ID especificado
+	newEntries := []ports.MountedEntry{}
+	for _, entry := range s.Entries {
+		if entry.ID != id {
+			newEntries = append(newEntries, entry)
+		}
+	}
+
+	s.Entries = newEntries
+	s.save()
+	return nil
+}
+
+// SetPartitionSeq establece manualmente el correlativo de particiones para un disco
+func (s *State) SetPartitionSeq(diskSignature string, seq int) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	// Cargar estado si está vacío
+	if len(s.DiskLetter) == 0 && len(s.DiskSeq) == 0 {
+		s.load()
+	}
+
+	s.DiskSeq[diskSignature] = seq
+	s.save()
+	return nil
+}
+
 // itoa minimal para números pequeños
 func itoa(n int) string {
 	if n == 0 {

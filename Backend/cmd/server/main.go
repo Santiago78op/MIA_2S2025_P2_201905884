@@ -51,9 +51,10 @@ func main() {
 	cs := controllers.NewCommandsController(cmdRunner)
 	ss := controllers.NewScriptController(&scriptRunnerAdapter{cmdRunner}) // Adaptador para ScriptRunner
 	rs := controllers.NewReportsController(reportSvc, cfg.ReportsPath)
+	vc := controllers.NewViewerController() // NUEVO P2: ViewerController (stub por ahora)
 
 	// === Router y servidor HTTP ===
-	r := router.SetupRouter(cfg, cs, ss, rs)
+	r := router.SetupRouter(cfg, cs, ss, rs, vc)
 
 	log.Info("Servidor listo. Escuchando en http://localhost:%s", cfg.Port)
 	log.Info("Healthcheck: http://localhost:%s/health", cfg.Port)

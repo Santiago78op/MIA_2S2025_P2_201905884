@@ -75,6 +75,7 @@ func SetupRouter(cfg *config.Config,
 	cs *controllers.CommandsController,
 	sc *controllers.ScriptController,
 	rc *controllers.ReportsController,
+	vc *controllers.ViewerController, // NUEVO: ViewerController para P2
 ) *gin.Engine {
 
 	// Modo Gin según DEBUG
@@ -124,6 +125,36 @@ func SetupRouter(cfg *config.Config,
 		// Listar todos los archivos en la carpeta Reports
 		// Response: { "files": [...], "count": N }
 		api.GET("/reports/list", rc.List)
+
+		// === NUEVAS RUTAS P2: Autenticación ===
+		auth := api.Group("/auth")
+		{
+			// Login: autenticar usuario en una partición
+			// POST Body: { "user": "username", "pass": "password", "id": "mount_id" }
+			auth.POST("/login", vc.Login)
+
+			// Logout: cerrar sesión
+			// POST Body: { "id": "mount_id" }
+			auth.POST("/logout", vc.Logout)
+		}
+
+		// === NUEVAS RUTAS P2: Visualizador ===
+		// Listar discos disponibles
+		api.GET("/disks", vc.ListDisks)
+
+		// Listar particiones de un disco
+		api.GET("/disks/:disk/partitions", vc.ListPartitions)
+
+		// Árbol de directorios de una partición montada
+		// Query params: ?path=/ruta
+		api.GET("/fs/:id/tree", vc.GetTree)
+
+		// Contenido de un archivo
+		// Query params: ?path=/archivo.txt
+		api.GET("/fs/:id/file", vc.GetFile)
+
+		// Listar entradas del journal (solo EXT3)
+		api.GET("/journal/:id", vc.GetJournal)
 	}
 
 	// 404 Handler

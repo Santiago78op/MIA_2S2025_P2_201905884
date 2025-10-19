@@ -20,6 +20,10 @@ func (a *FsAdapter) Mkfs(id string, formatType string) error {
 	return a.repo.Mkfs(id, formatType)
 }
 
+func (a *FsAdapter) MkfsWithType(id string, fsType int32, full bool) error {
+	return a.repo.MkfsWithType(id, fsType, full)
+}
+
 func (a *FsAdapter) Mkdir(id string, absPath []string, parents bool, uid int, gid int, now time.Time) error {
 	// La implementación actual no usa el parámetro now, pero está preparado para cuando se implemente
 	_ = now

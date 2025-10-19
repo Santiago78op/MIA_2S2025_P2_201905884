@@ -2007,3 +2007,105 @@ func hasWritePermission(dirInode models.Inode, uid int32, gid int32) bool {
 	othersPerm := int(dirInode.IPerm[2] - '0')
 	return (othersPerm & 2) != 0 // bit de escritura en others
 }
+
+// ============================================================
+// EXT3 + JOURNAL - Métodos públicos del repositorio
+// ============================================================
+
+// MkfsWithTypeExt3Wrapper formatea partición con EXT3 (wrapper público)
+func (r *FileFsRepository) MkfsExt3(id string) error {
+	return r.MkfsWithTypeExt3(id, JournalConst50)
+}
+
+// MkfsWithType formatea la partición con EXT2 o EXT3 (unificado P1/P2)
+func (r *FileFsRepository) MkfsWithType(id string, fsType int32, full bool) error {
+	switch fsType {
+	case 2:
+		// EXT2: usar la implementación existente de P1
+		return r.Mkfs(id, "full")
+	case 3:
+		// EXT3: usar la implementación nueva con journal
+		return r.MkfsWithTypeExt3(id, JournalConst50)
+	default:
+		return fmt.Errorf("fsType inválido (2|3)")
+	}
+}
+
+// JournalAppendPublic agrega una entrada al journal (interfaz pública)
+func (r *FileFsRepository) JournalAppendPublic(id string, op, path, content string, ts int64) error {
+	diskPath, partStart, _, err := r.getMountInfo(id)
+	if err != nil {
+		return err
+	}
+
+	f, err := os.OpenFile(diskPath, os.O_RDWR, 0o644)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+
+	sb, err := r.readSuperExt3(f, partStart)
+	if err != nil {
+		return err
+	}
+
+	if sb.FsType != 3 {
+		return errors.New("operación no soportada en EXT2")
+	}
+
+	var inf models.Information
+	inf.Set(op, path, content, ts)
+	j := models.Journal{Count: 0, Content: inf}
+
+	return r.AppendJournal(f, sb, j)
+}
+
+// JournalListPublic devuelve todas las entradas del journal
+func (r *FileFsRepository) JournalListPublic(id string) ([]models.Journal, error) {
+	diskPath, partStart, _, err := r.getMountInfo(id)
+	if err != nil {
+		return nil, err
+	}
+
+	f, err := os.OpenFile(diskPath, os.O_RDONLY, 0o644)
+	if err != nil {
+		return nil, err
+	}
+	defer f.Close()
+
+	sb, err := r.readSuperExt3(f, partStart)
+	if err != nil {
+		return nil, err
+	}
+
+	if sb.FsType != 3 {
+		return nil, errors.New("operación no soportada en EXT2")
+	}
+
+	return r.ListJournal(f, sb)
+}
+
+// JournalClearPublic limpia todas las entradas del journal
+func (r *FileFsRepository) JournalClearPublic(id string) error {
+	diskPath, partStart, _, err := r.getMountInfo(id)
+	if err != nil {
+		return err
+	}
+
+	f, err := os.OpenFile(diskPath, os.O_RDWR, 0o644)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+
+	sb, err := r.readSuperExt3(f, partStart)
+	if err != nil {
+		return err
+	}
+
+	if sb.FsType != 3 {
+		return errors.New("operación no soportada en EXT2")
+	}
+
+	return r.ClearJournal(f, sb)
+}

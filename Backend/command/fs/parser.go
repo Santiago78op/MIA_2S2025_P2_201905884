@@ -7,6 +7,7 @@ import (
 
 type MkfsArgs struct {
 	ID   string
+	Fs   string // "2fs" | "3fs" (por defecto "2fs")
 	Type string // "full" (por defecto)
 }
 
@@ -116,6 +117,19 @@ func ParseMkfs(line string) (MkfsArgs, error) {
 	}
 	args.ID = id
 
+	// Parsear sistema de archivos (opcional, por defecto "2fs")
+	fsVal := strings.ToLower(flags["fs"])
+	if fsVal == "" {
+		fsVal = "2fs" // Valor por defecto
+	}
+
+	// Validar que el fs sea válido
+	if fsVal != "2fs" && fsVal != "3fs" {
+		return args, fmt.Errorf("sistema de archivos no válido: %s (solo se acepta '2fs' o '3fs')", fsVal)
+	}
+
+	args.Fs = fsVal
+
 	// Parsear tipo de formateo (opcional, por defecto "full")
 	typeVal := strings.ToLower(flags["type"])
 	if typeVal == "" {
@@ -205,6 +219,282 @@ func ParseCat(line string) (CatArgs, error) {
 	if len(args.Files) == 0 {
 		return args, fmt.Errorf("falta al menos un archivo")
 	}
+
+	return args, nil
+}
+
+// ============================================
+// PARSERS NUEVOS P2
+// ============================================
+
+type RemoveArgs struct {
+	ID   string
+	Path string
+}
+
+type EditArgs struct {
+	ID      string
+	Path    string
+	Content string
+}
+
+type RenameArgs struct {
+	ID   string
+	Path string
+	Name string
+}
+
+type CopyArgs struct {
+	ID       string
+	SrcPath  string
+	DestPath string
+}
+
+type MoveArgs struct {
+	ID       string
+	SrcPath  string
+	DestPath string
+}
+
+type FindArgs struct {
+	ID   string
+	Path string
+	Name string
+}
+
+type ChmodArgs struct {
+	ID        string
+	Path      string
+	Ugo       string
+	Recursive bool
+}
+
+type ChownArgs struct {
+	ID        string
+	Path      string
+	User      string
+	Recursive bool
+}
+
+type LossArgs struct {
+	ID string
+}
+
+type RecoveryArgs struct {
+	ID string
+}
+
+func ParseRemove(line string) (RemoveArgs, error) {
+	_, flags := parseLine(line)
+	var args RemoveArgs
+
+	// ID es opcional; si no se proporciona, se usa el de la sesión actual
+	args.ID = flags["id"] // puede ser ""
+
+	path, err := mustString(flags, "path")
+	if err != nil {
+		return args, err
+	}
+	args.Path = path
+
+	return args, nil
+}
+
+func ParseEdit(line string) (EditArgs, error) {
+	_, flags := parseLine(line)
+	var args EditArgs
+
+	// ID es opcional; si no se proporciona, se usa el de la sesión actual
+	args.ID = flags["id"] // puede ser ""
+
+	path, err := mustString(flags, "path")
+	if err != nil {
+		return args, err
+	}
+	args.Path = path
+
+	content, err := mustString(flags, "contenido")
+	if err != nil {
+		return args, err
+	}
+	args.Content = content
+
+	return args, nil
+}
+
+func ParseRename(line string) (RenameArgs, error) {
+	_, flags := parseLine(line)
+	var args RenameArgs
+
+	// ID es opcional; si no se proporciona, se usa el de la sesión actual
+	args.ID = flags["id"] // puede ser ""
+
+	path, err := mustString(flags, "path")
+	if err != nil {
+		return args, err
+	}
+	args.Path = path
+
+	name, err := mustString(flags, "name")
+	if err != nil {
+		return args, err
+	}
+	args.Name = name
+
+	return args, nil
+}
+
+func ParseCopy(line string) (CopyArgs, error) {
+	_, flags := parseLine(line)
+	var args CopyArgs
+
+	id, err := mustString(flags, "id")
+	if err != nil {
+		return args, err
+	}
+	args.ID = id
+
+	src, err := mustString(flags, "path")
+	if err != nil {
+		return args, err
+	}
+	args.SrcPath = src
+
+	dest, err := mustString(flags, "destino")
+	if err != nil {
+		return args, err
+	}
+	args.DestPath = dest
+
+	return args, nil
+}
+
+func ParseMove(line string) (MoveArgs, error) {
+	_, flags := parseLine(line)
+	var args MoveArgs
+
+	id, err := mustString(flags, "id")
+	if err != nil {
+		return args, err
+	}
+	args.ID = id
+
+	src, err := mustString(flags, "path")
+	if err != nil {
+		return args, err
+	}
+	args.SrcPath = src
+
+	dest, err := mustString(flags, "destino")
+	if err != nil {
+		return args, err
+	}
+	args.DestPath = dest
+
+	return args, nil
+}
+
+func ParseFind(line string) (FindArgs, error) {
+	_, flags := parseLine(line)
+	var args FindArgs
+
+	id, err := mustString(flags, "id")
+	if err != nil {
+		return args, err
+	}
+	args.ID = id
+
+	path, err := mustString(flags, "path")
+	if err != nil {
+		return args, err
+	}
+	args.Path = path
+
+	name, err := mustString(flags, "name")
+	if err != nil {
+		return args, err
+	}
+	args.Name = name
+
+	return args, nil
+}
+
+func ParseChmod(line string) (ChmodArgs, error) {
+	_, flags := parseLine(line)
+	var args ChmodArgs
+
+	id, err := mustString(flags, "id")
+	if err != nil {
+		return args, err
+	}
+	args.ID = id
+
+	path, err := mustString(flags, "path")
+	if err != nil {
+		return args, err
+	}
+	args.Path = path
+
+	ugo, err := mustString(flags, "ugo")
+	if err != nil {
+		return args, err
+	}
+	args.Ugo = ugo
+
+	args.Recursive = flags["r"] == "true"
+
+	return args, nil
+}
+
+func ParseChown(line string) (ChownArgs, error) {
+	_, flags := parseLine(line)
+	var args ChownArgs
+
+	id, err := mustString(flags, "id")
+	if err != nil {
+		return args, err
+	}
+	args.ID = id
+
+	path, err := mustString(flags, "path")
+	if err != nil {
+		return args, err
+	}
+	args.Path = path
+
+	user, err := mustString(flags, "user")
+	if err != nil {
+		return args, err
+	}
+	args.User = user
+
+	args.Recursive = flags["r"] == "true"
+
+	return args, nil
+}
+
+func ParseLoss(line string) (LossArgs, error) {
+	_, flags := parseLine(line)
+	var args LossArgs
+
+	id, err := mustString(flags, "id")
+	if err != nil {
+		return args, err
+	}
+	args.ID = id
+
+	return args, nil
+}
+
+func ParseRecovery(line string) (RecoveryArgs, error) {
+	_, flags := parseLine(line)
+	var args RecoveryArgs
+
+	id, err := mustString(flags, "id")
+	if err != nil {
+		return args, err
+	}
+	args.ID = id
 
 	return args, nil
 }

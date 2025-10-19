@@ -38,6 +38,16 @@ func (a *MountAdapter) List() []disk.MountedEntry {
 	return diskEntries
 }
 
+// Unmount desmonta una partición por ID
+func (a *MountAdapter) Unmount(id string) error {
+	return a.state.Unmount(id)
+}
+
+// SetPartitionSeq establece el correlativo de particiones para un disco
+func (a *MountAdapter) SetPartitionSeq(diskSignature string, seq int) error {
+	return a.state.SetPartitionSeq(diskSignature, seq)
+}
+
 // PortsMountStore adapta mounts.State para cumplir con ports.MountStore
 type PortsMountStore struct {
 	state *mounts.State
@@ -57,4 +67,12 @@ func (p *PortsMountStore) SetMounted(id, path, name string) error {
 
 func (p *PortsMountStore) List() []ports.MountedEntry {
 	return p.state.List()
+}
+
+func (p *PortsMountStore) Unmount(id string) error {
+	return p.state.Unmount(id)
+}
+
+func (p *PortsMountStore) SetPartitionSeq(diskSignature string, seq int) error {
+	return p.state.SetPartitionSeq(diskSignature, seq)
 }

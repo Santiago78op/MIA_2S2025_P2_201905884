@@ -71,11 +71,28 @@ func (r *Runner) Run(line string) (string, error) {
 		return r.diskSvc.RmDisk(args)
 
 	case "fdisk":
-		args, err := disk.ParseFDisk(line)
-		if err != nil {
-			return "", err
+		// Detectar si es add, delete o creación normal
+		lineLower := strings.ToLower(line)
+		if strings.Contains(lineLower, "-add=") {
+			args, err := disk.ParseFDiskAdd(line)
+			if err != nil {
+				return "", err
+			}
+			return r.diskSvc.FDiskAdd(args)
+		} else if strings.Contains(lineLower, "-delete=") {
+			args, err := disk.ParseFDiskDelete(line)
+			if err != nil {
+				return "", err
+			}
+			return r.diskSvc.FDiskDelete(args)
+		} else {
+			// Creación normal
+			args, err := disk.ParseFDisk(line)
+			if err != nil {
+				return "", err
+			}
+			return r.diskSvc.FDisk(args)
 		}
-		return r.diskSvc.FDisk(args)
 
 	case "mount":
 		args, err := disk.ParseMount(line)
@@ -102,7 +119,7 @@ func (r *Runner) Run(line string) (string, error) {
 		if err != nil {
 			return "", err
 		}
-		return r.fsSvc.Mkfs(args.ID, args.Type)
+		return r.fsSvc.Mkfs(args.ID, args.Fs, args.Type)
 
 	case "mkdir":
 		args, err := fs.ParseMkdir(line)
@@ -182,6 +199,85 @@ func (r *Runner) Run(line string) (string, error) {
 			return "", err
 		}
 		return fmt.Sprintf("Reporte generado: %s", path), nil
+
+	// === Comandos nuevos P2 - Filesystem ===
+	case "remove":
+		args, err := fs.ParseRemove(line)
+		if err != nil {
+			return "", err
+		}
+		return r.fsSvc.Remove(args.ID, args.Path)
+
+	case "edit":
+		args, err := fs.ParseEdit(line)
+		if err != nil {
+			return "", err
+		}
+		return r.fsSvc.Edit(args.ID, args.Path, args.Content)
+
+	case "rename":
+		args, err := fs.ParseRename(line)
+		if err != nil {
+			return "", err
+		}
+		return r.fsSvc.Rename(args.ID, args.Path, args.Name)
+
+	case "copy":
+		args, err := fs.ParseCopy(line)
+		if err != nil {
+			return "", err
+		}
+		return r.fsSvc.Copy(args.ID, args.SrcPath, args.DestPath)
+
+	case "move":
+		args, err := fs.ParseMove(line)
+		if err != nil {
+			return "", err
+		}
+		return r.fsSvc.Move(args.ID, args.SrcPath, args.DestPath)
+
+	case "find":
+		args, err := fs.ParseFind(line)
+		if err != nil {
+			return "", err
+		}
+		return r.fsSvc.Find(args.ID, args.Path, args.Name)
+
+	case "chmod":
+		args, err := fs.ParseChmod(line)
+		if err != nil {
+			return "", err
+		}
+		return r.fsSvc.Chmod(args.ID, args.Path, args.Ugo, args.Recursive)
+
+	case "chown":
+		args, err := fs.ParseChown(line)
+		if err != nil {
+			return "", err
+		}
+		return r.fsSvc.Chown(args.ID, args.Path, args.User, args.Recursive)
+
+	case "loss":
+		args, err := fs.ParseLoss(line)
+		if err != nil {
+			return "", err
+		}
+		return r.fsSvc.Loss(args.ID)
+
+	case "recovery":
+		args, err := fs.ParseRecovery(line)
+		if err != nil {
+			return "", err
+		}
+		return r.fsSvc.Recovery(args.ID)
+
+	// === Comandos nuevos P2 - Disk ===
+	case "unmount":
+		args, err := disk.ParseUnmount(line)
+		if err != nil {
+			return "", err
+		}
+		return r.diskSvc.Unmount(args.ID)
 
 	default:
 		return "", fmt.Errorf("comando desconocido: %s", cmd)
