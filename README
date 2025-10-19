@@ -26,7 +26,8 @@ Simulador de **sistema de archivos EXT2** con backend en **Go (Golang)** y front
 
 ### Windows (desarrollo)
 
-```bash
+```
+bash
 cd backend
 go mod tidy
 go run main.go
@@ -39,7 +40,8 @@ npm start
 
 ### Pop!_OS/Linux (producción)
 
-```bash
+```
+bash
 git clone https://github.com/Santiago78op/MIA_2S2025_P1_201905884.git
 cd MIA_2S2025_P1_201905884
 bash run-backend.sh
@@ -61,74 +63,74 @@ bash run-frontend.sh
 ```
 backend/
 ├─ cmd/
-│  └─ server/
-│     └─ main.go                 # arranque, DI wiring, router, CORS
+│ └─ server/
+│ └─ main.go # arranque, DI wiring, router, CORS
 ├─ config/
-│  ├─ config.go                  # puertos, paths, flags
-│  └─ env.example                # ejemplo de envs
+│ ├─ config.go # puertos, paths, flags
+│ └─ env.example # ejemplo de envs
 ├─ router/
-│  └─ router.go                  # gin.Engine, middlewares, registro de rutas
+│ └─ router.go # gin.Engine, middlewares, registro de rutas
 ├─ middleware/
-│  ├─ errors.go                  # middleware de error JSON
-│  └─ logging.go                 # logs de request/response (opcional)
+│ ├─ errors.go # middleware de error JSON
+│ └─ logging.go # logs de request/response (opcional)
 ├─ controllers/
-│  ├─ commands_controller.go     # POST /api/commands
-│  ├─ script_controller.go       # POST /api/script
-│  ├─ reports_controller.go      # POST /api/reports
-│  └─ health_controller.go       # GET /health
-├─ command/                      # capa de aplicación (casos de uso)
-│  ├─ disk/                      # mkdisk, rmdisk, fdisk, mount
-│  │  ├─ service.go
-│  │  ├─ parser.go
-│  │  └─ validator.go
-│  ├─ fs/
-│  │  ├─ service.go
-│  │  └─ pathwalk.go
-│  ├─ users/
-│  │  └─ service.go
-│  └─ reports/
-│     └─ service.go
+│ ├─ commands_controller.go # POST /api/commands
+│ ├─ script_controller.go # POST /api/script
+│ ├─ reports_controller.go # POST /api/reports
+│ └─ health_controller.go # GET /health
+├─ command/ # capa de aplicación (casos de uso)
+│ ├─ disk/ # mkdisk, rmdisk, fdisk, mount
+│ │ ├─ service.go
+│ │ ├─ parser.go
+│ │ └─ validator.go
+│ ├─ fs/
+│ │ ├─ service.go
+│ │ └─ pathwalk.go
+│ ├─ users/
+│ │ └─ service.go
+│ └─ reports/
+│ └─ service.go
 ├─ core/
-│  ├─ models/
-│  │  ├─ mbr.go
-│  │  ├─ ext2.go
-│  │  ├─ users.go
-│  │  └─ types.go
-│  ├─ ports/
-│  │  ├─ disk_repository.go
-│  │  ├─ fs_repository.go
-│  │  ├─ mount_store.go
-│  │  ├─ session_store.go
-│  │  └─ report_generator.go
-│  └─ services/
-│     ├─ disk_service.go
-│     ├─ fs_service.go
-│     ├─ user_service.go
-│     └─ report_service.go
+│ ├─ models/
+│ │ ├─ mbr.go
+│ │ ├─ ext2.go
+│ │ ├─ users.go
+│ │ └─ types.go
+│ ├─ ports/
+│ │ ├─ disk_repository.go
+│ │ ├─ fs_repository.go
+│ │ ├─ mount_store.go
+│ │ ├─ session_store.go
+│ │ └─ report_generator.go
+│ └─ services/
+│ ├─ disk_service.go
+│ ├─ fs_service.go
+│ ├─ user_service.go
+│ └─ report_service.go
 ├─ storage/
-│  ├─ diskio/
-│  │  ├─ diskio.go
-│  │  └─ file_repo.go
-│  ├─ mounts/
-│  │  └─ state.go
-│  ├─ session/
-│  │  └─ memory.go
-│  └─ graphviz/
-│     └─ dot.go
+│ ├─ diskio/
+│ │ ├─ diskio.go
+│ │ └─ file_repo.go
+│ ├─ mounts/
+│ │ └─ state.go
+│ ├─ session/
+│ │ └─ memory.go
+│ └─ graphviz/
+│ └─ dot.go
 ├─ utils/
-│  ├─ errors.go
-│  ├─ bytes.go
-│  ├─ permissions.go
-│  ├─ calc.go
-│  └─ smia.go
+│ ├─ errors.go
+│ ├─ bytes.go
+│ ├─ permissions.go
+│ ├─ calc.go
+│ └─ smia.go
 ├─ pkg/
-│  └─ logger/
-│     └─ logger.go
+│ └─ logger/
+│ └─ logger.go
 └─ tests/
-   ├─ disk_service_test.go
-   ├─ fs_service_test.go
-   ├─ mount_id_test.go
-   └─ e2e_script_test.go
+ ├─ disk_service_test.go
+ ├─ fs_service_test.go
+ ├─ mount_id_test.go
+ └─ e2e_script_test.go
 ```
 
 ### 💡 Frontend – React + TypeScript
@@ -160,13 +162,14 @@ Incluyen:
 
 ## 📊 **Reportes Obligatorios**
 
-| Comando        | Reportes Requeridos                    | Estado |
-| -- | -- |  |
-| mkdisk / fdisk | mbr, disk                              | ✅      |
-| mount          | mounted                                | 🔄     |
-| mkfs           | bm_inode, bm_block, inode, block, tree | 🔄     |
-| mkgrp / mkusr  | cat users.txt                          | 🔄     |
-| mkdir / mkfile | tree completo                          | 🔄     |
+| Comando | Reportes Requeridos | Estado |
+| -- | -- | |
+| mkdisk / fdisk | mbr, disk | ✅ |
+| mount | mounted | 🔄 |
+| mkfs | bm_inode, bm_block, inode, block, tree | 🔄 |
+| mkgrp / mkusr | cat users.txt | 🔄 |
+| mkdir / mkfile | tree completo | 🔄 |
+
 
 
 
@@ -205,13 +208,14 @@ n = floor((part_size - sizeof(Superblock)) / (4 + 3*sizeof(Block) + sizeof(Inode
 
 ## 🧩 **Calificación y Ponderación**
 
-| Área          | Puntos  | Descripción         |
+| Área | Puntos | Descripción |
 | - | - | - |
-| Funcionalidad | 80      | Comandos y reportes |
-| Procedimiento | 10      | Código estructurado |
-| Preguntas     | 5       | Conocimiento        |
-| Documentación | 5       | Manuales completos  |
-| **Total**     | **100** |                     |
+| Funcionalidad | 80 | Comandos y reportes |
+| Procedimiento | 10 | Código estructurado |
+| Preguntas | 5 | Conocimiento |
+| Documentación | 5 | Manuales completos |
+| **Total** | **100** | |
+
 
 
 
@@ -231,6 +235,7 @@ n = floor((part_size - sizeof(Superblock)) / (4 + 3*sizeof(Block) + sizeof(Inode
 **Curso:** MIA – 2S 2025
 **Auxiliares:**
 A: joshi20022021 | B: melladodaniel | C: SaulCerezo | D: kmsu
+
 
 Perfecto, Julián. Aquí tienes **el paquete completo de diagramas técnicos** totalmente integrados para tu Proyecto MIA — Sistema de Archivos EXT2.
 Incluye **7 archivos `.dot` (Graphviz)** y **1 archivo `.mmd` (Mermaid)**, con instrucciones de compilación, jerarquía de carpetas y propósito de cada uno.
@@ -257,70 +262,86 @@ docs/
 
 ## 🧩 1. `docs/ARQUITECTURA_GENERAL.dot`
 
-```dot
+```
+dot
 digraph ArquitecturaGeneral {
-  rankdir=LR;
-  graph [fontsize=12, labelloc="t", label="Arquitectura General - Sistema EXT2 Simulado"];
-  node  [shape=record, fontsize=11];
+ rankdir=LR;
+ graph [fontsize=12, labelloc="t", label="Arquitectura General - Sistema EXT2 Simulado"];
+ node [shape=record, fontsize=11];
 
-  subgraph cluster_frontend {
-    label="CAPA DE PRESENTACIÓN (React + TS) :3000";
-    style=rounded;
-    FrontendComponents [label="{Components|• CommandExecutor|• FileSystemList|• ReportViewer|• Terminal}"];
-    FrontendServices   [label="{Services|• apiService.ts|• commandParser}"];
-    FrontendHooks      [label="{Hooks|• useApi|• useWebSocket|• useNotifications}"];
-  }
+ subgraph cluster_frontend {
+ label="CAPA DE PRESENTACIÓN (React + TS) :3000";
+ style=rounded;
+ FrontendComponents [label="{Components|• CommandExecutor|• FileSystemList|• ReportViewer|• Terminal}"];
 
-  subgraph cluster_backend {
-    label="CAPA DE APLICACIÓN (Go) :8080";
-    style=rounded;
-    Controllers [label="{Controllers|/api/commands|/api/script|/api/reports|/api/health}"];
-    WS          [label="{WebSocket/SSE|/ws|/api/logs/stream}"];
-    CmdDisk     [label="{command/disk|mkdisk|rmdisk|fdisk|mount|mounted}"];
-    CmdFS       [label="{command/fs|mkfs|mkdir|mkfile|cat}"];
-    CmdUsers    [label="{command/users|login|logout|mkgrp|rmgrp|mkusr|rmusr}"];
-    Reports     [label="{command/reports|mbr|disk|inode|block|bm_*|tree|sb|file|ls}"];
+ FrontendServices [label="{Services|• apiService.ts|• commandParser}"];
 
-    subgraph cluster_hex {
-      label="Hexagonal (core / ports / storage)";
-      style=dashed;
-      CoreModels [label="{core/models|mbr.go|ext2.go|users.go|types.go}"];
-      Ports      [label="{core/ports|disk_repository|fs_repository|mount_store|session_store|report_generator}"];
-      Storage    [label="{storage|diskio|mounts|session|graphviz}"];
-      Utils      [label="{utils|errors|bytes|permissions|calc|smia}"];
-    }
-  }
+ FrontendHooks [label="{Hooks|• useApi|• useWebSocket|• useNotifications}"];
 
-  subgraph cluster_data {
-    label="CAPA DE DATOS (.mia)";
-    style=rounded;
-    Disks [label="{/backend/Discos|disco1.mia|disco2.mia|...}"];
-  }
+ }
 
-  FrontendComponents -> FrontendServices;
-  FrontendComponents -> FrontendHooks;
-  FrontendServices -> Controllers [label="HTTP REST /api/*"];
-  FrontendHooks -> WS [label="WebSocket/SSE"];
+ subgraph cluster_backend {
+ label="CAPA DE APLICACIÓN (Go) :8080";
+ style=rounded;
+ Controllers [label="{Controllers|/api/commands|/api/script|/api/reports|/api/health}"];
 
-  Controllers -> CmdDisk;
-  Controllers -> CmdFS;
-  Controllers -> CmdUsers;
-  Controllers -> Reports;
+ WS [label="{WebSocket/SSE|/ws|/api/logs/stream}"];
 
-  CmdDisk -> Ports;
-  CmdFS -> Ports;
-  CmdUsers -> Ports;
-  Reports -> Ports;
-  WS -> Utils;
+ CmdDisk [label="{command/disk|mkdisk|rmdisk|fdisk|mount|mounted}"];
 
-  Ports -> Storage [label="Adapters"];
-  Storage -> Disks [label="SafeReadAt / SafeWriteAt", dir=both];
+ CmdFS [label="{command/fs|mkfs|mkdir|mkfile|cat}"];
+
+ CmdUsers [label="{command/users|login|logout|mkgrp|rmgrp|mkusr|rmusr}"];
+
+ Reports [label="{command/reports|mbr|disk|inode|block|bm_*|tree|sb|file|ls}"];
+
+
+ subgraph cluster_hex {
+ label="Hexagonal (core / ports / storage)";
+ style=dashed;
+ CoreModels [label="{core/models|mbr.go|ext2.go|users.go|types.go}"];
+
+ Ports [label="{core/ports|disk_repository|fs_repository|mount_store|session_store|report_generator}"];
+
+ Storage [label="{storage|diskio|mounts|session|graphviz}"];
+
+ Utils [label="{utils|errors|bytes|permissions|calc|smia}"];
+
+ }
+ }
+
+ subgraph cluster_data {
+ label="CAPA DE DATOS (.mia)";
+ style=rounded;
+ Disks [label="{/backend/Discos|disco1.mia|disco2.mia|...}"];
+
+ }
+
+ FrontendComponents -> FrontendServices;
+ FrontendComponents -> FrontendHooks;
+ FrontendServices -> Controllers [label="HTTP REST /api/*"];
+ FrontendHooks -> WS [label="WebSocket/SSE"];
+
+ Controllers -> CmdDisk;
+ Controllers -> CmdFS;
+ Controllers -> CmdUsers;
+ Controllers -> Reports;
+
+ CmdDisk -> Ports;
+ CmdFS -> Ports;
+ CmdUsers -> Ports;
+ Reports -> Ports;
+ WS -> Utils;
+
+ Ports -> Storage [label="Adapters"];
+ Storage -> Disks [label="SafeReadAt / SafeWriteAt", dir=both];
 }
 ```
 
 🔧 **Render:**
 
-```bash
+```
+bash
 dot -Tpng docs/ARQUITECTURA_GENERAL.dot -o docs/ARQUITECTURA_GENERAL.png
 ```
 
@@ -328,24 +349,25 @@ dot -Tpng docs/ARQUITECTURA_GENERAL.dot -o docs/ARQUITECTURA_GENERAL.png
 
 ## 🧮 2. `docs/FLUJO_MKFS.dot`
 
-```dot
+```
+dot
 digraph FlujoMKFS {
-  rankdir=TB;
-  node [shape=box, style="rounded,filled", fillcolor="#f8f8f8", fontsize=11];
-  edge [fontsize=10];
+ rankdir=TB;
+ node [shape=box, style="rounded,filled", fillcolor="#f8f8f8", fontsize=11];
+ edge [fontsize=10];
 
-  inicio [label="Inicio"];
-  validar [label="Validar partición montada (ID)"];
-  calcular [label="Calcular estructuras EXT2\nn, bitmaps, tablas, offsets"];
-  super [label="Crear Superbloque"];
-  bm [label="Inicializar bitmaps (inodos/bloques)"];
-  tablas [label="Crear tablas vacías de inodos y bloques"];
-  raiz [label="Crear directorio raíz (/)"];
-  users [label="Crear users.txt y groups.txt"];
-  escribir [label="Escribir estructuras en disco .mia"];
-  exito [label="Éxito", shape=doublecircle, fillcolor="#eaffea"];
+ inicio [label="Inicio"];
+ validar [label="Validar partición montada (ID)"];
+ calcular [label="Calcular estructuras EXT2\nn, bitmaps, tablas, offsets"];
+ super [label="Crear Superbloque"];
+ bm [label="Inicializar bitmaps (inodos/bloques)"];
+ tablas [label="Crear tablas vacías de inodos y bloques"];
+ raiz [label="Crear directorio raíz (/)"];
+ users [label="Crear users.txt y groups.txt"];
+ escribir [label="Escribir estructuras en disco .mia"];
+ exito [label="Éxito", shape=doublecircle, fillcolor="#eaffea"];
 
-  inicio -> validar -> calcular -> super -> bm -> tablas -> raiz -> users -> escribir -> exito;
+ inicio -> validar -> calcular -> super -> bm -> tablas -> raiz -> users -> escribir -> exito;
 }
 ```
 
@@ -356,29 +378,30 @@ digraph FlujoMKFS {
 
 ## ⚙️ 3. `docs/FLUJO_FDISK.dot`
 
-```dot
+```
+dot
 digraph FlujoFDISK {
-  rankdir=LR;
-  node [shape=box, style="rounded,filled", fillcolor="#f7f7f7", fontsize=11];
-  edge [fontsize=10];
+ rankdir=LR;
+ node [shape=box, style="rounded,filled", fillcolor="#f7f7f7", fontsize=11];
+ edge [fontsize=10];
 
-  leer [label="Leer MBR del disco"];
-  validar [label="Validar parámetros\nsize, path, name, type"];
-  tipoP [label="type = P\nCrear Partición Primaria"];
-  tipoE [label="type = E\nCrear Partición Extendida"];
-  tipoL [label="type = L\nBuscar EBR y crear Partición Lógica"];
-  actualizar [label="Actualizar MBR/EBR(s) en disco"];
-  fin [label="Éxito", shape=doublecircle, fillcolor="#eaffea"];
-  error [label="Error: Tipo Inválido", fillcolor="#ffe6e6"];
+ leer [label="Leer MBR del disco"];
+ validar [label="Validar parámetros\nsize, path, name, type"];
+ tipoP [label="type = P\nCrear Partición Primaria"];
+ tipoE [label="type = E\nCrear Partición Extendida"];
+ tipoL [label="type = L\nBuscar EBR y crear Partición Lógica"];
+ actualizar [label="Actualizar MBR/EBR(s) en disco"];
+ fin [label="Éxito", shape=doublecircle, fillcolor="#eaffea"];
+ error [label="Error: Tipo Inválido", fillcolor="#ffe6e6"];
 
-  leer -> validar;
-  validar -> tipoP [label="Primaria"];
-  validar -> tipoE [label="Extendida"];
-  validar -> tipoL [label="Lógica"];
-  validar -> error [label="Otro"];
-  tipoP -> actualizar -> fin;
-  tipoE -> actualizar -> fin;
-  tipoL -> actualizar -> fin;
+ leer -> validar;
+ validar -> tipoP [label="Primaria"];
+ validar -> tipoE [label="Extendida"];
+ validar -> tipoL [label="Lógica"];
+ validar -> error [label="Otro"];
+ tipoP -> actualizar -> fin;
+ tipoE -> actualizar -> fin;
+ tipoL -> actualizar -> fin;
 }
 ```
 
@@ -386,23 +409,24 @@ digraph FlujoFDISK {
 
 ## 🧱 4. `docs/ESTADOS_PARTICION.dot`
 
-```dot
+```
+dot
 digraph EstadosParticion {
-  rankdir=LR;
-  node [shape=ellipse, style=filled, fillcolor="#f2f2f2", fontsize=11];
+ rankdir=LR;
+ node [shape=ellipse, style=filled, fillcolor="#f2f2f2", fontsize=11];
 
-  noexist [label="NO EXISTE"];
-  creada [label="CREADA"];
-  particionada [label="PARTICIONADA"];
-  montada [label="MONTADA"];
-  formateada [label="FORMATEADA"];
+ noexist [label="NO EXISTE"];
+ creada [label="CREADA"];
+ particionada [label="PARTICIONADA"];
+ montada [label="MONTADA"];
+ formateada [label="FORMATEADA"];
 
-  noexist -> creada [label="mkdisk"];
-  creada -> particionada [label="fdisk"];
-  particionada -> montada [label="mount"];
-  montada -> formateada [label="mkfs"];
-  formateada -> particionada [label="unmount"];
-  creada -> noexist [label="rmdisk"];
+ noexist -> creada [label="mkdisk"];
+ creada -> particionada [label="fdisk"];
+ particionada -> montada [label="mount"];
+ montada -> formateada [label="mkfs"];
+ formateada -> particionada [label="unmount"];
+ creada -> noexist [label="rmdisk"];
 }
 ```
 
@@ -410,19 +434,20 @@ digraph EstadosParticion {
 
 ## 👤 5. `docs/ESTADOS_SESION.dot`
 
-```dot
+```
+dot
 digraph EstadosSesion {
-  rankdir=LR;
-  node [shape=ellipse, style=filled, fillcolor="#f2f2f2", fontsize=11];
+ rankdir=LR;
+ node [shape=ellipse, style=filled, fillcolor="#f2f2f2", fontsize=11];
 
-  sin [label="SIN SESIÓN"];
-  usuario [label="USUARIO NORMAL"];
-  root [label="USUARIO ROOT"];
+ sin [label="SIN SESIÓN"];
+ usuario [label="USUARIO NORMAL"];
+ root [label="USUARIO ROOT"];
 
-  sin -> usuario [label="login (normal)"];
-  sin -> root [label="login (root)"];
-  usuario -> sin [label="logout"];
-  root -> sin [label="logout"];
+ sin -> usuario [label="login (normal)"];
+ sin -> root [label="login (root)"];
+ usuario -> sin [label="logout"];
+ root -> sin [label="logout"];
 }
 ```
 
@@ -430,21 +455,22 @@ digraph EstadosSesion {
 
 ## 🧾 6. `docs/FLUJO_REPORTE.dot`
 
-```dot
+```
+dot
 digraph FlujoReporte {
-  rankdir=TB;
-  node [shape=box, style="rounded,filled", fillcolor="#f7f7f7", fontsize=11];
+ rankdir=TB;
+ node [shape=box, style="rounded,filled", fillcolor="#f7f7f7", fontsize=11];
 
-  start [label="Comando REP recibido"];
-  validar [label="Validar tipo de reporte (mbr, disk, inode, etc.)"];
-  buscar [label="Buscar partición montada (si aplica)"];
-  leer [label="Leer estructuras EXT2 (SB, BM, Inodos, Bloques)"];
-  procesar [label="Procesar datos según tipo"];
-  generar [label="Generar archivo .dot y render con Graphviz"];
-  enviar [label="Enviar HTML/imagen al cliente"];
-  fin [label="Éxito", shape=doublecircle, fillcolor="#eaffea"];
+ start [label="Comando REP recibido"];
+ validar [label="Validar tipo de reporte (mbr, disk, inode, etc.)"];
+ buscar [label="Buscar partición montada (si aplica)"];
+ leer [label="Leer estructuras EXT2 (SB, BM, Inodos, Bloques)"];
+ procesar [label="Procesar datos según tipo"];
+ generar [label="Generar archivo .dot y render con Graphviz"];
+ enviar [label="Enviar HTML/imagen al cliente"];
+ fin [label="Éxito", shape=doublecircle, fillcolor="#eaffea"];
 
-  start -> validar -> buscar -> leer -> procesar -> generar -> enviar -> fin;
+ start -> validar -> buscar -> leer -> procesar -> generar -> enviar -> fin;
 }
 ```
 
@@ -452,23 +478,24 @@ digraph FlujoReporte {
 
 ## 💻 7. `docs/DESPLIEGUE_DESARROLLO.dot`
 
-```dot
+```
+dot
 digraph Despliegue {
-  rankdir=TB;
-  node [shape=box, style="rounded,filled", fillcolor="#f7f7f7", fontsize=11];
-  edge [fontsize=10];
+ rankdir=TB;
+ node [shape=box, style="rounded,filled", fillcolor="#f7f7f7", fontsize=11];
+ edge [fontsize=10];
 
-  dev [label="MÁQUINA DE DESARROLLO"];
-  term1 [label="Terminal 1\n$ cd backend && go run main.go"];
-  term2 [label="Terminal 2\n$ cd frontend && npm start"];
-  backend [label="Go Backend Server :8080\n• REST API\n• WebSocket\n• File I/O"];
-  frontend [label="React Dev Server :3000\n• UI Components\n• Proxy /api/*"];
-  fs [label="File System\n./backend/Discos, ./backend/logs, ./frontend/build"];
+ dev [label="MÁQUINA DE DESARROLLO"];
+ term1 [label="Terminal 1\n$ cd backend && go run main.go"];
+ term2 [label="Terminal 2\n$ cd frontend && npm start"];
+ backend [label="Go Backend Server :8080\n• REST API\n• WebSocket\n• File I/O"];
+ frontend [label="React Dev Server :3000\n• UI Components\n• Proxy /api/*"];
+ fs [label="File System\n./backend/Discos, ./backend/logs, ./frontend/build"];
 
-  dev -> term1 -> backend;
-  dev -> term2 -> frontend;
-  backend -> fs [dir=both];
-  frontend -> backend [label="HTTP + WS"];
+ dev -> term1 -> backend;
+ dev -> term2 -> frontend;
+ backend -> fs [dir=both];
+ frontend -> backend [label="HTTP + WS"];
 }
 ```
 
@@ -476,24 +503,25 @@ digraph Despliegue {
 
 ## 🌐 8. `docs/SECUENCIA_WEBSOCKET.mmd`
 
-```mermaid
+```
+mermaid
 sequenceDiagram
-  autonumber
-  participant U as Usuario
-  participant F as Frontend (React)
-  participant B as Backend (Go)
-  participant D as Disco (.mia)
+ autonumber
+ participant U as Usuario
+ participant F as Frontend (React)
+ participant B as Backend (Go)
+ participant D as Disco (.mia)
 
-  U->>F: Escribe comandos (.smia o línea)
-  F->>B: POST /api/execute {commands}
-  B->>B: Parsear + Validar (command/*)
-  B->>D: Lectura/Escritura binaria (SafeReadAt/SafeWriteAt)
-  D-->>B: Respuesta del disco
-  B-->>F: HTTP 200 (resultado final)
-  Note over B: Durante ejecución, logs emitidos vía WebSocket
-  F-)B: WS Connect (/ws)
-  B-->>F: {"level":"INFO","msg":"Procesando..."}
-  B-->>F: {"level":"SUCCESS","msg":"Comando completado"}
+ U->>F: Escribe comandos (.smia o línea)
+ F->>B: POST /api/execute {commands}
+ B->>B: Parsear + Validar (command/*)
+ B->>D: Lectura/Escritura binaria (SafeReadAt/SafeWriteAt)
+ D-->>B: Respuesta del disco
+ B-->>F: HTTP 200 (resultado final)
+ Note over B: Durante ejecución, logs emitidos vía WebSocket
+ F-)B: WS Connect (/ws)
+ B-->>F: {"level":"INFO","msg":"Procesando..."}
+ B-->>F: {"level":"SUCCESS","msg":"Comando completado"}
 ```
 
 
@@ -502,14 +530,16 @@ sequenceDiagram
 
 Desde raíz del proyecto:
 
-```bash
+```
+bash
 cd docs
 for f in *.dot; do dot -Tpng "$f" -o "${f%.dot}.png"; done
 ```
 
 Y si deseas PDF:
 
-```bash
+```
+bash
 for f in *.dot; do dot -Tpdf "$f" -o "${f%.dot}.pdf"; done
 ```
 
@@ -517,7 +547,8 @@ for f in *.dot; do dot -Tpdf "$f" -o "${f%.dot}.pdf"; done
 
 # 🧾 **Integración en README.md**
 
-```md
+```
+md
 ## 🖼 Diagramas Técnicos
 
 | Tipo | Archivo | Descripción |
@@ -531,5 +562,3 @@ for f in *.dot; do dot -Tpdf "$f" -o "${f%.dot}.pdf"; done
 | 🧠 Despliegue | `DESPLIEGUE_DESARROLLO.png` | Entorno local con backend/frontend |
 | 🔌 Secuencia WS | `SECUENCIA_WEBSOCKET.mmd` | Comunicación en tiempo real |
 ```
-
-
