@@ -9,19 +9,6 @@ export default function ReportsGallery(){
   const [active, setActive] = useState(0)
   const [lb, setLb] = useState({open:false, src:'', title:''})
 
-  // Cargar archivos al montar el componente
-  useEffect(() => {
-    loadFiles()
-  }, [])
-
-  // Recargar cada 5 segundos para detectar nuevos archivos
-  useEffect(() => {
-    const interval = setInterval(() => {
-      loadFiles()
-    }, 5000)
-    return () => clearInterval(interval)
-  }, [])
-
   async function loadFiles(){
     setLoading(true)
     try{
@@ -147,9 +134,9 @@ export default function ReportsGallery(){
       {filteredFiles.length === 0 && (
         <div className="body" style={{textAlign:'center', padding:'40px'}}>
           <div className="muted">
-            {loading ? 'Cargando archivos...' : 'No hay archivos en la carpeta Reports'}
+            {loading ? 'Cargando archivos...' : files.length === 0 ? 'Haz clic en "Recargar" para cargar los reportes' : 'No hay archivos que coincidan con el filtro'}
           </div>
-          {!loading && (
+          {!loading && files.length === 0 && (
             <small className="muted" style={{display:'block', marginTop:'8px'}}>
               Genera reportes desde la terminal o desde la pestaña de reportería
             </small>

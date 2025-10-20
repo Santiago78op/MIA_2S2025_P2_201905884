@@ -12,11 +12,12 @@ export default function LoginPage({setSession}){
 
   async function handleLogin(e){
     e.preventDefault()
-    setErr(''); setLoading(true)
+    setErr('')
+    setLoading(true)
     try{
       await API.login(id, user, pass)
       setSession({id, user})
-      navigate('/')
+      navigate('/visualizer')
     }catch(e){
       setErr(e.message)
     }finally{
@@ -25,87 +26,116 @@ export default function LoginPage({setSession}){
   }
 
   return (
-    <div style={{
-      display:'grid',
-      placeItems:'center',
-      minHeight:'calc(100vh - 60px)',
-      padding:'20px',
-      background:'var(--bg)'
-    }}>
-      <div className="card" style={{width:'100%', maxWidth:'480px', flexShrink: 0}}>
-        <div className="head">
-          <b>Iniciar Sesión</b>
-          <span className="badge">Login GUI</span>
+    <div className="login-container">
+      <a href="/" className="login-back" onClick={(e)=>{e.preventDefault();navigate('/')}}>
+        ← Volver
+      </a>
+
+      <form className="login-form" onSubmit={handleLogin} autoComplete="off">
+        <div className="form-control">
+          <h1 className="login-title">Sign In</h1>
         </div>
-        <div className="body" style={{minHeight:'auto'}}>
-          <form onSubmit={handleLogin} className="grid">
-            <div className="field">
-              <label><b>ID de Montaje</b></label>
-              <input
-                className="input"
-                placeholder="Ejemplo: 841A"
-                value={id}
-                onChange={e=>setId(e.target.value)}
-                required
-                autoFocus
-              />
-              <small className="muted">ID retornado por el comando mount</small>
-            </div>
 
-            <div className="field">
-              <label><b>Usuario</b></label>
-              <input
-                className="input"
-                placeholder="root"
-                value={user}
-                onChange={e=>setUser(e.target.value)}
-                required
-              />
-            </div>
-
-            <div className="field">
-              <label><b>Contraseña</b></label>
-              <input
-                className="input"
-                type="password"
-                placeholder="123"
-                value={pass}
-                onChange={e=>setPass(e.target.value)}
-                required
-              />
-            </div>
-
-            {err && (
-              <div style={{
-                padding:'10px',
-                background:'var(--panel2)',
-                border:'1px solid var(--danger)',
-                borderRadius:'10px',
-                color:' var(--danger)'
-              }}>
-                <b>Error:</b> {err}
-              </div>
-            )}
-
-            <div style={{display:'flex', gap:10, marginTop:10}}>
-              <button type="button" className="btn alt" onClick={()=>navigate('/')}>
-                Cancelar
-              </button>
-              <button type="submit" className="btn" disabled={loading} style={{flex:1}}>
-                {loading ? 'Iniciando...' : 'Iniciar Sesión'}
-              </button>
-            </div>
-
-            <div style={{marginTop:12, padding:'10px', background:'var(--panel2)', borderRadius:'10px'}}>
-              <small className="muted">
-                <b>Nota:</b> El login ahora se realiza únicamente por GUI.
-                Los comandos que requieren sesión incluyen: mkgrp, rmgrp, mkusr, rmusr,
-                chmod, mkfile, cat, remove, edit, rename, mkdir, copy, move, find, chgrp, chown.
-              </small>
-            </div>
-          </form>
+        {/* ID de Montaje */}
+        <div className="form-control block-cube block-input">
+          <input
+            name="mount_id"
+            type="text"
+            placeholder="Mount ID (ej: 841A)"
+            value={id}
+            onChange={(e)=>setId(e.target.value)}
+            required
+            autoFocus
+          />
+          <div className="bg-top">
+            <div className="bg-inner"></div>
+          </div>
+          <div className="bg-right">
+            <div className="bg-inner"></div>
+          </div>
+          <div className="bg">
+            <div className="bg-inner"></div>
+          </div>
         </div>
-      </div>
+
+        {/* Usuario */}
+        <div className="form-control block-cube block-input">
+          <input
+            name="username"
+            type="text"
+            placeholder="Username (ej: root)"
+            value={user}
+            onChange={(e)=>setUser(e.target.value)}
+            required
+          />
+          <div className="bg-top">
+            <div className="bg-inner"></div>
+          </div>
+          <div className="bg-right">
+            <div className="bg-inner"></div>
+          </div>
+          <div className="bg">
+            <div className="bg-inner"></div>
+          </div>
+        </div>
+
+        {/* Contraseña */}
+        <div className="form-control block-cube block-input">
+          <input
+            name="password"
+            type="password"
+            placeholder="Password (ej: 123)"
+            value={pass}
+            onChange={(e)=>setPass(e.target.value)}
+            required
+          />
+          <div className="bg-top">
+            <div className="bg-inner"></div>
+          </div>
+          <div className="bg-right">
+            <div className="bg-inner"></div>
+          </div>
+          <div className="bg">
+            <div className="bg-inner"></div>
+          </div>
+        </div>
+
+        {/* Botón de Login */}
+        <button
+          className="login-btn block-cube block-cube-hover"
+          type="submit"
+          disabled={loading}
+        >
+          <div className="bg-top">
+            <div className="bg-inner"></div>
+          </div>
+          <div className="bg-right">
+            <div className="bg-inner"></div>
+          </div>
+          <div className="bg">
+            <div className="bg-inner"></div>
+          </div>
+          <div className="text">
+            {loading ? 'Logging In...' : 'Log In'}
+          </div>
+        </button>
+
+        {/* Error Message */}
+        {err && (
+          <div className="login-error">
+            <b>Error:</b> {err}
+          </div>
+        )}
+
+        {/* Info adicional */}
+        <div className="login-info">
+          <small>
+            <b>Nota:</b> El login se realiza únicamente por GUI.
+            Los comandos que requieren sesión incluyen: <b>mkgrp</b>, <b>rmgrp</b>, <b>mkusr</b>, <b>rmusr</b>,
+            <b>chmod</b>, <b>mkfile</b>, <b>cat</b>, <b>remove</b>, <b>edit</b>, <b>rename</b>, <b>mkdir</b>, <b>copy</b>, <b>move</b>, <b>find</b>, <b>chgrp</b>, <b>chown</b>.
+          </small>
+        </div>
+      </form>
     </div>
   )
 }

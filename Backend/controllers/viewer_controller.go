@@ -1,10 +1,15 @@
 package controllers
 
 import (
+	"encoding/binary"
 	"net/http"
+	"os"
+	"path/filepath"
+	"strconv"
 	"strings"
 	"time"
 
+	"Backend/core/models"
 	"Backend/core/ports"
 
 	"github.com/gin-gonic/gin"
@@ -12,51 +17,126 @@ import (
 
 // ViewerController maneja endpoints REST para el visualizador UI
 type ViewerController struct {
-	fs     ports.FsRepository
-	mounts ports.MountStore
-	sess   ports.SessionStore
+	fs        ports.FsRepository
+	mounts    ports.MountStore
+	sess      ports.SessionStore
+	disksPath string
 }
 
 // NewViewerController crea una nueva instancia del controller
-func NewViewerController(fs ports.FsRepository, mounts ports.MountStore, sess ports.SessionStore) *ViewerController {
+func NewViewerController(fs ports.FsRepository, mounts ports.MountStore, sess ports.SessionStore, disksPath string) *ViewerController {
 	return &ViewerController{
-		fs:     fs,
-		mounts: mounts,
-		sess:   sess,
+		fs:        fs,
+		mounts:    mounts,
+		sess:      sess,
+		disksPath: disksPath,
 	}
 }
 
 // ListDisks devuelve la lista de discos disponibles
 // GET /api/disks
 func (vc *ViewerController) ListDisks(ctx *gin.Context) {
+	// Leer todos los archivos .mia de la carpeta Discos
+	files, err := filepath.Glob(filepath.Join(vc.disksPath, "*.mia"))
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, gin.H{
+			"error": "Error leyendo carpeta de discos: " + err.Error(),
+		})
+		return
+	}
+
+	// Obtener lista de montajes para saber qué particiones están montadas
 	mounts := vc.mounts.List()
-
-	// Agrupar por disco (path)
-	disksMap := make(map[string][]gin.H)
-
+	mountsByDisk := make(map[string][]mountedPartition)
 	for _, m := range mounts {
-		if _, exists := disksMap[m.Path]; !exists {
-			disksMap[m.Path] = []gin.H{}
+		mountsByDisk[m.Path] = append(mountsByDisk[m.Path], mountedPartition{
+			ID:   m.ID,
+			Name: m.Name,
+		})
+	}
+
+	// Construir respuesta
+	disks := []gin.H{}
+	for _, filePath := range files {
+		// Obtener info del archivo
+		fileInfo, err := os.Stat(filePath)
+		if err != nil {
+			continue
 		}
 
-		disksMap[m.Path] = append(disksMap[m.Path], gin.H{
-			"id":   m.ID,
-			"name": m.Name,
-		})
-	}
+		// Extraer nombre del archivo
+		fileName := filepath.Base(filePath)
 
-	// Convertir a formato de respuesta
-	disks := []gin.H{}
-	for path, partitions := range disksMap {
+		// Obtener particiones montadas de este disco (si las hay)
+		mounted := mountsByDisk[filePath]
+		if mounted == nil {
+			mounted = []mountedPartition{}
+		}
+
+		// Leer Fit del MBR
+		fit := readMBRFit(filePath)
+
 		disks = append(disks, gin.H{
-			"path":       path,
-			"partitions": partitions,
+			"path":    filePath,
+			"name":    fileName,
+			"size":    formatBytes(fileInfo.Size()),
+			"fit":     fit,
+			"mounted": mounted,
 		})
 	}
 
-	ctx.JSON(http.StatusOK, gin.H{
-		"disks": disks,
-	})
+	ctx.JSON(http.StatusOK, disks)
+}
+
+// readMBRFit lee el campo Fit del MBR de un disco
+func readMBRFit(diskPath string) string {
+	file, err := os.Open(diskPath)
+	if err != nil {
+		return "N/A"
+	}
+	defer file.Close()
+
+	var mbr models.MBR
+	err = binary.Read(file, binary.LittleEndian, &mbr)
+	if err != nil {
+		return "N/A"
+	}
+
+	// Convertir byte a string
+	switch mbr.Fit {
+	case 'F', 'f':
+		return "FF"
+	case 'B', 'b':
+		return "BF"
+	case 'W', 'w':
+		return "WF"
+	default:
+		return "N/A"
+	}
+}
+
+// formatBytes convierte bytes a formato legible
+func formatBytes(bytes int64) string {
+	const unit = 1024
+	if bytes < unit {
+		return strconv.FormatInt(bytes, 10) + " B"
+	}
+	div, exp := int64(unit), 0
+	for n := bytes / unit; n >= unit; n /= unit {
+		div *= unit
+		exp++
+	}
+	return strconv.FormatFloat(float64(bytes)/float64(div), 'f', 1, 64) + " " + "KMGTPE"[exp:exp+1] + "B"
+}
+
+type diskInfo struct {
+	Path    string
+	Mounted []mountedPartition
+}
+
+type mountedPartition struct {
+	ID   string
+	Name string
 }
 
 // ListPartitions devuelve las particiones de un disco
@@ -70,17 +150,17 @@ func (vc *ViewerController) ListPartitions(ctx *gin.Context) {
 	for _, m := range mounts {
 		if m.Path == diskPath {
 			partitions = append(partitions, gin.H{
-				"id":      m.ID,
-				"name":    m.Name,
-				"mounted": true,
+				"id":        m.ID,
+				"name":      m.Name,
+				"type":      "Primaria", // TODO: Leer del MBR si se requiere
+				"size":      "N/A",      // TODO: Leer del MBR si se requiere
+				"fit":       "N/A",      // TODO: Leer del MBR si se requiere
+				"formatted": true,       // Si está montado, asumimos que está formateado
 			})
 		}
 	}
 
-	ctx.JSON(http.StatusOK, gin.H{
-		"disk":       diskPath,
-		"partitions": partitions,
-	})
+	ctx.JSON(http.StatusOK, partitions)
 }
 
 // GetTree devuelve el árbol de directorios de una partición
@@ -120,11 +200,22 @@ func (vc *ViewerController) GetTree(ctx *gin.Context) {
 	// Convertir a formato JSON
 	jsonEntries := make([]gin.H, 0, len(entries))
 	for _, e := range entries {
+		// Construir path absoluto para cada entrada
+		fullPath := path
+		if fullPath == "/" {
+			fullPath = "/" + e.Name
+		} else {
+			fullPath = path + "/" + e.Name
+		}
+
 		jsonEntries = append(jsonEntries, gin.H{
 			"name":  e.Name,
 			"type":  e.Type,
+			"path":  fullPath,
 			"size":  e.Size,
 			"perm":  e.Perm,
+			"uid":   0, // TODO: Extraer del inodo si se requiere
+			"gid":   0, // TODO: Extraer del inodo si se requiere
 			"owner": e.Owner,
 			"group": e.Group,
 			"mtime": e.Mtime,
@@ -132,9 +223,7 @@ func (vc *ViewerController) GetTree(ctx *gin.Context) {
 	}
 
 	ctx.JSON(http.StatusOK, gin.H{
-		"mount_id": mountID,
-		"path":     path,
-		"entries":  jsonEntries,
+		"items": jsonEntries,
 	})
 }
 
@@ -314,37 +403,106 @@ func (vc *ViewerController) Login(ctx *gin.Context) {
 
 	if err := ctx.ShouldBindJSON(&req); err != nil {
 		ctx.JSON(http.StatusBadRequest, gin.H{
-			"error": err.Error(),
+			"message": err.Error(),
 		})
 		return
 	}
 
-	// TODO: Verificar que la partición está montada
-	// TODO: Verificar credenciales en users.txt
-	// TODO: Crear sesión
+	// Verificar que la partición está montada
+	_, err := vc.mounts.GetMount(req.ID)
+	if err != nil {
+		ctx.JSON(http.StatusNotFound, gin.H{
+			"message": "Partición no montada o ID inválido",
+		})
+		return
+	}
+
+	// Leer users.txt para validar credenciales
+	// Usamos Cat directamente como lo hace UsersAdapter
+	pathParts := [][]string{{"users.txt"}}
+	content, err := vc.fs.Cat(req.ID, pathParts)
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, gin.H{
+			"message": "Error leyendo archivo de usuarios: " + err.Error(),
+		})
+		return
+	}
+
+	// Parsear users.txt
+	lines := strings.Split(strings.TrimSpace(content), "\n")
+	authenticated := false
+	var uid, gid int
+	var isRoot bool
+
+	for _, line := range lines {
+		line = strings.TrimSpace(line)
+		if line == "" {
+			continue
+		}
+
+		parts := strings.Split(line, ",")
+		if len(parts) < 5 {
+			continue
+		}
+
+		// Formato: uid, tipo (U/G), grupo, usuario, contraseña
+		typ := parts[1]
+		if typ != "U" {
+			continue // Solo usuarios
+		}
+
+		username := parts[3]
+		password := parts[4]
+
+		if username == req.User && password == req.Pass {
+			// Convertir uid
+			uidVal, err := strconv.Atoi(parts[0])
+			if err != nil {
+				continue
+			}
+			uid = uidVal
+
+			// Convertir gid
+			gidVal, err := strconv.Atoi(parts[2])
+			if err != nil {
+				continue
+			}
+			gid = gidVal
+
+			isRoot = (req.User == "root")
+			authenticated = true
+			break
+		}
+	}
+
+	if !authenticated {
+		ctx.JSON(http.StatusUnauthorized, gin.H{
+			"message": "Usuario o contraseña incorrectos",
+		})
+		return
+	}
+
+	// Crear sesión usando SessionStore
+	vc.sess.Login(req.User, uid, gid, req.ID)
 
 	ctx.JSON(http.StatusOK, gin.H{
-		"token":    req.ID, // Por simplicidad, usamos el mount ID como token
-		"user":     req.User,
-		"mount_id": req.ID,
+		"ok":   true,
+		"user": req.User,
+		"id":   req.ID,
+		"uid":  uid,
+		"gid":  gid,
+		"root": isRoot,
 	})
 }
 
 // Logout cierra la sesión de un usuario
 // POST /api/auth/logout
-// Body: {"id": "mount_id"}
 func (vc *ViewerController) Logout(ctx *gin.Context) {
-	var req struct {
-		ID string `json:"id" binding:"required"`
-	}
+	// Cerrar sesión usando SessionStore
+	vc.sess.Logout()
 
-	if err := ctx.ShouldBindJSON(&req); err != nil {
-		ctx.JSON(http.StatusBadRequest, gin.H{
-			"error": err.Error(),
-		})
-		return
-	}
-
-	// TODO: Cerrar sesión
-	ctx.Status(http.StatusNoContent)
+	ctx.JSON(http.StatusOK, gin.H{
+		"ok":      true,
+		"message": "Sesión cerrada exitosamente",
+	})
 }

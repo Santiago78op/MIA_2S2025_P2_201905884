@@ -56,7 +56,7 @@ func main() {
 	cs := controllers.NewCommandsController(cmdRunner)
 	ss := controllers.NewScriptController(&scriptRunnerAdapter{cmdRunner}) // Adaptador para ScriptRunner
 	rs := controllers.NewReportsController(reportSvc, cfg.ReportsPath)
-	vc := controllers.NewViewerController(portsFsAdapter, portsMountStore, portsSessionStore) // NUEVO P2: ViewerController
+	vc := controllers.NewViewerController(portsFsAdapter, portsMountStore, portsSessionStore, cfg.DisksPath) // NUEVO P2: ViewerController
 
 	// === Router y servidor HTTP ===
 	r := router.SetupRouter(cfg, cs, ss, rs, vc)

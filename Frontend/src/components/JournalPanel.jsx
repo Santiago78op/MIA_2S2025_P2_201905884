@@ -1,20 +1,60 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { API } from '../lib/api'
 
 export default function JournalPanel({id}){
   const [rows,setRows]=useState([])
-  useEffect(()=>{
-    let timer
-    const fetchIt = async ()=>{ try{ setRows(await API.journaling(id)) }catch{} }
-    fetchIt(); timer = setInterval(fetchIt, 3000) // polling 3s
-    return ()=>clearInterval(timer)
-  },[id])
+  const [loading,setLoading]=useState(false)
+  const [err,setErr]=useState('')
+
+  async function loadJournal(){
+    setLoading(true)
+    setErr('')
+    try {
+      const data = await API.journaling(id)
+      setRows(data)
+    } catch(e) {
+      setErr(e.message || 'Error cargando journal')
+      setRows([])
+    } finally {
+      setLoading(false)
+    }
+  }
+
   return (
     <div className="card">
-      <div className="head"><b>Journaling</b><span className="badge">EXT3</span></div>
+      <div className="head">
+        <b>Journaling</b>
+        <span className="badge">EXT3</span>
+        <button
+          className="btn"
+          onClick={loadJournal}
+          disabled={loading}
+          style={{marginLeft:'auto', fontSize:'12px', padding:'6px 12px'}}
+        >
+          {loading ? 'Cargando...' : 'Cargar Journal'}
+        </button>
+      </div>
       <div className="body">
-        {rows.length===0 && <div className="muted">Sin transacciones.</div>}
-        {rows.map((j,i)=>(
+        {err && (
+          <div style={{
+            padding:'10px',
+            background:'var(--panel2)',
+            border:'1px solid var(--danger)',
+            borderRadius:'10px',
+            color:'var(--danger)',
+            marginBottom:'12px',
+            fontSize:'12px'
+          }}>
+            <b>Error:</b> {err}
+          </div>
+        )}
+        {loading && <div className="muted">Cargando journal...</div>}
+        {!loading && rows.length===0 && !err && (
+          <div className="muted">
+            Haz clic en "Cargar Journal" para ver las transacciones (solo EXT3)
+          </div>
+        )}
+        {!loading && rows.length > 0 && rows.map((j,i)=>(
           <div key={i} className="journalRow">
             <div className="op">{j.operation}</div>
             <div className="mono">{j.path} {j.extra?`→ ${j.extra}`:''}</div>

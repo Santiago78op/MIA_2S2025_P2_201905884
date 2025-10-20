@@ -33,6 +33,16 @@ export default function Visualizer({session}){
     setStep(1)
   }
 
+  function backToDisks(){
+    setPartition(null)
+    setStep(1)
+  }
+
+  function backToPartitions(){
+    setPartition(null)
+    setStep(2)
+  }
+
   return (
     <div style={{padding:'12px', minHeight:'calc(100vh - 60px)', display:'flex', flexDirection:'column', gap:'12px'}}>
       {/* Breadcrumb / Steps */}
@@ -71,7 +81,7 @@ export default function Visualizer({session}){
               <div className="muted">Particiones Montadas</div><div>{disk.mounted?.length || 0}</div>
             </div>
           </div>
-          <PartitionPicker disk={disk} onSelect={handlePartitionSelect}/>
+          <PartitionPicker disk={disk} onSelect={handlePartitionSelect} onBack={backToDisks}/>
         </>
       )}
 
@@ -93,7 +103,7 @@ export default function Visualizer({session}){
           </div>
 
           <div className="grid cols-2">
-            <Explorer id={session.id}/>
+            <Explorer id={session.id} onBack={backToPartitions}/>
             <JournalPanel id={session.id}/>
           </div>
         </>
