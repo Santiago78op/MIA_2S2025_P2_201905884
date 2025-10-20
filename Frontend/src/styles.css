@@ -1687,7 +1687,21 @@ linear-gradient(90deg, var(--topbar-grad-1), var(--topbar-grad-2) 60%, transpare
   flex-direction: column;
   justify-content: center;
   align-items: center;
-  gap: 30px;
+  gap: 20px;
+}
+
+.partition-back-content img {
+  width: 80px;
+  height: 80px;
+  object-fit: contain;
+  filter: drop-shadow(0 0 10px rgba(0, 255, 149, 0.6));
+}
+
+.partition-back-content strong {
+  font-size: 13px;
+  color: var(--neon);
+  text-transform: uppercase;
+  letter-spacing: 1px;
 }
 
 .partition-card:hover .partition-content {
@@ -1848,4 +1862,51 @@ linear-gradient(90deg, var(--topbar-grad-1), var(--topbar-grad-2) 60%, transpare
   100% {
     transform: translateY(0px);
   }
+}
+
+/* Particiones Activas - Color Neón Diferente */
+.partition-active .partition-back::before {
+  background: linear-gradient(90deg, transparent, #00ff88, #00ff88, #00ff88, #00ff88, transparent);
+}
+
+.partition-active .partition-back-content img {
+  filter: drop-shadow(0 0 10px rgba(0, 255, 136, 0.8));
+}
+
+.partition-active .partition-back-content strong {
+  color: #00ff88;
+}
+
+.partition-status-badge {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  background: rgba(0, 255, 136, 0.2);
+  border: 1px solid #00ff88;
+  padding: 4px 10px;
+  border-radius: 12px;
+  font-size: 9px;
+  font-weight: bold;
+  color: #00ff88;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  box-shadow: 0 0 10px rgba(0, 255, 136, 0.3);
+}
+
+.partition-active .partition-badge {
+  background-color: rgba(0, 255, 136, 0.15);
+  border: 1px solid rgba(0, 255, 136, 0.3);
+}
+
+.partition-active .partition-explore-btn {
+  background: linear-gradient(135deg, rgba(0, 255, 136, 0.2) 0%, rgba(0, 255, 136, 0.1) 100%);
+  border-color: #00ff88;
+  color: #00ff88;
+}
+
+.partition-active .partition-explore-btn:hover {
+  background: linear-gradient(135deg, rgba(0, 255, 136, 0.3) 0%, rgba(0, 255, 136, 0.2) 100%);
+  box-shadow: 
+    0 0 20px rgba(0, 255, 136, 0.4),
+    0 4px 20px rgba(0,0,0,0.4);
 }

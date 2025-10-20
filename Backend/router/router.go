@@ -143,7 +143,8 @@ func SetupRouter(cfg *config.Config,
 		api.GET("/disks", vc.ListDisks)
 
 		// Listar particiones de un disco
-		api.GET("/disks/:disk/partitions", vc.ListPartitions)
+		// Query params: ?path=/ruta/al/disco.mia
+		api.GET("/disks/partitions", vc.ListPartitions)
 
 		// Árbol de directorios de una partición montada
 		// Query params: ?path=/ruta

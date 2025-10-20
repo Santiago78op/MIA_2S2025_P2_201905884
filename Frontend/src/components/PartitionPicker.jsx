@@ -88,12 +88,13 @@ export default function PartitionPicker({disk, onSelect, onBack}){
         {!loading && parts.length > 0 && (
           <div className="list">
             {parts.map(p=>(
-              <div key={p.id || p.name} className="partition-card">
+              <div key={p.id || p.name} className={`partition-card ${p.formatted ? 'partition-active' : ''}`}>
                 <div className="partition-content">
                   <div className="partition-back">
                     <div className="partition-back-content">
-                      <img src={particionImg} alt="Partición" style={{width: '60px', height: '60px', filter: 'drop-shadow(0 0 10px rgba(255,255,255,0.5))'}} />
-                      <strong>Hover para info</strong>
+                      <img src={particionImg} alt="Partición" />
+                      <strong>{p.name}</strong>
+                      {p.formatted && <span className="partition-status-badge">ACTIVA</span>}
                     </div>
                   </div>
                   <div className="partition-front">

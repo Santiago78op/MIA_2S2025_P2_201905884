@@ -140,23 +140,85 @@ type mountedPartition struct {
 }
 
 // ListPartitions devuelve las particiones de un disco
-// GET /api/disks/:disk/partitions
+// GET /api/disks/partitions?path=/ruta/disco.mia
 func (vc *ViewerController) ListPartitions(ctx *gin.Context) {
-	diskPath := ctx.Param("disk")
+	diskPath := ctx.Query("path")
+
+	if diskPath == "" {
+		ctx.JSON(http.StatusBadRequest, gin.H{"error": "path parameter required"})
+		return
+	}
+
+	// Leer el MBR del disco
+	file, err := os.Open(diskPath)
+	if err != nil {
+		ctx.JSON(http.StatusNotFound, gin.H{"error": "disk not found"})
+		return
+	}
+	defer file.Close()
+
+	var mbr models.MBR
+	err = binary.Read(file, binary.LittleEndian, &mbr)
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, gin.H{"error": "failed to read MBR"})
+		return
+	}
 
 	mounts := vc.mounts.List()
 	partitions := []gin.H{}
 
-	for _, m := range mounts {
-		if m.Path == diskPath {
-			partitions = append(partitions, gin.H{
-				"id":        m.ID,
-				"name":      m.Name,
-				"type":      "Primaria", // TODO: Leer del MBR si se requiere
-				"size":      "N/A",      // TODO: Leer del MBR si se requiere
-				"fit":       "N/A",      // TODO: Leer del MBR si se requiere
-				"formatted": true,       // Si está montado, asumimos que está formateado
-			})
+	// Leer particiones primarias y extendidas
+	for i := 0; i < 4; i++ {
+		partition := mbr.Partitions[i]
+
+		// Verificar si la partición existe (status != 0)
+		if partition.Status == 0 {
+			continue
+		}
+
+		// Obtener tipo de partición
+		partType := "Primaria"
+		if partition.Type == 'E' || partition.Type == 'e' {
+			partType = "Extendida"
+		}
+
+		// Obtener fit
+		fit := string(partition.Fit)
+		if partition.Fit == 'F' || partition.Fit == 'f' {
+			fit = "FF"
+		} else if partition.Fit == 'B' || partition.Fit == 'b' {
+			fit = "BF"
+		} else if partition.Fit == 'W' || partition.Fit == 'w' {
+			fit = "WF"
+		}
+
+		// Obtener nombre (limpiar bytes nulos)
+		name := string(partition.Name[:])
+		name = strings.TrimRight(name, "\x00")
+
+		// Verificar si está montada
+		var mountID string
+		formatted := false
+		for _, m := range mounts {
+			if m.Path == diskPath && m.Name == name {
+				mountID = m.ID
+				formatted = true
+				break
+			}
+		}
+
+		partitions = append(partitions, gin.H{
+			"id":        mountID,
+			"name":      name,
+			"type":      partType,
+			"size":      formatBytes(int64(partition.Size)),
+			"fit":       fit,
+			"formatted": formatted,
+		})
+
+		// Si es extendida, leer particiones lógicas
+		if partition.Type == 'E' || partition.Type == 'e' {
+			// TODO: Implementar lectura de EBRs para particiones lógicas
 		}
 	}
 

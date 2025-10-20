@@ -20,7 +20,7 @@ export const API = {
   },
 
   async disks(){ const r=await fetch('/api/disks'); if(!r.ok) throw new Error('disks'); return r.json() },
-  async partitions(diskPath){ const r=await fetch(`/api/disks/${encodeURIComponent(diskPath)}/partitions`); if(!r.ok) throw new Error('parts'); return r.json() },
+  async partitions(diskPath){ const r=await fetch(`/api/disks/partitions?path=${encodeURIComponent(diskPath)}`); if(!r.ok) throw new Error('parts'); return r.json() },
 
   async list(id, path){ const r=await fetch(`/api/fs/${encodeURIComponent(id)}/tree?path=${encodeURIComponent(path)}`); if(!r.ok) throw new Error('list'); return r.json() },
   async file(id, path){ const r=await fetch(`/api/fs/${encodeURIComponent(id)}/file?path=${encodeURIComponent(path)}`); if(!r.ok) throw new Error('file'); const d = await r.json(); return d.content },
