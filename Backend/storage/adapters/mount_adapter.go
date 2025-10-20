@@ -1,6 +1,8 @@
 package adapters
 
 import (
+	"fmt"
+
 	"Backend/command/disk"
 	"Backend/core/ports"
 	"Backend/storage/mounts"
@@ -75,4 +77,13 @@ func (p *PortsMountStore) Unmount(id string) error {
 
 func (p *PortsMountStore) SetPartitionSeq(diskSignature string, seq int) error {
 	return p.state.SetPartitionSeq(diskSignature, seq)
+}
+
+func (p *PortsMountStore) GetMount(id string) (*ports.MountedEntry, error) {
+	for _, m := range p.state.List() {
+		if m.ID == id {
+			return &m, nil
+		}
+	}
+	return nil, fmt.Errorf("mount not found: %s", id)
 }

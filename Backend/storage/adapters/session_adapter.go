@@ -38,3 +38,16 @@ func NewSessionAdapterFromMemory() interface {
 } {
 	return &SessionAdapter{sess: session.NewMemory()}
 }
+
+// NewPortsSessionAdapter adapta SessionAdapter para exponer ports.SessionStore
+func NewPortsSessionAdapter(adapter interface {
+	users.SessionStore
+	fs.SessionStore
+}) ports.SessionStore {
+	// Si es un SessionAdapter, extraer el ports.SessionStore interno
+	if sa, ok := adapter.(*SessionAdapter); ok {
+		return sa.sess
+	}
+	// Si no, crear uno nuevo desde memoria como fallback
+	return session.NewMemory()
+}

@@ -155,6 +155,9 @@ func SetupRouter(cfg *config.Config,
 
 		// Listar entradas del journal (solo EXT3)
 		api.GET("/journal/:id", vc.GetJournal)
+
+		// Listar entradas del journal en formato tabla (solo EXT3)
+		api.GET("/journal/:id/table", vc.GetJournalTable)
 	}
 
 	// 404 Handler

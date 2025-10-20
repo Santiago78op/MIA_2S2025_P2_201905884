@@ -1,0 +1,268 @@
+# =============================================================================
+# Script E2E - Proyecto 2 MIA
+# Prueba completa de todas las funcionalidades
+# =============================================================================
+
+# -----------------------------------------------------------------------------
+# 1. PREPARACIÓN: Crear disco y particiones
+# -----------------------------------------------------------------------------
+
+# Crear disco de prueba
+mkdisk -size=20 -unit=M -path=./Discos/test_p2.mia
+
+# Crear partición primaria EXT3
+fdisk -size=8 -unit=M -path=./Discos/test_p2.mia -type=P -name=PartEXT3
+
+# Crear partición primaria EXT2 (para comparar)
+fdisk -size=5 -unit=M -path=./Discos/test_p2.mia -type=P -name=PartEXT2
+
+# -----------------------------------------------------------------------------
+# 2. MONTAJE Y FORMATEO
+# -----------------------------------------------------------------------------
+
+# Montar ambas particiones (obtener IDs, ej: 841A, 841B)
+mount -path=./Discos/test_p2.mia -name=PartEXT3
+mount -path=./Discos/test_p2.mia -name=PartEXT2
+
+# Formatear como EXT3 (partición 1)
+# NOTA: Reemplazar 841A con el ID real que devuelva mount
+mkfs -id=841A -fs=3fs -type=full
+
+# Formatear como EXT2 (partición 2)
+mkfs -id=841B -fs=2fs -type=full
+
+# -----------------------------------------------------------------------------
+# 3. LOGIN (sesión para comandos que requieren permisos)
+# -----------------------------------------------------------------------------
+
+# Login como root en partición EXT3
+login -user=root -pass=123 -id=841A
+
+# -----------------------------------------------------------------------------
+# 4. OPERACIONES BÁSICAS DE FILESYSTEM
+# -----------------------------------------------------------------------------
+
+# Crear estructura de directorios
+mkdir -id=841A -path=/home -p
+mkdir -id=841A -path=/home/user1
+mkdir -id=841A -path=/home/user2
+mkdir -id=841A -path=/docs
+mkdir -id=841A -path=/backup
+
+# Crear archivos
+mkfile -id=841A -path=/home/user1/file1.txt -size=100
+mkfile -id=841A -path=/home/user1/file2.txt -size=200
+mkfile -id=841A -path=/home/user2/notes.txt -size=150
+mkfile -id=841A -path=/docs/readme.md -size=50
+
+# Verificar contenido (cat)
+cat -id=841A -file=/home/user1/file1.txt
+
+# -----------------------------------------------------------------------------
+# 5. COMANDOS AVANZADOS - COPY
+# -----------------------------------------------------------------------------
+
+# Copiar archivo individual
+copy -id=841A -path=/home/user1/file1.txt -destino=/backup
+
+# Copiar directorio recursivo
+copy -id=841A -path=/home/user1 -destino=/backup
+
+# -----------------------------------------------------------------------------
+# 6. COMANDOS AVANZADOS - MOVE
+# -----------------------------------------------------------------------------
+
+# Crear directorio temporal para mover
+mkdir -id=841A -path=/temp
+
+# Mover archivo
+move -id=841A -path=/backup/file1.txt -destino=/temp
+
+# Mover directorio completo
+move -id=841A -path=/backup/user1 -destino=/temp
+
+# -----------------------------------------------------------------------------
+# 7. COMANDOS AVANZADOS - FIND
+# -----------------------------------------------------------------------------
+
+# Buscar todos los archivos .txt
+find -id=841A -path=/ -name=*.txt
+
+# Buscar archivos que empiecen con 'file'
+find -id=841A -path=/home -name=file*
+
+# Buscar con comodín ?
+find -id=841A -path=/ -name=file?.txt
+
+# -----------------------------------------------------------------------------
+# 8. COMANDOS AVANZADOS - CHMOD
+# -----------------------------------------------------------------------------
+
+# Cambiar permisos de archivo individual
+chmod -id=841A -path=/home/user1/file2.txt -ugo=644
+
+# Cambiar permisos recursivos de directorio
+chmod -id=841A -path=/docs -ugo=755 -r
+
+# Cambiar permisos restrictivos
+chmod -id=841A -path=/temp -ugo=700 -r
+
+# -----------------------------------------------------------------------------
+# 9. COMANDOS AVANZADOS - CHOWN
+# -----------------------------------------------------------------------------
+
+# Crear usuario de prueba (si está implementado mkusr)
+# mkusr -user=testuser -pass=test123 -grp=1 -id=841A
+
+# Cambiar dueño de archivo
+# chown -id=841A -path=/home/user1/file2.txt -usuario=testuser
+
+# Cambiar dueño recursivo de directorio
+# chown -id=841A -path=/docs -usuario=testuser -r
+
+# -----------------------------------------------------------------------------
+# 10. JOURNALING - Verificar registro de operaciones
+# -----------------------------------------------------------------------------
+
+# En este punto, el journal debe contener todas las operaciones anteriores
+# Se puede verificar con el endpoint: GET /api/journal/841A/table
+
+# -----------------------------------------------------------------------------
+# 11. LOSS & RECOVERY - Simulación de recuperación de desastres
+# -----------------------------------------------------------------------------
+
+# Simular pérdida catastrófica de datos (limpia bitmaps, inodos, bloques)
+loss -id=841A
+
+# Verificar que el FS quedó "vacío" (solo SB y Journal intactos)
+# Intentar cat debería fallar o mostrar vacío
+
+# Recuperar desde journal
+recovery -id=841A
+
+# Verificar que la estructura se recuperó
+# find -id=841A -path=/ -name=*
+
+# -----------------------------------------------------------------------------
+# 12. REPORTES - Validar estado del sistema
+# -----------------------------------------------------------------------------
+
+# Reporte MBR
+rep -path=./Discos/test_p2.mia -name=mbr -id=841A -ruta=./Reports/mbr_test.jpg
+
+# Reporte DISK
+rep -path=./Discos/test_p2.mia -name=disk -id=841A -ruta=./Reports/disk_test.jpg
+
+# Reporte SuperBlock (EXT3)
+rep -path=./Discos/test_p2.mia -name=sb -id=841A -ruta=./Reports/sb_ext3.txt
+
+# Reporte Tree (árbol de directorios)
+rep -path=./Discos/test_p2.mia -name=tree -id=841A -ruta=./Reports/tree_test.jpg
+
+# Reporte Journaling
+# rep -path=./Discos/test_p2.mia -name=journaling -id=841A -ruta=./Reports/journal_test.txt
+
+# -----------------------------------------------------------------------------
+# 13. FDISK ADD/DELETE (si está implementado)
+# -----------------------------------------------------------------------------
+
+# Agregar espacio a partición (si hay espacio libre después)
+# fdisk -add=+2 -unit=M -path=./Discos/test_p2.mia -name=PartEXT3
+
+# Reducir espacio de partición (si no viola espacio usado)
+# fdisk -add=-1 -unit=M -path=./Discos/test_p2.mia -name=PartEXT3
+
+# Eliminar partición con fast (solo limpia tabla)
+# fdisk -delete=fast -path=./Discos/test_p2.mia -name=PartEXT2
+
+# Eliminar partición con full (limpia tabla y rellena con \0)
+# fdisk -delete=full -path=./Discos/test_p2.mia -name=PartEXT2
+
+# -----------------------------------------------------------------------------
+# 14. REMOVE (si está implementado)
+# -----------------------------------------------------------------------------
+
+# Remover archivo individual
+# remove -id=841A -path=/temp/file1.txt
+
+# Remover directorio recursivo (con validación de permisos)
+# remove -id=841A -path=/temp
+
+# -----------------------------------------------------------------------------
+# 15. EDIT (si está implementado)
+# -----------------------------------------------------------------------------
+
+# Crear archivo temporal en el host con contenido
+# echo "Este es el nuevo contenido" > /tmp/nuevo_contenido.txt
+
+# Editar archivo (reemplazar contenido)
+# edit -id=841A -path=/home/user1/file2.txt -contenido=/tmp/nuevo_contenido.txt
+
+# Verificar cambio
+# cat -id=841A -file=/home/user1/file2.txt
+
+# -----------------------------------------------------------------------------
+# 16. RENAME (si está implementado)
+# -----------------------------------------------------------------------------
+
+# Renombrar archivo
+# rename -id=841A -path=/home/user2/notes.txt -name=apuntes.txt
+
+# Renombrar directorio
+# rename -id=841A -path=/docs -name=documentos
+
+# -----------------------------------------------------------------------------
+# 17. UNMOUNT Y CLEANUP
+# -----------------------------------------------------------------------------
+
+# Logout de la sesión
+logout
+
+# Desmontar particiones
+unmount -id=841A
+unmount -id=841B
+
+# -----------------------------------------------------------------------------
+# 18. VALIDACIONES FINALES
+# -----------------------------------------------------------------------------
+
+# Intentar usar comandos con partición desmontada (debe fallar)
+# mkdir -id=841A -path=/test
+
+# Volver a montar para verificar persistencia
+# mount -path=./Discos/test_p2.mia -name=PartEXT3
+
+# Login nuevamente
+# login -user=root -pass=123 -id=841A
+
+# Verificar que los cambios persisten después de desmontar/montar
+# find -id=841A -path=/ -name=*
+
+# -----------------------------------------------------------------------------
+# FIN DEL SCRIPT E2E
+# -----------------------------------------------------------------------------
+
+# VERIFICACIONES ESPERADAS:
+#
+# 1. Journal debe tener entradas de todas las operaciones (mkdir, mkfile, copy, move, chmod, chown)
+# 2. Después de LOSS, el FS debe estar "vacío" (solo raíz y users.txt)
+# 3. Después de RECOVERY, la estructura debe volver a aparecer
+# 4. Los reportes deben generarse correctamente
+# 5. Los archivos deben persistir después de unmount/mount
+# 6. Comandos sin sesión activa deben fallar apropiadamente
+#
+# ENDPOINTS UI A PROBAR:
+#
+# - GET /api/disks → debe mostrar test_p2.mia
+# - GET /api/disks/test_p2.mia/partitions → debe mostrar PartEXT3 y PartEXT2
+# - GET /api/fs/841A/tree?path=/ → debe mostrar estructura de directorios
+# - GET /api/fs/841A/file?path=/home/user1/file1.txt → debe mostrar contenido
+# - GET /api/journal/841A/table → debe mostrar todas las operaciones
+#
+# PRUEBAS DE ERRORES:
+#
+# - Intentar login con credenciales incorrectas → error
+# - Intentar comandos sin sesión → error
+# - Intentar operaciones en partición EXT2 con journal → error
+# - Intentar chmod/chown sin ser root u owner → error
+# - Intentar copy/move sin permisos → omite (no falla todo)

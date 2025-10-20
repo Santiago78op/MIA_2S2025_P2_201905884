@@ -56,4 +56,18 @@ type FsRepository interface {
 	// ---- Recovery y Loss ----
 	WipeDataAreas(id string) error // Loss: limpia bitmaps, inodos y bloques
 	Recovery(id string) error       // Recovery: restaura desde journal
+
+	// ---- Viewer helpers ----
+	ListDirectory(id string, path []string) ([]DirectoryEntry, error)
+}
+
+// DirectoryEntry representa un archivo o directorio en el sistema
+type DirectoryEntry struct {
+	Name  string
+	Type  string // "file" o "dir"
+	Size  int64
+	Perm  string // "rwx" format
+	Owner string
+	Group string
+	Mtime int64
 }

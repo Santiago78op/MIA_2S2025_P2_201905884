@@ -15,15 +15,17 @@ type FsRepository interface {
 	Mkfile(id string, absPath []string, size int, contentHostPath string, recursive bool, uid int, gid int, now time.Time) error
 	Cat(id string, files [][]string, uid int, gid int) (string, error)
 
-	// TODO P2: Implementar métodos para comandos avanzados
-	// Remove(id string, absPath []string, uid int, gid int) error
-	// Edit(id string, absPath []string, content []byte, uid int, gid int) error
-	// Rename(id string, absPath []string, newName string, uid int, gid int) error
-	// Copy(id string, srcPath []string, destPath []string, uid int, gid int) error
-	// Move(id string, srcPath []string, destPath []string, uid int, gid int) error
-	// Find(id string, startPath []string, pattern string, uid int, gid int) ([]string, error)
-	// Chmod(id string, absPath []string, ugo string, recursive bool, uid int, gid int) error
-	// Chown(id string, absPath []string, newUid int, newGid int, recursive bool, uid int, gid int) error
+	// Comandos avanzados P2
+	Remove(id string, absPath []string, uid int, gid int) error
+	Edit(id string, absPath []string, content []byte, uid int, gid int) error
+	Rename(id string, absPath []string, newName string, uid int, gid int) error
+	Copy(id string, srcPath []string, destPath []string, uid int, gid int) (copied int, skipped int, err error)
+	Move(id string, srcPath []string, destPath []string, uid int, gid int) error
+	Find(id string, startPath []string, pattern string, uid int, gid int) ([]string, error)
+	Chmod(id string, absPath []string, ugo [3]byte, recursive bool, uid int, gid int) error
+	Chown(id string, absPath []string, user string, recursive bool, uid int, gid int) error
+	WipeDataAreas(id string) error
+	Recovery(id string) error
 }
 
 type SessionStore interface {
@@ -309,10 +311,16 @@ func (s *FsService) Copy(id, srcPath, destPath string) (string, error) {
 		return "", fmt.Errorf("path inválido")
 	}
 
-	// TODO: Implementar Copy en el repositorio
-	_ = uid
-	_ = gid
-	return fmt.Sprintf("COPY ejecutado: %s -> %s (stub)", srcPath, destPath), nil
+	// Ejecutar copia recursiva con verificación de permisos
+	copied, skipped, err := s.repo.Copy(id, srcParts, destParts, uid, gid)
+	if err != nil {
+		return "", err
+	}
+
+	if skipped > 0 {
+		return fmt.Sprintf("COPY completado: %d elementos copiados, %d omitidos por permisos", copied, skipped), nil
+	}
+	return fmt.Sprintf("COPY completado: %d elementos copiados", copied), nil
 }
 
 func (s *FsService) Move(id, srcPath, destPath string) (string, error) {
@@ -330,10 +338,13 @@ func (s *FsService) Move(id, srcPath, destPath string) (string, error) {
 		return "", fmt.Errorf("path inválido")
 	}
 
-	// TODO: Implementar Move en el repositorio
-	_ = uid
-	_ = gid
-	return fmt.Sprintf("MOVE ejecutado: %s -> %s (stub)", srcPath, destPath), nil
+	// Ejecutar movimiento mediante re-enlace (sin copiar bloques)
+	err := s.repo.Move(id, srcParts, destParts, uid, gid)
+	if err != nil {
+		return "", err
+	}
+
+	return fmt.Sprintf("MOVE completado: %s → %s", srcPath, destPath), nil
 }
 
 func (s *FsService) Find(id, path, pattern string) (string, error) {
@@ -346,14 +357,25 @@ func (s *FsService) Find(id, path, pattern string) (string, error) {
 	}
 
 	parts := SplitPath(path)
-	if len(parts) == 0 {
-		return "", fmt.Errorf("path inválido")
+	// Permitir path vacío (buscar desde raíz)
+
+	// Ejecutar búsqueda recursiva con patrón glob
+	results, err := s.repo.Find(id, parts, pattern, uid, gid)
+	if err != nil {
+		return "", err
 	}
 
-	// TODO: Implementar Find en el repositorio
-	_ = uid
-	_ = gid
-	return fmt.Sprintf("FIND ejecutado en %s con patrón %s (stub)", path, pattern), nil
+	if len(results) == 0 {
+		return fmt.Sprintf("FIND: sin coincidencias para '%s' en %s", pattern, path), nil
+	}
+
+	var output strings.Builder
+	output.WriteString(fmt.Sprintf("FIND: %d coincidencias para '%s':\n", len(results), pattern))
+	for _, r := range results {
+		output.WriteString("  " + r + "\n")
+	}
+
+	return output.String(), nil
 }
 
 func (s *FsService) Chmod(id, path, ugo string, recursive bool) (string, error) {
@@ -380,14 +402,20 @@ func (s *FsService) Chmod(id, path, ugo string, recursive bool) (string, error) 
 		}
 	}
 
-	// TODO: Implementar Chmod en el repositorio
-	_ = uid
-	_ = gid
+	// Convertir UGO string a [3]byte
+	ugoBytes := [3]byte{ugo[0], ugo[1], ugo[2]}
+
+	// Ejecutar chmod
+	err := s.repo.Chmod(id, parts, ugoBytes, recursive, uid, gid)
+	if err != nil {
+		return "", err
+	}
+
 	recursiveStr := ""
 	if recursive {
 		recursiveStr = " (recursivo)"
 	}
-	return fmt.Sprintf("CHMOD ejecutado en %s con permisos %s%s (stub)", path, ugo, recursiveStr), nil
+	return fmt.Sprintf("CHMOD completado en %s con permisos %s%s", path, ugo, recursiveStr), nil
 }
 
 func (s *FsService) Chown(id, path, user string, recursive bool) (string, error) {
@@ -404,14 +432,17 @@ func (s *FsService) Chown(id, path, user string, recursive bool) (string, error)
 		return "", fmt.Errorf("path inválido")
 	}
 
-	// TODO: Implementar Chown en el repositorio
-	_ = uid
-	_ = gid
+	// Ejecutar chown
+	err := s.repo.Chown(id, parts, user, recursive, uid, gid)
+	if err != nil {
+		return "", err
+	}
+
 	recursiveStr := ""
 	if recursive {
 		recursiveStr = " (recursivo)"
 	}
-	return fmt.Sprintf("CHOWN ejecutado en %s para usuario %s%s (stub)", path, user, recursiveStr), nil
+	return fmt.Sprintf("CHOWN completado en %s para usuario %s%s", path, user, recursiveStr), nil
 }
 
 func (s *FsService) Loss(id string) (string, error) {
@@ -423,8 +454,13 @@ func (s *FsService) Loss(id string) (string, error) {
 		id = partitionId
 	}
 
-	// TODO: Implementar Loss (WipeDataAreas) en el repositorio
-	return fmt.Sprintf("LOSS ejecutado en partición %s (stub)", id), nil
+	// Ejecutar LOSS (limpia áreas de datos, deja SB y Journal)
+	err := s.repo.WipeDataAreas(id)
+	if err != nil {
+		return "", err
+	}
+
+	return fmt.Sprintf("LOSS completado: datos eliminados en partición %s (bitmaps, inodos, bloques). Journal intacto.", id), nil
 }
 
 func (s *FsService) Recovery(id string) (string, error) {
@@ -436,6 +472,11 @@ func (s *FsService) Recovery(id string) (string, error) {
 		id = partitionId
 	}
 
-	// TODO: Implementar Recovery desde journal en el repositorio
-	return fmt.Sprintf("RECOVERY ejecutado en partición %s (stub)", id), nil
+	// Ejecutar RECOVERY (re-aplica journal)
+	err := s.repo.Recovery(id)
+	if err != nil {
+		return "", err
+	}
+
+	return fmt.Sprintf("RECOVERY completado: operaciones del journal re-aplicadas en partición %s", id), nil
 }

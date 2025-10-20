@@ -39,3 +39,47 @@ func (a *FsAdapter) Mkfile(id string, absPath []string, size int, contentHostPat
 func (a *FsAdapter) Cat(id string, files [][]string, uid int, gid int) (string, error) {
 	return a.repo.Cat(id, files, uid, gid)
 }
+
+// Comandos avanzados P2
+func (a *FsAdapter) Remove(id string, absPath []string, uid int, gid int) error {
+	// TODO: Implementar Remove en FileFsRepository
+	return nil
+}
+
+func (a *FsAdapter) Edit(id string, absPath []string, content []byte, uid int, gid int) error {
+	// TODO: Implementar Edit en FileFsRepository
+	return nil
+}
+
+func (a *FsAdapter) Rename(id string, absPath []string, newName string, uid int, gid int) error {
+	// TODO: Implementar Rename en FileFsRepository
+	return nil
+}
+
+func (a *FsAdapter) Copy(id string, srcPath []string, destPath []string, uid int, gid int) (copied int, skipped int, err error) {
+	return a.repo.Copy(id, srcPath, destPath, uid, gid)
+}
+
+func (a *FsAdapter) Move(id string, srcPath []string, destPath []string, uid int, gid int) error {
+	return a.repo.Move(id, srcPath, destPath, uid, gid)
+}
+
+func (a *FsAdapter) Find(id string, startPath []string, pattern string, uid int, gid int) ([]string, error) {
+	return a.repo.Find(id, startPath, pattern, uid, gid)
+}
+
+func (a *FsAdapter) Chmod(id string, absPath []string, ugo [3]byte, recursive bool, uid int, gid int) error {
+	return a.repo.Chmod(id, absPath, ugo, recursive, uid, gid)
+}
+
+func (a *FsAdapter) Chown(id string, absPath []string, user string, recursive bool, uid int, gid int) error {
+	return a.repo.Chown(id, absPath, user, recursive, uid, gid)
+}
+
+func (a *FsAdapter) WipeDataAreas(id string) error {
+	return a.repo.WipeDataAreas(id)
+}
+
+func (a *FsAdapter) Recovery(id string) error {
+	return a.repo.Recovery(id)
+}
