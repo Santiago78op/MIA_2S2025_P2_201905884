@@ -1,6 +1,8 @@
 import { useState } from 'react'
 import { API } from '../lib/api'
-import { FolderIcon, FileIcon, FileCodeIcon, FileBinaryIcon, LockIcon, UserIcon, ClockIcon, SizeIcon } from './Icons'
+import { LockIcon, UserIcon, ClockIcon, SizeIcon } from './Icons'
+import folderImg from '../assets/icons/folder.png'
+import fileImg from '../assets/icons/file.png'
 
 export default function Explorer({id, onBack}){
   const [path,setPath]=useState('/')
@@ -96,21 +98,25 @@ export default function Explorer({id, onBack}){
         {!loading && !viewFile && items.length > 0 && (
           <div className="list">
               {items.map(x=>{
-                // Determinar icono según tipo y nombre
-                let ItemIcon = FileIcon
-                if (x.type === 'dir') {
-                  ItemIcon = FolderIcon
-                } else if (x.name.match(/\.(sh|py|js|jsx|ts|tsx|go|c|cpp|java)$/i)) {
-                  ItemIcon = FileCodeIcon
-                } else if (x.name.match(/\.(bin|exe|out|o)$/i)) {
-                  ItemIcon = FileBinaryIcon
-                }
+                // Determinar icono según tipo
+                const iconSrc = x.type === 'dir' ? folderImg : fileImg
 
                 return (
                 <div key={x.name} className="item">
                   <div style={{display:'flex', gap:'12px', alignItems:'start', marginBottom:'10px'}}>
                     <div style={{paddingTop:'2px'}}>
-                      <ItemIcon size={36} color={x.type==='dir' ? 'var(--warning)' : 'var(--neo2)'} />
+                      <img
+                        src={iconSrc}
+                        alt={x.type === 'dir' ? 'Carpeta' : 'Archivo'}
+                        style={{
+                          width: '40px',
+                          height: '40px',
+                          objectFit: 'contain',
+                          filter: x.type === 'dir'
+                            ? 'drop-shadow(0 0 4px rgba(255, 193, 7, 0.5))'
+                            : 'drop-shadow(0 0 4px rgba(87, 182, 255, 0.5))'
+                        }}
+                      />
                     </div>
                     <div style={{flex:1}}>
                       <div style={{display:'flex', alignItems:'center', gap:'8px', marginBottom:'6px'}}>
@@ -162,12 +168,12 @@ export default function Explorer({id, onBack}){
                       <div style={{display:'flex', gap:6}}>
                         {x.type==='dir' ? (
                           <button className="btn alt" onClick={()=>setPath(path==='/'?`/${x.name}`:`${path}/${x.name}`)} style={{width:'100%', display:'flex', alignItems:'center', justifyContent:'center', gap:'6px'}}>
-                            <FolderIcon size={16} color="currentColor" />
+                            <img src={folderImg} alt="Carpeta" style={{width: '16px', height: '16px'}} />
                             Abrir Carpeta
                           </button>
                         ) : (
                           <button className="btn" onClick={()=>viewFileContent(x.name)} style={{width:'100%', display:'flex', alignItems:'center', justifyContent:'center', gap:'6px'}}>
-                            <FileIcon size={16} color="currentColor" />
+                            <img src={fileImg} alt="Archivo" style={{width: '16px', height: '16px'}} />
                             Ver Contenido
                           </button>
                         )}

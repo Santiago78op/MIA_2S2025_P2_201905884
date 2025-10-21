@@ -24,7 +24,7 @@ const (
 
 // Tamaños lógicos (estables, no dependen de sizeof de structs)
 const (
-	SzSuperExt3      = int64(80)  // SuperBlockExt3: 80 bytes
+	SzSuperExt3      = int64(112) // SuperBlockExt3: 112 bytes (11×int32[44] + 9×int64[72])
 	SzJournalEntry   = int64(600) // Journal: 600 bytes por entrada
 	SzBitmapUnit     = int64(1)   // 1 byte por unidad en bitmaps
 	SzInode          = int64(100) // Inodo: 100 bytes
@@ -220,11 +220,49 @@ func (r *FileFsRepository) getMountInfo(id string) (diskPath string, partStart i
 			if e != nil {
 				return "", 0, 0, e
 			}
+
+			// Buscar en particiones primarias/extendidas
 			for _, p := range mbr.Partitions {
-				if p.Status == models.PartStatusUsed && strings.TrimSpace(string(p.Name[:])) == m.Name {
+				pName := strings.TrimRight(string(p.Name[:]), "\x00 ")
+				if p.Status == models.PartStatusUsed && pName == m.Name {
 					return m.Path, p.Start, p.Size, nil
 				}
 			}
+
+			// Si no se encontró, buscar en particiones lógicas (EBRs)
+			for _, p := range mbr.Partitions {
+				if p.Type == models.PartTypeExtend && p.Status == models.PartStatusUsed {
+					// Buscar en la cadena de EBRs
+					ebrOffset := p.Start
+					extStart := p.Start
+					f, err := os.Open(m.Path)
+					if err != nil {
+						continue
+					}
+					defer f.Close()
+
+					for ebrOffset != -1 {
+						var ebr models.EBR
+						if _, err := f.Seek(ebrOffset, 0); err != nil {
+							break
+						}
+						if err := binary.Read(f, binary.LittleEndian, &ebr); err != nil {
+							break
+						}
+
+						ebrName := strings.TrimRight(string(ebr.Name[:]), "\x00 ")
+						if ebr.Status == models.PartStatusUsed && ebrName == m.Name {
+							return m.Path, ebr.Start, ebr.Size, nil
+						}
+
+						if ebr.Next == -1 {
+							break
+						}
+						ebrOffset = extStart + ebr.Next
+					}
+				}
+			}
+
 			return "", 0, 0, fmt.Errorf("partición %s no encontrada en MBR", m.Name)
 		}
 	}

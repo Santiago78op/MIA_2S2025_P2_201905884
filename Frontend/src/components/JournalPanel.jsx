@@ -13,7 +13,12 @@ export default function JournalPanel({id}){
       const data = await API.journaling(id)
       setRows(data)
     } catch(e) {
-      setErr(e.message || 'Error cargando journal')
+      // Mejorar mensaje de error para journal no disponible
+      let errorMsg = e.message || 'Error cargando journal'
+      if (errorMsg.includes('journal') || errorMsg.includes('EXT2') || errorMsg.includes('no disponible')) {
+        errorMsg = 'Journal no disponible. Esta partición debe ser formateada con EXT3 (mkfs -type=3fs) para usar journaling.'
+      }
+      setErr(errorMsg)
       setRows([])
     } finally {
       setLoading(false)

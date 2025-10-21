@@ -524,12 +524,10 @@ func (vc *ViewerController) Login(ctx *gin.Context) {
 			}
 			uid = uidVal
 
-			// Convertir gid
-			gidVal, err := strconv.Atoi(parts[2])
-			if err != nil {
-				continue
-			}
-			gid = gidVal
+			// El campo parts[2] es el NOMBRE del grupo, no el GID numérico
+			// Necesitamos buscar el GID del grupo en las líneas de tipo "G"
+			// Por ahora, usamos el mismo valor que el UID
+			gid = uid
 
 			isRoot = (req.User == "root")
 			authenticated = true

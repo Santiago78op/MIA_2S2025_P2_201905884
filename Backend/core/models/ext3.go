@@ -1,7 +1,7 @@
 package models
 
 // SuperBlockExt3 representa el superbloque para EXT3
-// Tamaño fijo: 80 bytes
+// Tamaño fijo: 112 bytes (11×int32[44] + 9×int64[72])
 type SuperBlockExt3 struct {
 	// Información básica del filesystem
 	FsType       int32 // 2=EXT2, 3=EXT3
