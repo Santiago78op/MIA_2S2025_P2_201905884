@@ -1234,8 +1234,8 @@ func (r *FileFsRepository) Cat(id string, files [][]string, uid int, gid int) (s
 	}
 	defer f.Close()
 
-	// Leer superblock
-	sb, err := readSuperBlock(f, region.Start)
+	// Detectar tipo de filesystem y leer superblock apropiado
+	_, inodeStart, blockStart, err := r.readSuperBlockUniversal(f, region.Start)
 	if err != nil {
 		return "", fmt.Errorf("error leyendo superblock: %w", err)
 	}
@@ -1254,7 +1254,7 @@ func (r *FileFsRepository) Cat(id string, files [][]string, uid int, gid int) (s
 			isLast := i == len(filePath)-1
 
 			// Leer inodo actual
-			currentInode, err := readInodeAt(f, sb.SInodeStart, int(currentInodeIdx), region)
+			currentInode, err := readInodeAt(f, inodeStart, int(currentInodeIdx), region)
 			if err != nil {
 				return "", fmt.Errorf("error leyendo inodo %d: %w", currentInodeIdx, err)
 			}
@@ -1266,7 +1266,7 @@ func (r *FileFsRepository) Cat(id string, files [][]string, uid int, gid int) (s
 				}
 
 				// Buscar siguiente componente
-				foundIdx, err := findEntryInDir(f, &currentInode, sb.SBlockStart, name, region)
+				foundIdx, err := findEntryInDir(f, &currentInode, blockStart, name, region)
 				if err != nil {
 					return "", fmt.Errorf("error buscando entrada: %w", err)
 				}
@@ -1276,7 +1276,7 @@ func (r *FileFsRepository) Cat(id string, files [][]string, uid int, gid int) (s
 				currentInodeIdx = foundIdx
 			} else {
 				// Es el último componente, buscar el archivo
-				foundIdx, err := findEntryInDir(f, &currentInode, sb.SBlockStart, name, region)
+				foundIdx, err := findEntryInDir(f, &currentInode, blockStart, name, region)
 				if err != nil {
 					return "", fmt.Errorf("error buscando archivo: %w", err)
 				}
@@ -1285,7 +1285,7 @@ func (r *FileFsRepository) Cat(id string, files [][]string, uid int, gid int) (s
 				}
 
 				// Leer inodo del archivo
-				fileInode, err := readInodeAt(f, sb.SInodeStart, int(foundIdx), region)
+				fileInode, err := readInodeAt(f, inodeStart, int(foundIdx), region)
 				if err != nil {
 					return "", fmt.Errorf("error leyendo inodo de archivo: %w", err)
 				}
@@ -1310,7 +1310,7 @@ func (r *FileFsRepository) Cat(id string, files [][]string, uid int, gid int) (s
 
 					// Leer bloque
 					var fileBlock models.FileBlock
-					offset := sb.SBlockStart + int64(blkIdx*64)
+					offset := blockStart + int64(blkIdx*64)
 					if _, err := f.Seek(offset, 0); err != nil {
 						return "", fmt.Errorf("error buscando bloque: %w", err)
 					}
@@ -1804,6 +1804,30 @@ func readSuperBlock(f *os.File, offset int64) (models.SuperBlock, error) {
 		return sb, err
 	}
 	return sb, nil
+}
+
+// readSuperBlockUniversal lee el superblock y detecta si es EXT2 o EXT3
+// Retorna: superblock (solo para magic check), inodeStart, blockStart, error
+func (r *FileFsRepository) readSuperBlockUniversal(f *os.File, offset int64) (interface{}, int64, int64, error) {
+	// Primero leer como EXT2 para detectar el tipo
+	sb2, err := readSuperBlock(f, offset)
+	if err != nil {
+		return nil, 0, 0, err
+	}
+
+	// Si SMagic no es válido, probar como EXT3
+	if sb2.SMagic != models.FSMagic {
+		// Intentar leer como EXT3
+		sb3, err := r.readSuperExt3(f, offset)
+		if err != nil {
+			return nil, 0, 0, fmt.Errorf("formato inválido (ni EXT2 ni EXT3)")
+		}
+		// EXT3
+		return sb3, sb3.InodeStart, sb3.BlockStart, nil
+	}
+
+	// Es EXT2
+	return sb2, sb2.SInodeStart, sb2.SBlockStart, nil
 }
 
 // writeInodeAt escribe un inodo en la tabla de inodos

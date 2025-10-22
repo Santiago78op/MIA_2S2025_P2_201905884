@@ -457,6 +457,10 @@ func (r *FileFsRepository) bootstrapRootAndUsersExt3(f *os.File, sb *models.Supe
 	partSize := int64(sb.BlocksCount) * int64(sb.BlockSize)
 	region := Region{Start: sb.PartStart, Size: partSize}
 
+	// Debug: verificar offsets
+	fmt.Printf("DEBUG bootstrap: PartStart=%d, InodeStart=%d, BlockStart=%d, BmInodeStart=%d\n",
+		sb.PartStart, sb.InodeStart, sb.BlockStart, sb.BmInodeStart)
+
 	// Crear inodo raíz (inodo 0)
 	rootInode := models.Inode{
 		IUid:   1,
