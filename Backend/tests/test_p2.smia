@@ -64,6 +64,7 @@ mount -path=/home/julian/Documents/MIA_2S2025_P2_201905884/Backend/Discos/DiscoA
 # Ver particiones montadas
 #-------------------------------------------*
 mounted
+#Reinicia y Elimina Particiones - unmountall
 #-------------------------------------------*
 # FASE 5: MKFS - FORMATEAR PARTICIONES
 #-------------------------------------------*

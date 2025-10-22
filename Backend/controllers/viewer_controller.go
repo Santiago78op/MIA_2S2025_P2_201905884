@@ -567,9 +567,17 @@ func (vc *ViewerController) Login(ctx *gin.Context) {
 	pathParts := [][]string{{"users.txt"}}
 	content, err := vc.fs.Cat(req.ID, pathParts)
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, gin.H{
-			"message": "Error leyendo archivo de usuarios: " + err.Error(),
-		})
+		// Mejorar mensaje de error para particiones no formateadas
+		errMsg := err.Error()
+		if strings.Contains(errMsg, "inodo 0") || strings.Contains(errMsg, "invalid argument") {
+			ctx.JSON(http.StatusBadRequest, gin.H{
+				"message": "La partición no está formateada. Ejecuta 'mkfs' primero para crear el sistema de archivos.",
+			})
+		} else {
+			ctx.JSON(http.StatusInternalServerError, gin.H{
+				"message": "Error leyendo archivo de usuarios: " + errMsg,
+			})
+		}
 		return
 	}
 

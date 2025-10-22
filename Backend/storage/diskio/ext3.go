@@ -336,8 +336,10 @@ func (r *FileFsRepository) MkfsWithTypeExt3(id string, mode JournalMode) error {
 		return err
 	}
 
-	// 5) TODO: Crear raíz y users.txt (usando helpers de P1)
-	// if err := r.bootstrapRootAndUsers(f, sb); err != nil { return err }
+	// 5) Crear raíz y users.txt
+	if err := r.bootstrapRootAndUsersExt3(f, &sb); err != nil {
+		return err
+	}
 
 	return nil
 }
@@ -446,4 +448,102 @@ func (r *FileFsRepository) ClearJournal(f *os.File, sb models.SuperBlockExt3) er
 
 func isEmptyOp(op []byte) bool {
 	return len(strings.Trim(string(op), "\x00 ")) == 0
+}
+
+// bootstrapRootAndUsersExt3 crea la estructura inicial del sistema de archivos EXT3
+func (r *FileFsRepository) bootstrapRootAndUsersExt3(f *os.File, sb *models.SuperBlockExt3) error {
+	now := time.Now().Unix()
+	region := Region{Start: sb.PartStart, Size: sb.PartSize}
+
+	// Crear inodo raíz (inodo 0)
+	rootInode := models.Inode{
+		IUid:   1,
+		IGid:   1,
+		ISize:  0,
+		IAtime: now,
+		ICtime: now,
+		IMtime: now,
+		IType:  models.FileTypeFolder,
+		IPerm:  [3]byte{'7', '5', '5'},
+	}
+	for j := range rootInode.IBlock {
+		rootInode.IBlock[j] = -1
+	}
+	rootInode.IBlock[0] = 0
+
+	// Crear bloque de directorio raíz (bloque 0)
+	rootBlock := models.FolderBlock{}
+	for i := range rootBlock.Content {
+		rootBlock.Content[i].BInodo = -1
+	}
+
+	// Entradas . y ..
+	copy(rootBlock.Content[0].BName[:], ".")
+	rootBlock.Content[0].BInodo = 0
+	copy(rootBlock.Content[1].BName[:], "..")
+	rootBlock.Content[1].BInodo = 0
+
+	// Entrada users.txt
+	copy(rootBlock.Content[2].BName[:], "users.txt")
+	rootBlock.Content[2].BInodo = 1
+
+	rootInode.ISize = int32(binary.Size(rootBlock))
+
+	// Escribir inodo y bloque raíz
+	if err := writeInodeAt(f, sb.InodeStart, 0, &rootInode, region); err != nil {
+		return fmt.Errorf("error escribiendo inodo raíz: %w", err)
+	}
+	if err := writeBlockAt(f, sb.BlockStart, 0, &rootBlock, region); err != nil {
+		return fmt.Errorf("error escribiendo bloque raíz: %w", err)
+	}
+
+	// Crear users.txt (inodo 1, bloque 1)
+	usersContent := "1,G,root\n1,U,root,root,123\n"
+	usersInode := models.Inode{
+		IUid:   1,
+		IGid:   1,
+		ISize:  int32(len(usersContent)),
+		IAtime: now,
+		ICtime: now,
+		IMtime: now,
+		IType:  models.FileTypeRegular,
+		IPerm:  [3]byte{'6', '6', '4'},
+	}
+	for j := range usersInode.IBlock {
+		usersInode.IBlock[j] = -1
+	}
+	usersInode.IBlock[0] = 1
+
+	usersBlock := models.FileBlock{}
+	copy(usersBlock.Content[:], usersContent)
+
+	if err := writeInodeAt(f, sb.InodeStart, 1, &usersInode, region); err != nil {
+		return fmt.Errorf("error escribiendo inodo users.txt: %w", err)
+	}
+	if err := writeBlockAt(f, sb.BlockStart, 1, &usersBlock, region); err != nil {
+		return fmt.Errorf("error escribiendo bloque users.txt: %w", err)
+	}
+
+	// Marcar bitmaps (inodos 0 y 1, bloques 0 y 1 como usados)
+	if err := writeBit(f, sb.BmInodeStart, 0, 1); err != nil {
+		return err
+	}
+	if err := writeBit(f, sb.BmInodeStart, 1, 1); err != nil {
+		return err
+	}
+	if err := writeBit(f, sb.BmBlockStart, 0, 1); err != nil {
+		return err
+	}
+	if err := writeBit(f, sb.BmBlockStart, 1, 1); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func writeBit(f *os.File, start int64, index int, value byte) error {
+	if _, err := f.Seek(start+int64(index), 0); err != nil {
+		return err
+	}
+	return binary.Write(f, binary.LittleEndian, value)
 }
