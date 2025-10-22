@@ -453,7 +453,9 @@ func isEmptyOp(op []byte) bool {
 // bootstrapRootAndUsersExt3 crea la estructura inicial del sistema de archivos EXT3
 func (r *FileFsRepository) bootstrapRootAndUsersExt3(f *os.File, sb *models.SuperBlockExt3) error {
 	now := time.Now().Unix()
-	region := Region{Start: sb.PartStart, Size: sb.PartSize}
+	// Calcular tamaño de la partición basado en los bloques
+	partSize := int64(sb.BlocksCount) * int64(sb.BlockSize)
+	region := Region{Start: sb.PartStart, Size: partSize}
 
 	// Crear inodo raíz (inodo 0)
 	rootInode := models.Inode{
