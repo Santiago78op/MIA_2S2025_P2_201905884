@@ -279,6 +279,9 @@ func (r *Runner) Run(line string) (string, error) {
 		}
 		return r.diskSvc.Unmount(args.ID)
 
+	case "unmountall":
+		return r.diskSvc.UnmountAll()
+
 	default:
 		return "", fmt.Errorf("comando desconocido: %s", cmd)
 	}

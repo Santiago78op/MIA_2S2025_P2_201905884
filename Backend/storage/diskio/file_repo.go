@@ -102,6 +102,8 @@ func (*FileDiskRepository) ValidatePrimaryForMount(path, name string) error {
 	if err != nil {
 		return err
 	}
+
+	// Buscar en particiones primarias
 	for _, p := range m.Partitions {
 		if p.Status == models.PartStatusUsed && p.Type == models.PartTypePrimary {
 			n := strings.TrimRight(string(p.Name[:]), "\x00")
@@ -110,7 +112,55 @@ func (*FileDiskRepository) ValidatePrimaryForMount(path, name string) error {
 			}
 		}
 	}
-	return fmt.Errorf("partición no encontrada o no es primaria: %s", name)
+
+	// Buscar en particiones lógicas (dentro de la extendida)
+	f, err := os.Open(path)
+	if err != nil {
+		return fmt.Errorf("partición no encontrada: %s", name)
+	}
+	defer f.Close()
+
+	// Encontrar la partición extendida
+	var extStart int64 = -1
+	for _, p := range m.Partitions {
+		if p.Status == models.PartStatusUsed && p.Type == models.PartTypeExtend {
+			extStart = p.Start
+			break
+		}
+	}
+
+	// Si hay partición extendida, buscar en sus particiones lógicas
+	if extStart != -1 {
+		cur := extStart
+		for {
+			var e models.EBR
+			if err := readEBR(f, &e, cur); err != nil {
+				break
+			}
+
+			// Si es el primer EBR vacío, terminar
+			if e.Status == models.PartStatusFree && e.Size == 0 {
+				break
+			}
+
+			// Si está en uso, verificar el nombre
+			if e.Status == models.PartStatusUsed {
+				n := strings.TrimRight(string(e.Name[:]), "\x00")
+				if n == name {
+					return nil
+				}
+			}
+
+			// Si no hay siguiente, terminar
+			if e.Next == -1 || e.Next == 0 {
+				break
+			}
+
+			cur = e.Next
+		}
+	}
+
+	return fmt.Errorf("partición no encontrada: %s", name)
 }
 
 func (*FileDiskRepository) CreatePrimary(path string, part models.Partition) error {
@@ -253,19 +303,23 @@ func (*FileDiskRepository) CreateLogical(path string, extStart int64, ebrNew mod
 	}
 
 	// Encontrar espacio libre para el nuevo EBR
-	newStart, ok := findSpaceForLogical(extPart, ebrs, ebrNew.Size, ebrNew.Fit)
+	// newEBRPos es donde se escribirá el header EBR en el disco
+	newEBRPos, ok := findSpaceForLogical(extPart, ebrs, ebrNew.Size, ebrNew.Fit)
 	if !ok {
 		return fmt.Errorf("no hay espacio suficiente en la partición extendida")
 	}
 
-	// Asignar el Start calculado al nuevo EBR
-	ebrNew.Start = newStart
+	// Calcular el tamaño del header EBR
+	ebrHeaderSize := int64(binary.Size(models.EBR{}))
+
+	// EBR.Start debe apuntar a los datos (después del header)
+	ebrNew.Start = newEBRPos + ebrHeaderSize
 	ebrNew.Status = models.PartStatusUsed
 	ebrNew.Next = -1
 
 	// Si no hay EBRs, este es el primero
 	if len(ebrs) == 0 {
-		// Escribir el primer EBR
+		// Escribir el primer EBR en el inicio de la extendida
 		if err := writeEBR(f, &ebrNew, extStart); err != nil {
 			return err
 		}
@@ -287,20 +341,20 @@ func (*FileDiskRepository) CreateLogical(path string, extStart int64, ebrNew mod
 		lastIdx := len(ebrs) - 1
 		prev := ebrs[lastIdx].ebr
 
-		// Escribir nuevo EBR
-		if err := writeEBR(f, &ebrNew, ebrNew.Start); err != nil {
+		// Escribir nuevo EBR en su posición calculada
+		if err := writeEBR(f, &ebrNew, newEBRPos); err != nil {
 			return err
 		}
 
-		// Actualizar el anterior para que apunte al nuevo
-		prev.Next = ebrNew.Start
+		// Actualizar el anterior para que apunte a la posición del nuevo EBR
+		prev.Next = newEBRPos
 		if err := writeEBR(f, &prev, ebrs[lastIdx].pos); err != nil {
 			return err
 		}
 	} else if insertIdx == 0 {
 		// Insertar al principio
-		// El nuevo EBR apunta al que estaba primero
-		ebrNew.Next = ebrs[0].ebr.Start
+		// El nuevo EBR apunta a la posición del EBR que estaba primero
+		ebrNew.Next = ebrs[0].pos
 
 		// Escribir el nuevo EBR al inicio de la extendida
 		if err := writeEBR(f, &ebrNew, extStart); err != nil {
@@ -309,18 +363,17 @@ func (*FileDiskRepository) CreateLogical(path string, extStart int64, ebrNew mod
 	} else {
 		// Insertar en medio
 		prev := ebrs[insertIdx-1].ebr
-		next := ebrs[insertIdx].ebr
 
-		// El nuevo apunta al siguiente
-		ebrNew.Next = next.Start
+		// El nuevo apunta a la posición del siguiente EBR
+		ebrNew.Next = ebrs[insertIdx].pos
 
-		// Escribir nuevo EBR
-		if err := writeEBR(f, &ebrNew, ebrNew.Start); err != nil {
+		// Escribir nuevo EBR en su posición calculada
+		if err := writeEBR(f, &ebrNew, newEBRPos); err != nil {
 			return err
 		}
 
-		// El anterior apunta al nuevo
-		prev.Next = ebrNew.Start
+		// El anterior apunta a la posición del nuevo EBR
+		prev.Next = newEBRPos
 		if err := writeEBR(f, &prev, ebrs[insertIdx-1].pos); err != nil {
 			return err
 		}
@@ -466,9 +519,10 @@ func findSpaceForLogical(extPart models.Partition, ebrs []ebrInfo, size int64, f
 
 	// Agregar todas las particiones lógicas existentes
 	for _, info := range ebrs {
-		// Cada partición lógica ocupa: EBR + datos
-		start := info.ebr.Start
-		end := start + ebrSize + info.ebr.Size
+		// Cada partición lógica ocupa: EBR (en info.pos) + datos (en info.ebr.Start)
+		// El EBR está en info.pos, y los datos van desde info.ebr.Start hasta info.ebr.Start + info.ebr.Size
+		start := info.pos
+		end := info.ebr.Start + info.ebr.Size
 		used = append(used, seg{start, end})
 	}
 

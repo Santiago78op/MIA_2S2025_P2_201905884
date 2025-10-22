@@ -14,4 +14,5 @@ type MountStore interface {
 	Unmount(id string) error                           // desmonta y opcionalmente resetea correlativo
 	SetPartitionSeq(diskSignature string, seq int) error // establece correlativo manualmente
 	GetMount(id string) (*MountedEntry, error)         // obtiene un montaje por ID
+	Clear()                                            // limpia completamente el estado (unmountall)
 }

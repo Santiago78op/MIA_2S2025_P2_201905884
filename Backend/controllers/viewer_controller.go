@@ -115,6 +115,68 @@ func readMBRFit(diskPath string) string {
 	}
 }
 
+// logicalPartitionInfo representa la información de una partición lógica
+type logicalPartitionInfo struct {
+	Name string
+	Size int64
+	Fit  string
+}
+
+// readLogicalPartitions lee las particiones lógicas de una partición extendida
+func readLogicalPartitions(file *os.File, extStart int64) []logicalPartitionInfo {
+	var logicals []logicalPartitionInfo
+
+	// Empezar desde el inicio de la partición extendida
+	currentEBRPos := extStart
+
+	for currentEBRPos != -1 && currentEBRPos != 0 {
+		// Posicionarse en el EBR actual
+		_, err := file.Seek(currentEBRPos, 0)
+		if err != nil {
+			break
+		}
+
+		// Leer el EBR
+		var ebr models.EBR
+		err = binary.Read(file, binary.LittleEndian, &ebr)
+		if err != nil {
+			break
+		}
+
+		// Si el EBR está vacío (primer EBR sin usar), terminar
+		if ebr.Status == 0 && ebr.Size == 0 {
+			break
+		}
+
+		// Si el EBR está en uso, agregar a la lista
+		if ebr.Status == 1 || ebr.Status == '1' {
+			name := strings.TrimRight(string(ebr.Name[:]), "\x00")
+
+			// Convertir fit
+			fit := "N/A"
+			switch ebr.Fit {
+			case 'F', 'f':
+				fit = "FF"
+			case 'B', 'b':
+				fit = "BF"
+			case 'W', 'w':
+				fit = "WF"
+			}
+
+			logicals = append(logicals, logicalPartitionInfo{
+				Name: name,
+				Size: ebr.Size,
+				Fit:  fit,
+			})
+		}
+
+		// Ir al siguiente EBR
+		currentEBRPos = ebr.Next
+	}
+
+	return logicals
+}
+
 // formatBytes convierte bytes a formato legible
 func formatBytes(bytes int64) string {
 	const unit = 1024
@@ -218,7 +280,28 @@ func (vc *ViewerController) ListPartitions(ctx *gin.Context) {
 
 		// Si es extendida, leer particiones lógicas
 		if partition.Type == 'E' || partition.Type == 'e' {
-			// TODO: Implementar lectura de EBRs para particiones lógicas
+			logicals := readLogicalPartitions(file, partition.Start)
+			for _, logical := range logicals {
+				// Verificar si está montada
+				var logicalMountID string
+				logicalFormatted := false
+				for _, m := range mounts {
+					if m.Path == diskPath && m.Name == logical.Name {
+						logicalMountID = m.ID
+						logicalFormatted = true
+						break
+					}
+				}
+
+				partitions = append(partitions, gin.H{
+					"id":        logicalMountID,
+					"name":      logical.Name,
+					"type":      "Lógica",
+					"size":      formatBytes(logical.Size),
+					"fit":       logical.Fit,
+					"formatted": logicalFormatted,
+				})
+			}
 		}
 	}
 

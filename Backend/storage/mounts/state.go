@@ -200,3 +200,14 @@ func itoa(n int) string {
 	}
 	return string(buf[i:])
 }
+
+// Clear limpia completamente el estado (útil para unmountall)
+func (s *State) Clear() {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	s.DiskLetter = map[string]string{}
+	s.DiskSeq = map[string]int{}
+	s.Entries = []ports.MountedEntry{}
+	s.save()
+}

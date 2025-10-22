@@ -32,6 +32,7 @@ type MountStore interface {
 	List() []MountedEntry
 	Unmount(id string) error                           // NUEVO P2
 	SetPartitionSeq(diskSignature string, seq int) error // NUEVO P2
+	Clear()                                            // NUEVO P2 - Limpia completamente el estado
 }
 
 type MountedEntry struct {
@@ -109,7 +110,7 @@ func (s *DiskService) FDisk(a FDiskArgs) (string, error) {
 }
 
 func (s *DiskService) Mount(a MountArgs) (string, error) {
-	// Validación del PDF: sólo primarias pueden montarse en P1 (tu repo valida nombre/tipo)
+	// Validación: verificar que la partición existe
 	if err := s.repo.ValidatePrimaryForMount(a.Path, a.Name); err != nil {
 		return "", err
 	}
@@ -163,4 +164,19 @@ func (s *DiskService) Unmount(id string) (string, error) {
 	}
 
 	return fmt.Sprintf("Partición %s desmontada correctamente", id), nil
+}
+
+func (s *DiskService) UnmountAll() (string, error) {
+	mounted := s.mounts.List()
+
+	if len(mounted) == 0 {
+		return "No hay particiones montadas", nil
+	}
+
+	count := len(mounted)
+
+	// Limpiar completamente el estado (desmonta todas y resetea las letras de disco)
+	s.mounts.Clear()
+
+	return fmt.Sprintf("Se desmontaron %d particiones correctamente y se reinició la secuencia de letras", count), nil
 }

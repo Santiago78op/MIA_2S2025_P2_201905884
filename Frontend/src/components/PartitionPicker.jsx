@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { API } from '../lib/api'
 import { PartitionIcon, MountIcon, CheckIcon } from './Icons'
 import particionImg from '../assets/icons/particion.png'
@@ -21,6 +21,13 @@ export default function PartitionPicker({disk, onSelect, onBack}){
       setLoading(false)
     }
   }
+
+  // Auto-load partitions when disk changes
+  useEffect(() => {
+    if(disk) {
+      loadPartitions()
+    }
+  }, [disk])
 
   if(!disk) return null
 
@@ -45,7 +52,7 @@ export default function PartitionPicker({disk, onSelect, onBack}){
             disabled={loading}
             style={{fontSize:'12px', padding:'6px 12px'}}
           >
-            {loading ? 'Cargando...' : 'Cargar Particiones'}
+            {loading ? 'Cargando...' : 'Refrescar Particiones'}
           </button>
         </div>
       </div>

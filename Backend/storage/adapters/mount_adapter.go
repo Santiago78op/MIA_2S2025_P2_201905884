@@ -50,6 +50,11 @@ func (a *MountAdapter) SetPartitionSeq(diskSignature string, seq int) error {
 	return a.state.SetPartitionSeq(diskSignature, seq)
 }
 
+// Clear limpia completamente el estado
+func (a *MountAdapter) Clear() {
+	a.state.Clear()
+}
+
 // PortsMountStore adapta mounts.State para cumplir con ports.MountStore
 type PortsMountStore struct {
 	state *mounts.State
@@ -86,4 +91,8 @@ func (p *PortsMountStore) GetMount(id string) (*ports.MountedEntry, error) {
 		}
 	}
 	return nil, fmt.Errorf("mount not found: %s", id)
+}
+
+func (p *PortsMountStore) Clear() {
+	p.state.Clear()
 }
