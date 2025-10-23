@@ -277,7 +277,7 @@ func (r *FileFsRepository) copyNodeRecursive(
 			end = len(content)
 		}
 
-		block := make([]byte, 64)
+		block := make([]byte, models.BlockSizeFile)
 		copy(block, content[start:end])
 
 		if err := r.writeBlockToSB(f, sb, blkIdx, block, region); err != nil {

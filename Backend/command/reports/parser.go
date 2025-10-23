@@ -111,3 +111,20 @@ func ParseReport(line string) (ReportArgs, error) {
 
 	return args, nil
 }
+
+type JournalArgs struct {
+	ID string
+}
+
+func ParseJournal(line string) (JournalArgs, error) {
+	_, flags := parseLine(line)
+	var args JournalArgs
+
+	id, err := mustString(flags, "id")
+	if err != nil {
+		return args, err
+	}
+	args.ID = id
+
+	return args, nil
+}

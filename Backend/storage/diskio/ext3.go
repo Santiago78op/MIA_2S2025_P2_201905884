@@ -336,9 +336,19 @@ func (r *FileFsRepository) MkfsWithTypeExt3(id string, mode JournalMode) error {
 		return err
 	}
 
+	// CRÍTICO: Sincronizar los ceros al disco antes de escribir inodos/bloques
+	if err := f.Sync(); err != nil {
+		return fmt.Errorf("error sincronizando ceros: %w", err)
+	}
+
 	// 5) Crear raíz y users.txt
 	if err := r.bootstrapRootAndUsersExt3(f, &sb); err != nil {
 		return err
+	}
+
+	// CRÍTICO: Sincronizar los datos finales al disco
+	if err := f.Sync(); err != nil {
+		return fmt.Errorf("error sincronizando datos finales: %w", err)
 	}
 
 	return nil
@@ -349,6 +359,7 @@ func zeroRegion(f *os.File, start, size int64) error {
 	if size <= 0 {
 		return nil
 	}
+	fmt.Printf("DEBUG zeroRegion: start=%d, size=%d\n", start, size)
 	if _, err := f.Seek(start, 0); err != nil {
 		return err
 	}
@@ -364,6 +375,7 @@ func zeroRegion(f *os.File, start, size int64) error {
 		}
 		remaining -= chunk
 	}
+	fmt.Printf("DEBUG zeroRegion: completado\n")
 	return nil
 }
 

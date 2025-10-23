@@ -200,6 +200,13 @@ func (r *Runner) Run(line string) (string, error) {
 		}
 		return fmt.Sprintf("Reporte generado: %s", path), nil
 
+	case "journal":
+		args, err := reports.ParseJournal(line)
+		if err != nil {
+			return "", err
+		}
+		return r.reportSvc.Journal(args.ID)
+
 	// === Comandos nuevos P2 - Filesystem ===
 	case "remove":
 		args, err := fs.ParseRemove(line)

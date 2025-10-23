@@ -26,10 +26,11 @@ func (r *FileFsRepository) Edit(id string, path []string, contentHostPath string
 		return err
 	}
 
-	// 2. Leer contenido del archivo host
+	// 2. Leer contenido del archivo host o usar como contenido directo
 	hostContent, err := os.ReadFile(contentHostPath)
 	if err != nil {
-		return fmt.Errorf("error leyendo archivo host: %w", err)
+		// Si falla leer como archivo, usar el valor como contenido directo
+		hostContent = []byte(contentHostPath)
 	}
 
 	// 3. Abrir disco

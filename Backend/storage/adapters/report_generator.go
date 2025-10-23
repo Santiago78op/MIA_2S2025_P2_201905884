@@ -1609,3 +1609,61 @@ func (g *ReportGenerator) LS(id, out, pathForLs string) (string, error) {
 
 	return out, nil
 }
+
+// Journal muestra el journal de una partición EXT3
+func (g *ReportGenerator) Journal(id string) (string, error) {
+	// Buscar la partición montada
+	found := false
+	for _, mount := range g.mountStore.List() {
+		if mount.ID == id {
+			found = true
+			break
+		}
+	}
+	if !found {
+		return "", fmt.Errorf("partición no montada: %s", id)
+	}
+
+	// Leer journal usando el repositorio
+	journals, err := g.fsRepo.JournalListPublic(id)
+	if err != nil {
+		return "", fmt.Errorf("error leyendo journal: %w", err)
+	}
+
+	if len(journals) == 0 {
+		return "Journal vacío (sin operaciones registradas)", nil
+	}
+
+	// Formatear como tabla
+	var sb strings.Builder
+	sb.WriteString(fmt.Sprintf("=== Journal de partición %s ===\n\n", id))
+	sb.WriteString(fmt.Sprintf("%-4s %-10s %-30s %-40s %-20s\n",
+		"#", "OPERACION", "PATH", "CONTENIDO", "FECHA"))
+	sb.WriteString(strings.Repeat("-", 110) + "\n")
+
+	for i, j := range journals {
+		// Formatear fecha
+		fecha := time.Unix(int64(j.Content.Date), 0).Format("2006-01-02 15:04:05")
+
+		// Truncar campos largos
+		path := j.Content.PathString()
+		if len(path) > 30 {
+			path = path[:27] + "..."
+		}
+		content := j.Content.ContentString()
+		if len(content) > 40 {
+			content = content[:37] + "..."
+		}
+
+		sb.WriteString(fmt.Sprintf("%-4d %-10s %-30s %-40s %-20s\n",
+			i+1,
+			j.Content.String(),
+			path,
+			content,
+			fecha))
+	}
+
+	sb.WriteString(fmt.Sprintf("\nTotal de operaciones: %d\n", len(journals)))
+
+	return sb.String(), nil
+}

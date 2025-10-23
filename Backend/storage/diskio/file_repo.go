@@ -1027,6 +1027,10 @@ func (r *FileFsRepository) Mkdir(id string, absPath []string, parents bool, uid 
 		return fmt.Errorf("error actualizando bitmap bloques: %w", err)
 	}
 
+	// Registrar en journal (ignorar errores para no romper la operación)
+	fullPath := "/" + strings.Join(absPath, "/")
+	_ = r.JournalAppendPublic(id, "MKDIR", fullPath, "", time.Now().Unix())
+
 	return nil
 }
 
@@ -1198,9 +1202,11 @@ func (r *FileFsRepository) Mkfile(id string, absPath []string, size int, content
 	// Leer contenido desde archivo host si se especifica (prioridad sobre -size)
 	var content []byte
 	if contentHostPath != "" {
+		// Intentar leer como archivo primero
 		content, err = os.ReadFile(contentHostPath)
 		if err != nil {
-			return fmt.Errorf("error leyendo archivo host: %w", err)
+			// Si falla, usar el valor como contenido directo
+			content = []byte(contentHostPath)
 		}
 	} else {
 		// Generar contenido con números 0-9 repetidos según el tamaño
@@ -1326,6 +1332,11 @@ func (r *FileFsRepository) Mkfile(id string, absPath []string, size int, content
 		return fmt.Errorf("error actualizando bitmap bloques: %w", err)
 	}
 
+	// Registrar en journal (ignorar errores para no romper la operación)
+	fullPath := "/" + strings.Join(absPath, "/")
+	contentInfo := fmt.Sprintf("size=%d", size)
+	_ = r.JournalAppendPublic(id, "MKFILE", fullPath, contentInfo, time.Now().Unix())
+
 	return nil
 }
 
@@ -1417,7 +1428,7 @@ func (r *FileFsRepository) Cat(id string, files [][]string, uid int, gid int) (s
 
 					// Leer bloque
 					var fileBlock models.FileBlock
-					offset := blockStart + int64(blkIdx*64)
+					offset := blockStart + int64(blkIdx*models.BlockSizeFile)
 					if _, err := f.Seek(offset, 0); err != nil {
 						return "", fmt.Errorf("error buscando bloque: %w", err)
 					}
@@ -1827,8 +1838,8 @@ func (r *FileFsRepository) ReadBlock(id string, index int) ([]byte, error) {
 		return nil, err
 	}
 
-	block := make([]byte, 64)
-	offset := sb.SBlockStart + int64(index*64)
+	block := make([]byte, models.BlockSizeFile)
+	offset := sb.SBlockStart + int64(index*models.BlockSizeFile)
 	if _, err := f.Seek(offset, 0); err != nil {
 		return nil, err
 	}
@@ -1856,15 +1867,15 @@ func (r *FileFsRepository) WriteBlock(id string, index int, data []byte) error {
 		return err
 	}
 
-	if len(data) > 64 {
-		return fmt.Errorf("bloque demasiado grande: %d bytes (máx 64)", len(data))
+	if len(data) > models.BlockSizeFile {
+		return fmt.Errorf("bloque demasiado grande: %d bytes (máx %d)", len(data), models.BlockSizeFile)
 	}
 
 	// Pad con zeros si es necesario
-	block := make([]byte, 64)
+	block := make([]byte, models.BlockSizeFile)
 	copy(block, data)
 
-	offset := sb.SBlockStart + int64(index*64)
+	offset := sb.SBlockStart + int64(index*models.BlockSizeFile)
 	_, err = SafeWriteAt(f, block, offset, region)
 	return err
 }
@@ -1964,10 +1975,15 @@ func (r *FileFsRepository) readSuperBlockUniversal(f *os.File, offset int64) (in
 // writeInodeAt escribe un inodo en la tabla de inodos
 func writeInodeAt(f *os.File, inodeTableStart int64, index int, ino *models.Inode, region Region) error {
 	offset := inodeTableStart + int64(index*binary.Size(*ino))
+	fmt.Printf("DEBUG writeInodeAt: index=%d, offset=%d, IUid=%d, ISize=%d\n", index, offset, ino.IUid, ino.ISize)
 	if _, err := f.Seek(offset, 0); err != nil {
-		return err
+		return fmt.Errorf("error seeking to %d: %w", offset, err)
 	}
-	return binary.Write(f, binary.LittleEndian, ino)
+	if err := binary.Write(f, binary.LittleEndian, ino); err != nil {
+		return fmt.Errorf("error writing inode: %w", err)
+	}
+	fmt.Printf("DEBUG writeInodeAt: inodo %d escrito exitosamente\n", index)
+	return nil
 }
 
 // readInodeAt lee un inodo de la tabla de inodos
@@ -2070,7 +2086,7 @@ func findEntryInDir(f *os.File, dirInode *models.Inode, blockAreaStart int64, na
 
 		// Leer el bloque de directorio
 		var dirBlk models.FolderBlock
-		offset := blockAreaStart + int64(blkIdx*64)
+		offset := blockAreaStart + int64(blkIdx*models.BlockSizeFile)
 		if _, err := f.Seek(offset, 0); err != nil {
 			return -1, err
 		}
@@ -2133,7 +2149,7 @@ func addEntryToDir(f *os.File, dirInode *models.Inode, blockAreaStart int64, nam
 
 		// Leer bloque existente
 		var dirBlk models.FolderBlock
-		offset := blockAreaStart + int64(blkIdx*64)
+		offset := blockAreaStart + int64(blkIdx*models.BlockSizeFile)
 		if _, err := f.Seek(offset, 0); err != nil {
 			return err
 		}

@@ -253,8 +253,8 @@ func (r *FileFsRepository) writeBlockToSB(f *os.File, sb SuperBlockUnified, idx 
 		}
 		return binary.Write(f, binary.LittleEndian, &v.FileBlock)
 	case []byte:
-		// Para archivos: escribir bytes directamente (hasta 64 bytes)
-		block := make([]byte, 64)
+		// Para archivos: escribir bytes directamente (hasta BlockSizeFile bytes)
+		block := make([]byte, models.BlockSizeFile)
 		copy(block, v)
 		_, err := f.Write(block)
 		return err
