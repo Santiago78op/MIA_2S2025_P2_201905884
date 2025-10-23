@@ -1,82 +1,4 @@
-# PRUEBA GODISK - MIA 2S 2025
-#-------------------------------------------*
-# 3 Discos - Validación de errores
-#-------------------------------------------*
-# FASE 1: CREAR DISCOS Y VALIDAR ERRORES
-# ERROR: Parámetro incorrecto
-mkdisk -param=x -size=30 -path=/home/julian/Documents/MIA_2S2025_P2_201905884/Backend/Discos/DiscoError.mia
-# ERROR: Tamaño incorrecto
-mkdisk -tamaño=3000 -unit=K -path=/home/julian/Documents/MIA_2S2025_P2_201905884/Backend/Discos/DiscoError.mia
-# Disco A - 25MB
-mkdisk -size=25 -unit=M -fit=FF -path=/home/julian/Documents/MIA_2S2025_P2_201905884/Backend/Discos/DiscoA.mia
-# Disco B - 30MB
-mkdisk -size=30 -unit=M -fit=BF -path=/home/julian/Documents/MIA_2S2025_P2_201905884/Backend/Discos/DiscoB.mia
-# Disco C - 15MB
-mkdisk -size=15 -unit=M -path=/home/julian/Documents/MIA_2S2025_P2_201905884/Backend/Discos/DiscoC.mia
-#-------------------------------------------*
-# FASE 2: RMDISK - ELIMINAR DISCOS
-#-------------------------------------------*
-# ERROR: Disco no existe
-rmdisk -path=/home/julian/Documents/MIA_2S2025_P2_201905884/Backend/Discos/DiscoNoExiste.mia
-# Crear discos temporales para pruebas de eliminación
-mkdisk -size=10 -unit=M -path=/home/julian/Documents/MIA_2S2025_P2_201905884/Backend/Discos/DiscoTemp1.mia
-mkdisk -size=8 -unit=M -path=/home/julian/Documents/MIA_2S2025_P2_201905884/Backend/Discos/DiscoTemp2.mia
-# Eliminar discos temporales
-rmdisk -path=/home/julian/Documents/MIA_2S2025_P2_201905884/Backend/Discos/DiscoTemp1.mia
-rmdisk -path=/home/julian/Documents/MIA_2S2025_P2_201905884/Backend/Discos/DiscoTemp2.mia
-# ERROR: Intentar eliminar disco ya eliminado
-rmdisk -path=/home/julian/Documents/MIA_2S2025_P2_201905884/Backend/Discos/DiscoTemp1.mia
-#-------------------------------------------*
-# FASE 3: FDISK - CREAR PARTICIONES
-#-------------------------------------------*
-# ERROR: Ruta no encontrada
-fdisk -type=P -unit=M -name=PartError -size=10 -path=/home/julian/Documents/MIA_2S2025_P2_201905884/Backend/Discos/DiscoError.mia -fit=BF
-# Disco A - 3 particiones primarias
-fdisk -type=P -unit=M -name=PartA1 -size=8 -path=/home/julian/Documents/MIA_2S2025_P2_201905884/Backend/Discos/DiscoA.mia -fit=BF
-fdisk -type=P -unit=M -name=PartA2 -size=8 -path=/home/julian/Documents/MIA_2S2025_P2_201905884/Backend/Discos/DiscoA.mia -fit=BF
-fdisk -type=P -unit=M -name=PartA3 -size=8 -path=/home/julian/Documents/MIA_2S2025_P2_201905884/Backend/Discos/DiscoA.mia -fit=BF
-# ERROR: Límite de particiones primarias
-fdisk -type=P -unit=M -name=PartError -size=5 -path=/home/julian/Documents/MIA_2S2025_P2_201905884/Backend/Discos/DiscoA.mia -fit=BF
-# Disco B - Partición extendida con lógicas
-fdisk -type=E -unit=M -name=PartExtB -size=20 -path=/home/julian/Documents/MIA_2S2025_P2_201905884/Backend/Discos/DiscoB.mia -fit=BF
-fdisk -type=L -unit=M -name=PartB1 -size=5 -path=/home/julian/Documents/MIA_2S2025_P2_201905884/Backend/Discos/DiscoB.mia -fit=BF
-fdisk -type=L -unit=M -name=PartB2 -size=5 -path=/home/julian/Documents/MIA_2S2025_P2_201905884/Backend/Discos/DiscoB.mia -fit=BF
-fdisk -type=L -unit=M -name=PartB3 -size=5 -path=/home/julian/Documents/MIA_2S2025_P2_201905884/Backend/Discos/DiscoB.mia -fit=BF
-# Disco C - 2 particiones
-fdisk -type=P -unit=M -name=PartC1 -size=8 -path=/home/julian/Documents/MIA_2S2025_P2_201905884/Backend/Discos/DiscoC.mia
-fdisk -type=P -unit=M -name=PartC2 -size=6 -path=/home/julian/Documents/MIA_2S2025_P2_201905884/Backend/Discos/DiscoC.mia
-# ERROR: Falta espacio
-fdisk -type=P -unit=M -name=PartError -size=20 -path=/home/julian/Documents/MIA_2S2025_P2_201905884/Backend/Discos/DiscoC.mia
-#-------------------------------------------*
-# FASE 4: MOUNT - MONTAR PARTICIONES
-#-------------------------------------------*
-# ERROR: Partición no existe
-mount -path=/home/julian/Documents/MIA_2S2025_P2_201905884/Backend/Discos/DiscoA.mia -name=PartNoExiste
-# Montar particiones
-mount -path=/home/julian/Documents/MIA_2S2025_P2_201905884/Backend/Discos/DiscoA.mia -name=PartA1
-mount -path=/home/julian/Documents/MIA_2S2025_P2_201905884/Backend/Discos/DiscoA.mia -name=PartA2
-mount -path=/home/julian/Documents/MIA_2S2025_P2_201905884/Backend/Discos/DiscoA.mia -name=PartA3
-mount -path=/home/julian/Documents/MIA_2S2025_P2_201905884/Backend/Discos/DiscoB.mia -name=PartB1
-mount -path=/home/julian/Documents/MIA_2S2025_P2_201905884/Backend/Discos/DiscoC.mia -name=PartC1
-# ERROR: Partición ya montada
-mount -path=/home/julian/Documents/MIA_2S2025_P2_201905884/Backend/Discos/DiscoA.mia -name=PartA1
-#-------------------------------------------*
-# Ver particiones montadas
-#-------------------------------------------*
-mounted
-#Reinicia y Elimina Particiones - unmountall
-#-------------------------------------------*
-# FASE 5: MKFS - FORMATEAR PARTICIONES
-#-------------------------------------------*
-# ERROR: ID no encontrado
-mkfs -type=full -fs=3fs -id=999X
-# Formatear con EXT3 con journaling 
-mkfs -type=full -fs=3fs -id=842A
-# Formatear con EXT3 con journaling
-mkfs -type=full -fs=3fs -id=843A
-# Formatear resto con EXT3
-mkfs -type=full -fs=3fs -id=841B
-mkfs -type=full -fs=3fs -id=841C
+# Paso 1
 #-------------------------------------------*
 # FASE 6: LOGIN Y USUARIOS
 #-------------------------------------------*
@@ -84,75 +6,16 @@ mkfs -type=full -fs=3fs -id=841C
 # Usuario: root
 # Contraseña: 123
 # Partición: 842A
-#-------------------------------------------*
-# FASE 7: CREAR GRUPOS
-#-------------------------------------------*
-mkgrp -name=usuarios
-mkgrp -name=desarrolladores
-mkgrp -name=administradores
-# ERROR: Grupo ya existe
-mkgrp -name=usuarios
-#-------------------------------------------*
-# FASE 8: VER USUARIOS users.txt
-#-------------------------------------------*
-cat -file1=/users.txt
-#-------------------------------------------*
-# FASE 9: ELIMINAR GRUPO
-#-------------------------------------------*
-rmgrp -name=desarrolladores
-#-------------------------------------------*
-# Ver cambios
-#-------------------------------------------*
-cat -file1=/users.txt
-#-------------------------------------------*
-# FASE 10: CREAR USUARIOS
-#-------------------------------------------*
-mkusr -user=user1 -pass=pass123 -grp=usuarios
-mkusr -user=user2 -pass=pass123 -grp=usuarios
-mkusr -user=admin1 -pass=admin123 -grp=administradores
-# ERROR: Usuario ya existe
-mkusr -user=user1 -pass=pass123 -grp=usuarios
-# ERROR: Grupo no existe
-mkusr -user=user3 -pass=pass123 -grp=noexiste
-#-------------------------------------------*
-# Ver cambios
-#-------------------------------------------*
-cat -file1=/users.txt
-#-------------------------------------------*
-# FASE 11: CAMBIAR GRUPO DE USUARIO
-#-------------------------------------------*
-chgrp -user=user2 -grp=administradores
-#-------------------------------------------*
-# Ver cambios
-#-------------------------------------------*
-cat -file1=/users.txt
-#-------------------------------------------*
-# FASE 12: ELIMINAR USUARIO
-#-------------------------------------------*
-rmusr -user=user2
-#-------------------------------------------*
-# Ver cambios
-#-------------------------------------------*
-cat -file1=/users.txt
-#-------------------------------------------*
-# FASE 13: CREAR DIRECTORIOS
-#-------------------------------------------*
-mkdir -path=/home
-mkdir -path=/home/user1
-# ERROR: No existen carpetas padres
-mkdir -path=/home/user1/documentos/proyectos/archivos
-# Con flag recursivo
-mkdir -p -path=/home/user1/documentos/proyectos
-mkdir -p -path=/home/archivos/manuales
+# Paso 2
 #-------------------------------------------*
 # FASE 14: LOGOUT Y LOGIN COMO USUARIO
 # NOTA: Logout/Login ahora se hacen SOLO desde la interfaz web
 #-------------------------------------------*
 # Ir a la interfaz web y:
 # 1. Hacer logout (botón "Cerrar Sesión")
-# 2. Hacer login con usuario: user1, contraseña: pass123, partición: 122A
+# 2. Hacer login con usuario: user1, contraseña: pass123, partición: 842A
 # 3. Hacer logout nuevamente
-# 4. Hacer login con usuario: root, contraseña: 123, partición: 122A
+# 4. Hacer login con usuario: root, contraseña: 123, partición: 842A
 #-------------------------------------------*
 # FASE 15: CREAR ARCHIVOS CON MKFILE
 #-------------------------------------------*
