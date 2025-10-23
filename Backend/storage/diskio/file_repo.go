@@ -617,11 +617,61 @@ func (r *FileFsRepository) resolve(id string) (diskPath string, region Region, e
 	if err != nil {
 		return "", Region{}, err
 	}
+
+	// Buscar en particiones primarias
 	for _, p := range m.Partitions {
 		if p.Status == models.PartStatusUsed && trimName(p.Name) == ext.Name {
 			return ext.Path, Region{Start: p.Start, Size: p.Size}, nil
 		}
 	}
+
+	// Buscar en particiones lógicas (dentro de la extendida)
+	f, err := os.Open(ext.Path)
+	if err != nil {
+		return "", Region{}, fmt.Errorf("partición no encontrada: %s", ext.Name)
+	}
+	defer f.Close()
+
+	// Encontrar la partición extendida
+	var extStart int64 = -1
+	for _, p := range m.Partitions {
+		if p.Status == models.PartStatusUsed && p.Type == models.PartTypeExtend {
+			extStart = p.Start
+			break
+		}
+	}
+
+	// Si hay partición extendida, buscar en sus particiones lógicas
+	if extStart != -1 {
+		cur := extStart
+		for {
+			var e models.EBR
+			if err := readEBR(f, &e, cur); err != nil {
+				break
+			}
+
+			// Si es el primer EBR vacío, terminar
+			if e.Status == models.PartStatusFree && e.Size == 0 {
+				break
+			}
+
+			// Si está en uso, verificar el nombre
+			if e.Status == models.PartStatusUsed {
+				n := strings.TrimRight(string(e.Name[:]), "\x00")
+				if n == ext.Name {
+					return ext.Path, Region{Start: e.Start, Size: e.Size}, nil
+				}
+			}
+
+			// Si no hay siguiente, terminar
+			if e.Next == -1 || e.Next == 0 {
+				break
+			}
+
+			cur = e.Next
+		}
+	}
+
 	return "", Region{}, fmt.Errorf("partición no encontrada: %s", ext.Name)
 }
 
