@@ -42,7 +42,7 @@ chmod -path=/home/user1/readme.txt -ugo=999
 # Cambiar propietario de archivo
 chown -path=/home/user1/archivo1.txt -user=admin1
 # Cambiar propietario de carpeta recursivo
-chown -path=/home/docs -user=user1 -r
+chown -path=/home/documentos -user=user1 -r
 # ERROR: Usuario no existe
 chown -path=/home/user1/readme.txt -user=noexiste
 #-------------------------------------------*
@@ -62,7 +62,7 @@ find -path=/noexiste -name=archivo.txt
 # Renombrar archivo
 rename -path=/home/user1/archivo1.txt -name=archivo_renombrado.txt
 # Renombrar carpeta
-rename -path=/home/docs -name=archivos_docs
+rename -path=/home/documentos -name=archivos_docs
 # ERROR: Nombre ya existe
 rename -path=/home/user1/archivo2.txt -name=readme.txt
 #-------------------------------------------*

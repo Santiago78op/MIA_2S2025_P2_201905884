@@ -17,7 +17,7 @@ import (
 // - Requiere permiso de ESCRITURA en el directorio padre
 // - No puede existir otro elemento con el mismo nombre en el mismo directorio
 // - Registra en Journal (EXT3)
-func (r *FileFsRepository) Rename(id string, path []string, newName string) error {
+func (r *FileFsRepository) Rename(id string, path []string, newName string, uid int, gid int) error {
 	// 1. Validar que newName no esté vacío y no contenga '/'
 	if newName == "" {
 		return fmt.Errorf("el nuevo nombre no puede estar vacío")
@@ -48,21 +48,8 @@ func (r *FileFsRepository) Rename(id string, path []string, newName string) erro
 		return err
 	}
 
-	// 5. Write-ahead journal para EXT3
-	if isExt3 {
-		pathStr := "/" + strings.Join(path, "/")
-		j := models.Journal{
-			Count: 0,
-			Content: models.Information{
-				Date: float64(time.Now().Unix()),
-			},
-		}
-		copy(j.Content.Op[:], "RENAME")
-		copy(j.Content.Path[:], pathStr)
-		copy(j.Content.Content[:], fmt.Sprintf("new_name=%s", newName))
-
-		_ = r.AppendJournal(f, sb.Ext3, j)
-	}
+	// Write-ahead journal omitido - se registra al final de la operación
+	_ = isExt3
 
 	// 6. Navegar al elemento
 	targetIno, parentIdx, oldName, err := r.walkToNode(f, sb, path, region)
@@ -120,7 +107,7 @@ func (r *FileFsRepository) Rename(id string, path []string, newName string) erro
 				copy(entry.BName[:], newName)
 
 				// Escribir bloque actualizado
-				if err := r.writeBlockToSB(f, sb, blkIdx, blk.FolderBlock, region); err != nil {
+				if err := r.writeBlockToSB(f, sb, blkIdx, blk, region); err != nil {
 					return err
 				}
 				updated = true
@@ -136,6 +123,13 @@ func (r *FileFsRepository) Rename(id string, path []string, newName string) erro
 	if !updated {
 		return fmt.Errorf("no se pudo actualizar la entrada del directorio")
 	}
+
+	// Registrar en journal (ignorar errores para no romper la operación)
+	oldPath := "/" + strings.Join(path, "/")
+	_ = r.JournalAppendPublic(id, "RENAME", oldPath, newName, time.Now().Unix())
+
+	// Variables para validación de permisos (actualmente no implementado)
+	_, _ = uid, gid
 
 	return nil
 }

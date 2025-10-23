@@ -422,10 +422,10 @@ type journalEntryDTO struct {
 }
 
 type journalRowDTO struct {
-	Operacion string `json:"operacion"`
+	Operation string `json:"operation"`
 	Path      string `json:"path"`
-	Contenido string `json:"contenido"`
-	Fecha     string `json:"fecha"`
+	Extra     string `json:"extra"`
+	Time      int64  `json:"time"`
 }
 
 // GetJournal devuelve las entradas del journal en formato crudo
@@ -466,9 +466,9 @@ func (vc *ViewerController) GetJournal(ctx *gin.Context) {
 	entries := make([]journalEntryDTO, 0, len(journals))
 	for _, j := range journals {
 		entries = append(entries, journalEntryDTO{
-			Op:        strings.TrimSpace(string(j.Content.Op[:])),
-			Path:      strings.TrimSpace(string(j.Content.Path[:])),
-			Content:   strings.TrimSpace(string(j.Content.Content[:])),
+			Op:        strings.TrimRight(string(j.Content.Op[:]), "\x00 "),
+			Path:      strings.TrimRight(string(j.Content.Path[:]), "\x00 "),
+			Content:   strings.TrimRight(string(j.Content.Content[:]), "\x00 "),
 			Timestamp: time.Unix(int64(j.Content.Date), 0),
 		})
 	}
@@ -517,16 +517,16 @@ func (vc *ViewerController) GetJournalTable(ctx *gin.Context) {
 	// Convertir a formato tabla
 	rows := make([]journalRowDTO, 0, len(journals))
 	for _, j := range journals {
-		op := strings.TrimSpace(string(j.Content.Op[:]))
-		path := strings.TrimSpace(string(j.Content.Path[:]))
-		content := strings.TrimSpace(string(j.Content.Content[:]))
-		timestamp := time.Unix(int64(j.Content.Date), 0)
+		// Limpiar caracteres nulos y espacios
+		op := strings.TrimRight(string(j.Content.Op[:]), "\x00 ")
+		path := strings.TrimRight(string(j.Content.Path[:]), "\x00 ")
+		content := strings.TrimRight(string(j.Content.Content[:]), "\x00 ")
 
 		rows = append(rows, journalRowDTO{
-			Operacion: op,
+			Operation: op,
 			Path:      path,
-			Contenido: content,
-			Fecha:     timestamp.Format("2006-01-02 15:04:05"),
+			Extra:     content,
+			Time:      int64(j.Content.Date),
 		})
 	}
 

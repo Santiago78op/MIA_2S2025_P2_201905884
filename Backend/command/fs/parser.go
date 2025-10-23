@@ -398,11 +398,8 @@ func ParseFind(line string) (FindArgs, error) {
 	_, flags := parseLine(line)
 	var args FindArgs
 
-	id, err := mustString(flags, "id")
-	if err != nil {
-		return args, err
-	}
-	args.ID = id
+	// ID es opcional, se tomará de la sesión si no se proporciona
+	args.ID = flags["id"]
 
 	path, err := mustString(flags, "path")
 	if err != nil {
@@ -423,11 +420,8 @@ func ParseChmod(line string) (ChmodArgs, error) {
 	_, flags := parseLine(line)
 	var args ChmodArgs
 
-	id, err := mustString(flags, "id")
-	if err != nil {
-		return args, err
-	}
-	args.ID = id
+	// ID es opcional, se tomará de la sesión si no se proporciona
+	args.ID = flags["id"]
 
 	path, err := mustString(flags, "path")
 	if err != nil {
@@ -450,11 +444,8 @@ func ParseChown(line string) (ChownArgs, error) {
 	_, flags := parseLine(line)
 	var args ChownArgs
 
-	id, err := mustString(flags, "id")
-	if err != nil {
-		return args, err
-	}
-	args.ID = id
+	// ID es opcional, se tomará de la sesión si no se proporciona
+	args.ID = flags["id"]
 
 	path, err := mustString(flags, "path")
 	if err != nil {

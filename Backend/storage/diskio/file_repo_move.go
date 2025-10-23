@@ -1,7 +1,6 @@
 package diskio
 
 import (
-	"Backend/core/models"
 	"fmt"
 	"os"
 	"strings"
@@ -41,24 +40,8 @@ func (r *FileFsRepository) Move(id string, srcPath, destPath []string, uid int, 
 		return err
 	}
 
-	// 4. Write-ahead journal para EXT3
-	if isExt3 {
-		srcPathStr := "/" + strings.Join(srcPath, "/")
-		destPathStr := "/" + strings.Join(destPath, "/")
-
-		j := models.Journal{
-			Count: 0,
-			Content: models.Information{
-				Date: float64(time.Now().Unix()),
-			},
-		}
-		copy(j.Content.Op[:], "MOVE")
-		copy(j.Content.Path[:], srcPathStr)
-		copy(j.Content.Content[:], fmt.Sprintf("dest=%s,uid=%d,gid=%d", destPathStr, uid, gid))
-
-		// Ignorar errores de journal por ahora
-		_ = r.AppendJournal(f, sb.Ext3, j)
-	}
+	// Write-ahead journal omitido - se registra al final de la operación
+	_ = isExt3
 
 	// 5. Validar que origen y destino no sean vacíos
 	if len(srcPath) == 0 {
@@ -207,6 +190,12 @@ func (r *FileFsRepository) Move(id string, srcPath, destPath []string, uid int, 
 	if err := r.writeSuperblock(f, sb, region); err != nil {
 		return err
 	}
+
+	// Registrar en journal (ignorar errores para no romper la operación)
+	srcFullPath := "/" + strings.Join(srcPath, "/")
+	destFullPath := "/" + strings.Join(destPath, "/")
+	contentInfo := fmt.Sprintf("to=%s", destFullPath)
+	_ = r.JournalAppendPublic(id, "MOVE", srcFullPath, contentInfo, time.Now().Unix())
 
 	_ = srcParentIdx // Puede usarse para logging
 	return nil

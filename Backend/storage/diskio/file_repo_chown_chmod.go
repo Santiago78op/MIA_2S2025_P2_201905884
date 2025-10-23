@@ -1,7 +1,6 @@
 package diskio
 
 import (
-	"Backend/core/models"
 	"fmt"
 	"os"
 	"strings"
@@ -40,21 +39,8 @@ func (r *FileFsRepository) Chown(id string, path []string, newOwner string, recu
 		return err
 	}
 
-	// 4. Journal write-ahead para EXT3
-	if isExt3 {
-		pathStr := "/" + strings.Join(path, "/")
-		j := models.Journal{
-			Count: 0,
-			Content: models.Information{
-				Date: float64(time.Now().Unix()),
-			},
-		}
-		copy(j.Content.Op[:], "CHOWN")
-		copy(j.Content.Path[:], pathStr)
-		copy(j.Content.Content[:], fmt.Sprintf("user=%s,recursive=%v", newOwner, recursive))
-
-		_ = r.AppendJournal(f, sb.Ext3, j)
-	}
+	// Write-ahead journal omitido - se registra al final de la operación
+	_ = isExt3
 
 	// 5. Buscar el nuevo UID desde users.txt
 	newUID, newGID, err := r.findUserUID(f, sb, newOwner, region)
@@ -98,6 +84,11 @@ func (r *FileFsRepository) Chown(id string, path []string, newOwner string, recu
 	if err := r.writeSuperblock(f, sb, region); err != nil {
 		return err
 	}
+
+	// Registrar en journal (ignorar errores para no romper la operación)
+	fullPath := "/" + strings.Join(path, "/")
+	contentInfo := fmt.Sprintf("owner=%s, recursive=%t", newOwner, recursive)
+	_ = r.JournalAppendPublic(id, "CHOWN", fullPath, contentInfo, time.Now().Unix())
 
 	return nil
 }
@@ -190,21 +181,8 @@ func (r *FileFsRepository) Chmod(id string, path []string, ugo [3]byte, recursiv
 		return err
 	}
 
-	// 4. Journal write-ahead para EXT3
-	if isExt3 {
-		pathStr := "/" + strings.Join(path, "/")
-		j := models.Journal{
-			Count: 0,
-			Content: models.Information{
-				Date: float64(time.Now().Unix()),
-			},
-		}
-		copy(j.Content.Op[:], "CHMOD")
-		copy(j.Content.Path[:], pathStr)
-		copy(j.Content.Content[:], fmt.Sprintf("ugo=%s,recursive=%v", string(ugo[:]), recursive))
-
-		_ = r.AppendJournal(f, sb.Ext3, j)
-	}
+	// Write-ahead journal omitido - se registra al final de la operación
+	_ = isExt3
 
 	// 5. Navegar al archivo/directorio
 	targetIno, _, _, err := r.walkToNode(f, sb, path, region)
@@ -241,6 +219,11 @@ func (r *FileFsRepository) Chmod(id string, path []string, ugo [3]byte, recursiv
 	if err := r.writeSuperblock(f, sb, region); err != nil {
 		return err
 	}
+
+	// Registrar en journal (ignorar errores para no romper la operación)
+	fullPath := "/" + strings.Join(path, "/")
+	contentInfo := fmt.Sprintf("perms=%d%d%d, recursive=%t", ugo[0], ugo[1], ugo[2], recursive)
+	_ = r.JournalAppendPublic(id, "CHMOD", fullPath, contentInfo, time.Now().Unix())
 
 	return nil
 }
@@ -338,13 +321,13 @@ func (r *FileFsRepository) findUserUID(
 			continue
 		}
 
-		// Formato: ID,Tipo,Grupo,[Usuario,Password]
+		// Formato: ID,Tipo,Grupo,Usuario,Password
 		// Tipo: G=grupo, U=usuario
-		if parts[1] == "U" && len(parts) >= 4 {
+		if parts[1] == "U" && len(parts) >= 5 {
 			// Es un usuario
-			user := parts[2]
+			user := parts[3]
 			if user == username {
-				// Encontrado, buscar su GID
+				// Encontrado, retornar UID y GID
 				var uid, gid int
 				fmt.Sscanf(parts[0], "%d", &uid)
 

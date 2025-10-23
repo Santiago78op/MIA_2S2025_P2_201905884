@@ -52,7 +52,7 @@ func (a *PortsFsAdapter) Edit(id string, path []string, contentHostPath string) 
 }
 
 func (a *PortsFsAdapter) Rename(id string, path []string, newName string) error {
-	return a.repo.Rename(id, path, newName)
+	return a.repo.Rename(id, path, newName, 1, 1) // uid=1 (root), gid=1
 }
 
 func (a *PortsFsAdapter) Copy(id string, srcPath []string, destPath []string) error {

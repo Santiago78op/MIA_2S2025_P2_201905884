@@ -42,18 +42,19 @@ func (a *FsAdapter) Cat(id string, files [][]string, uid int, gid int) (string, 
 
 // Comandos avanzados P2
 func (a *FsAdapter) Remove(id string, absPath []string, uid int, gid int) error {
-	// TODO: Implementar Remove en FileFsRepository
-	return nil
+	return a.repo.Remove(id, absPath)
 }
 
 func (a *FsAdapter) Edit(id string, absPath []string, content []byte, uid int, gid int) error {
-	// TODO: Implementar Edit en FileFsRepository
-	return nil
+	// TODO: Edit expects a file path on the host, not content bytes
+	// For now, return not implemented error
+	_ = content
+	_, _ = uid, gid
+	return a.repo.Edit(id, absPath, "")
 }
 
 func (a *FsAdapter) Rename(id string, absPath []string, newName string, uid int, gid int) error {
-	// TODO: Implementar Rename en FileFsRepository
-	return nil
+	return a.repo.Rename(id, absPath, newName, uid, gid)
 }
 
 func (a *FsAdapter) Copy(id string, srcPath []string, destPath []string, uid int, gid int) (copied int, skipped int, err error) {

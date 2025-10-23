@@ -11,7 +11,7 @@ export default function JournalPanel({id}){
     setErr('')
     try {
       const data = await API.journaling(id)
-      setRows(data)
+      setRows(data.rows || [])
     } catch(e) {
       // Mejorar mensaje de error para journal no disponible
       let errorMsg = e.message || 'Error cargando journal'

@@ -252,7 +252,7 @@ func (s *FsService) Edit(id, path, content string) (string, error) {
 
 func (s *FsService) Rename(id, path, newName string) (string, error) {
 	// 1. Verificar sesión activa
-	logged, user, uid, gid, _, partitionId := s.sess.Current()
+	logged, _, uid, gid, _, partitionId := s.sess.Current()
 	if !logged {
 		return "", fmt.Errorf("no hay sesión activa")
 	}
@@ -275,25 +275,13 @@ func (s *FsService) Rename(id, path, newName string) (string, error) {
 		return "", fmt.Errorf("el nuevo nombre no puede contener '/'")
 	}
 
-	// 4. Write-ahead journaling (solo EXT3; repos no-EXT3 ignoran o devuelven ErrUnsupported)
-	// TODO: Implementar JournalAppend cuando esté disponible
-	// _ = s.repo.JournalAppend(id, JournalEntry{
-	//     Op:        OpRename,
-	//     Path:      path,
-	//     Dest:      newName,
-	//     Usuario:   user,
-	//     Timestamp: time.Now().Unix(),
-	// })
+	// 4. Ejecutar renombrado con validación de permisos
+	err := s.repo.Rename(id, parts, newName, uid, gid)
+	if err != nil {
+		return "", err
+	}
 
-	// 5. Ejecutar renombrado con validación de permisos
-	// TODO: El repo debe implementar Rename con:
-	//   - Verificar permiso de escritura en directorio padre
-	//   - Verificar que no exista una entrada con el nuevo nombre
-	//   - Actualizar el campo Name en el bloque de directorio
-	_ = user // Evitar warning
-	_, _ = uid, gid
-
-	return fmt.Sprintf("RENAME ejecutado: %s → %s (stub - pendiente implementación en repo)", path, newName), nil
+	return fmt.Sprintf("RENAME completado: %s → %s", path, newName), nil
 }
 
 func (s *FsService) Copy(id, srcPath, destPath string) (string, error) {

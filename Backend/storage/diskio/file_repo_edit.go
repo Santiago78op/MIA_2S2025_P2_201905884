@@ -161,6 +161,11 @@ func (r *FileFsRepository) Edit(id string, path []string, contentHostPath string
 		return err
 	}
 
+	// Registrar en journal (ignorar errores para no romper la operación)
+	fullPath := "/" + strings.Join(path, "/")
+	contentInfo := fmt.Sprintf("size=%d", len(hostContent))
+	_ = r.JournalAppendPublic(id, "EDIT", fullPath, contentInfo, time.Now().Unix())
+
 	return nil
 }
 

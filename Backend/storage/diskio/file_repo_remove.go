@@ -39,20 +39,8 @@ func (r *FileFsRepository) Remove(id string, path []string) error {
 		return err
 	}
 
-	// 4. Write-ahead journal para EXT3
-	if isExt3 {
-		pathStr := "/" + strings.Join(path, "/")
-		j := models.Journal{
-			Count: 0,
-			Content: models.Information{
-				Date: float64(time.Now().Unix()),
-			},
-		}
-		copy(j.Content.Op[:], "REMOVE")
-		copy(j.Content.Path[:], pathStr)
-
-		_ = r.AppendJournal(f, sb.Ext3, j)
-	}
+	// Write-ahead journal omitido - se registra al final de la operación
+	_ = isExt3
 
 	// 5. Validar permisos antes de eliminar
 	if err := r.validateRemovePermissions(f, sb, path, region); err != nil {
@@ -118,6 +106,10 @@ func (r *FileFsRepository) Remove(id string, path []string) error {
 	if err := r.writeSuperblock(f, sb, region); err != nil {
 		return err
 	}
+
+	// Registrar en journal (ignorar errores para no romper la operación)
+	fullPath := "/" + strings.Join(path, "/")
+	_ = r.JournalAppendPublic(id, "REMOVE", fullPath, "", time.Now().Unix())
 
 	return nil
 }

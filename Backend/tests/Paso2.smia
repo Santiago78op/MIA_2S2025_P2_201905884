@@ -52,6 +52,7 @@ cat -file1=/users.txt
 # FASE 13: CREAR DIRECTORIOS
 #-------------------------------------------*
 mkdir -path=/home
+mkdir -p -path=/home/documentos
 mkdir -path=/home/user1
 # ERROR: No existen carpetas padres
 mkdir -path=/home/user1/documentos/proyectos/archivos
