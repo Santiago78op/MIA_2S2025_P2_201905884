@@ -44,7 +44,7 @@ func (a *PortsFsAdapter) Cat(id string, files [][]string) (string, error) {
 // ====== Nuevas operaciones P2 ======
 
 func (a *PortsFsAdapter) Remove(id string, path []string) error {
-	return a.repo.Remove(id, path, 1, 1)
+	return a.repo.Remove(id, path, true, 1, 1)
 }
 
 func (a *PortsFsAdapter) Edit(id string, path []string, contentHostPath string) error {

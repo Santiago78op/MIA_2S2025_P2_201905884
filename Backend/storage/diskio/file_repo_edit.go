@@ -123,10 +123,14 @@ func (r *FileFsRepository) Edit(id string, path []string, content []byte, uid in
 			end = newSize
 		}
 
-		block := make([]byte, models.BlockSizeFile)
-		copy(block, hostContent[start:end])
+		var fileBlock models.FileBlock
+		copy(fileBlock.Content[:], hostContent[start:end])
 
-		if err := r.writeBlockToSB(f, sb, int32(blkIdx), block, region); err != nil {
+		blockU := BlockUnified{
+			FileBlock: fileBlock,
+			IsFolder:  false,
+		}
+		if err := r.writeBlockToSB(f, sb, int32(blkIdx), blockU, region); err != nil {
 			return err
 		}
 	}

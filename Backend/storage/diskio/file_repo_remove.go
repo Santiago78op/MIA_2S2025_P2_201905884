@@ -19,7 +19,7 @@ import (
 // - Si algún hijo no tiene permiso, NO elimina NADA (atómica)
 // - Libera inodos y bloques en bitmaps
 // - Registra en Journal (EXT3)
-func (r *FileFsRepository) Remove(id string, path []string, uid int, gid int) error {
+func (r *FileFsRepository) Remove(id string, path []string, recursive bool, uid int, gid int) error {
 	// 1. Resolver montaje
 	diskPath, region, err := r.resolve(id)
 	if err != nil {

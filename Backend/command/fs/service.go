@@ -16,7 +16,7 @@ type FsRepository interface {
 	Cat(id string, files [][]string, uid int, gid int) (string, error)
 
 	// Comandos avanzados P2
-	Remove(id string, absPath []string, uid int, gid int) error
+	Remove(id string, absPath []string, recursive bool, uid int, gid int) error
 	Edit(id string, absPath []string, content []byte, uid int, gid int) error
 	Rename(id string, absPath []string, newName string, uid int, gid int) error
 	Copy(id string, srcPath []string, destPath []string, uid int, gid int) (copied int, skipped int, err error)
@@ -174,7 +174,7 @@ func (s *FsService) Cat(id string, files []string) (string, error) {
 // MÉTODOS NUEVOS P2
 // ============================================
 
-func (s *FsService) Remove(id, path string) (string, error) {
+func (s *FsService) Remove(id, path string, recursive bool) (string, error) {
 	logged, user, uid, gid, _, partitionId := s.sess.Current()
 	if !logged {
 		return "", fmt.Errorf("no hay sesión activa")
@@ -188,17 +188,8 @@ func (s *FsService) Remove(id, path string) (string, error) {
 		return "", fmt.Errorf("path inválido")
 	}
 
-	// Write-ahead journaling (solo EXT3; repos no-EXT3 ignoran o devuelven ErrUnsupported)
-	// TODO: Implementar JournalAppend cuando esté disponible
-	// _ = s.repo.JournalAppend(id, JournalEntry{
-	//     Op:        OpRemove,
-	//     Path:      path,
-	//     Usuario:   user,
-	//     Timestamp: time.Now().Unix(),
-	// })
-
 	// Ejecutar borrado con validación de permisos
-	err := s.repo.Remove(id, parts, uid, gid)
+	err := s.repo.Remove(id, parts, recursive, uid, gid)
 	if err != nil {
 		return "", err
 	}

@@ -213,7 +213,7 @@ func (r *Runner) Run(line string) (string, error) {
 		if err != nil {
 			return "", err
 		}
-		return r.fsSvc.Remove(args.ID, args.Path)
+		return r.fsSvc.Remove(args.ID, args.Path, args.Recursive)
 
 	case "edit":
 		args, err := fs.ParseEdit(line)

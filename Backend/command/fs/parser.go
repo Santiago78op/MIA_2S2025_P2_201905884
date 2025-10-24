@@ -228,8 +228,9 @@ func ParseCat(line string) (CatArgs, error) {
 // ============================================
 
 type RemoveArgs struct {
-	ID   string
-	Path string
+	ID        string
+	Path      string
+	Recursive bool
 }
 
 type EditArgs struct {
@@ -296,6 +297,9 @@ func ParseRemove(line string) (RemoveArgs, error) {
 		return args, err
 	}
 	args.Path = path
+	
+	// Flag -r para recursivo
+	args.Recursive = flags["r"] == "true"
 
 	return args, nil
 }
