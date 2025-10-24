@@ -83,13 +83,13 @@ move -path=/noexiste.txt -dest=/home/destino.txt
 # FASE 25:  EDIT
 #-------------------------------------------*
 # Editar archivo con contenido nuevo 
-edit -path=/home/user1/readme.txt -cont="Contenido editado del archivo"
+edit -path=/home/user1/readme.txt -contenido="Contenido editado del archivo"
 #-------------------------------------------*
 # Verificar cambios
 #-------------------------------------------*
 cat -file1=/home/user1/readme.txt
 # ERROR: Archivo no existe
-edit -path=/noexiste.txt -cont="texto"
+edit -path=/noexiste.txt -contenido="texto"
 #-------------------------------------------*
 # FASE 26:  REMOVE
 #-------------------------------------------*

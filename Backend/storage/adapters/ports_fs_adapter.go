@@ -48,7 +48,7 @@ func (a *PortsFsAdapter) Remove(id string, path []string) error {
 }
 
 func (a *PortsFsAdapter) Edit(id string, path []string, contentHostPath string) error {
-	return a.repo.Edit(id, path, contentHostPath)
+	return a.repo.Edit(id, path, []byte(contentHostPath), 1, 1)
 }
 
 func (a *PortsFsAdapter) Rename(id string, path []string, newName string) error {

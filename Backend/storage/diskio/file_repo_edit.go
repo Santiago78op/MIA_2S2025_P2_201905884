@@ -19,19 +19,15 @@ import (
 // - Libera bloques viejos y asigna nuevos según el tamaño
 // - Actualiza i_size del inodo
 // - Registra en Journal (EXT3)
-func (r *FileFsRepository) Edit(id string, path []string, contentHostPath string) error {
+func (r *FileFsRepository) Edit(id string, path []string, content []byte, uid int, gid int) error {
 	// 1. Resolver montaje
 	diskPath, region, err := r.resolve(id)
 	if err != nil {
 		return err
 	}
 
-	// 2. Leer contenido del archivo host o usar como contenido directo
-	hostContent, err := os.ReadFile(contentHostPath)
-	if err != nil {
-		// Si falla leer como archivo, usar el valor como contenido directo
-		hostContent = []byte(contentHostPath)
-	}
+	// 2. El contenido ya viene como []byte
+	hostContent := content
 
 	// 3. Abrir disco
 	f, err := os.OpenFile(diskPath, os.O_RDWR, 0o644)
@@ -127,10 +123,10 @@ func (r *FileFsRepository) Edit(id string, path []string, contentHostPath string
 			end = newSize
 		}
 
-		var blockData models.FileBlock
-		copy(blockData.Content[:], hostContent[start:end])
+		block := make([]byte, models.BlockSizeFile)
+		copy(block, hostContent[start:end])
 
-		if err := r.writeBlockToSB(f, sb, int32(blkIdx), blockData, region); err != nil {
+		if err := r.writeBlockToSB(f, sb, int32(blkIdx), block, region); err != nil {
 			return err
 		}
 	}

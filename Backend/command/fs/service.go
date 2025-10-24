@@ -240,14 +240,13 @@ func (s *FsService) Edit(id, path, content string) (string, error) {
 	// })
 
 	// 6. Ejecutar edición con validación de permisos
-	// TODO: El repo debe implementar Edit con:
-	//   - Verificar permiso de escritura
-	//   - Reemplazar contenido
-	//   - Reasignar bloques si cambia el tamaño
+	err := s.repo.Edit(id, parts, []byte(content), uid, gid)
+	if err != nil {
+		return "", err
+	}
 	_ = user // Evitar warning
-	_, _ = uid, gid
 
-	return fmt.Sprintf("EDIT ejecutado en %s (stub - pendiente implementación en repo)", path), nil
+	return fmt.Sprintf("EDIT completado en %s", path), nil
 }
 
 func (s *FsService) Rename(id, path, newName string) (string, error) {

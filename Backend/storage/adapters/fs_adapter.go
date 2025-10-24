@@ -46,11 +46,7 @@ func (a *FsAdapter) Remove(id string, absPath []string, uid int, gid int) error 
 }
 
 func (a *FsAdapter) Edit(id string, absPath []string, content []byte, uid int, gid int) error {
-	// TODO: Edit expects a file path on the host, not content bytes
-	// For now, return not implemented error
-	_ = content
-	_, _ = uid, gid
-	return a.repo.Edit(id, absPath, "")
+	return a.repo.Edit(id, absPath, content, uid, gid)
 }
 
 func (a *FsAdapter) Rename(id string, absPath []string, newName string, uid int, gid int) error {
