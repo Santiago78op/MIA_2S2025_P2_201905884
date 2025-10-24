@@ -282,8 +282,18 @@ func (r *FileFsRepository) walkToNode(f *os.File, sb SuperBlockUnified, path []s
 			return InodeUnified{}, -1, "", err
 		}
 
-		if !currentIno.IsDir() {
-			return InodeUnified{}, -1, "", fmt.Errorf("'%s' no es un directorio", strings.Join(path[:i], "/"))
+		// Si no es el último elemento, debe ser directorio
+		if i < len(path)-1 {
+			if !currentIno.IsDir() {
+				var pathUpToNow string
+				if i == 0 {
+					pathUpToNow = "/"
+				} else {
+					pathUpToNow = strings.Join(path[:i], "/")
+				}
+				fmt.Printf("DEBUG walkToNode: inodo idx=%d, IType=%d (esperado %d para directorio), pathUpToNow=%s\n", currentIdx, currentIno.Ext2.IType, 0, pathUpToNow)
+				return InodeUnified{}, -1, "", fmt.Errorf("'%s' no es un directorio (IType=%d)", pathUpToNow, currentIno.Ext2.IType)
+			}
 		}
 
 		// Buscar entrada

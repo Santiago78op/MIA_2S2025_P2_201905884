@@ -81,7 +81,8 @@ func (r *FileFsRepository) Copy(id string, srcPath, destPath []string, uid int, 
 		// Navegar al directorio padre
 		destDirIno, _, _, err = r.walkToNode(f, sb, destDirPath, region)
 		if err != nil {
-			return 0, 0, fmt.Errorf("directorio padre del destino no existe: %w", err)
+			destPathStr := "/" + strings.Join(destDirPath, "/")
+			return 0, 0, fmt.Errorf("directorio padre del destino no existe: %s (%w)", destPathStr, err)
 		}
 	}
 
@@ -192,6 +193,7 @@ func (r *FileFsRepository) copyNodeRecursive(
 
 		// Crear inodo del nuevo directorio
 		newIno := createInodeDir(uid, gid, srcIno.Perm())
+		newIno.Index = newInoIdx // CRÍTICO: establecer el índice del inodo
 		newIno.SetBlock(0, newBlkIdx)
 
 		// Escribir bloque de directorio con . y ..
@@ -281,6 +283,7 @@ func (r *FileFsRepository) copyNodeRecursive(
 
 	// Crear inodo del archivo
 	newIno := createInodeFile(uid, gid, srcIno.Perm(), int32(len(content)))
+	newIno.Index = newInoIdx // CRÍTICO: establecer el índice del inodo
 	for i, blkIdx := range blockIndices {
 		newIno.SetBlock(i, blkIdx)
 	}

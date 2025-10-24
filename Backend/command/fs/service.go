@@ -284,7 +284,7 @@ func (s *FsService) Rename(id, path, newName string) (string, error) {
 	return fmt.Sprintf("RENAME completado: %s → %s", path, newName), nil
 }
 
-func (s *FsService) Copy(id, srcPath, destPath string) (string, error) {
+func (s *FsService) Copy(id string, srcPath, destPath []string) (string, error) {
 	logged, _, uid, gid, _, partitionId := s.sess.Current()
 	if !logged {
 		return "", fmt.Errorf("no hay sesión activa")
@@ -293,25 +293,25 @@ func (s *FsService) Copy(id, srcPath, destPath string) (string, error) {
 		id = partitionId
 	}
 
-	srcParts := SplitPath(srcPath)
-	destParts := SplitPath(destPath)
-	if len(srcParts) == 0 || len(destParts) == 0 {
+	if len(srcPath) == 0 || len(destPath) == 0 {
 		return "", fmt.Errorf("path inválido")
 	}
 
 	// Ejecutar copia recursiva con verificación de permisos
-	copied, skipped, err := s.repo.Copy(id, srcParts, destParts, uid, gid)
+	copied, skipped, err := s.repo.Copy(id, srcPath, destPath, uid, gid)
 	if err != nil {
 		return "", err
 	}
 
+	srcStr := "/" + strings.Join(srcPath, "/")
+	destStr := "/" + strings.Join(destPath, "/")
 	if skipped > 0 {
 		return fmt.Sprintf("COPY completado: %d elementos copiados, %d omitidos por permisos", copied, skipped), nil
 	}
-	return fmt.Sprintf("COPY completado: %d elementos copiados", copied), nil
+	return fmt.Sprintf("COPY completado (%s → %s): %d elementos copiados", srcStr, destStr, copied), nil
 }
 
-func (s *FsService) Move(id, srcPath, destPath string) (string, error) {
+func (s *FsService) Move(id string, srcPath, destPath []string) (string, error) {
 	logged, _, uid, gid, _, partitionId := s.sess.Current()
 	if !logged {
 		return "", fmt.Errorf("no hay sesión activa")
@@ -320,19 +320,19 @@ func (s *FsService) Move(id, srcPath, destPath string) (string, error) {
 		id = partitionId
 	}
 
-	srcParts := SplitPath(srcPath)
-	destParts := SplitPath(destPath)
-	if len(srcParts) == 0 || len(destParts) == 0 {
+	if len(srcPath) == 0 || len(destPath) == 0 {
 		return "", fmt.Errorf("path inválido")
 	}
 
 	// Ejecutar movimiento mediante re-enlace (sin copiar bloques)
-	err := s.repo.Move(id, srcParts, destParts, uid, gid)
+	err := s.repo.Move(id, srcPath, destPath, uid, gid)
 	if err != nil {
 		return "", err
 	}
 
-	return fmt.Sprintf("MOVE completado: %s → %s", srcPath, destPath), nil
+	srcStr := "/" + strings.Join(srcPath, "/")
+	destStr := "/" + strings.Join(destPath, "/")
+	return fmt.Sprintf("MOVE completado: %s → %s", srcStr, destStr), nil
 }
 
 func (s *FsService) Find(id, path, pattern string) (string, error) {

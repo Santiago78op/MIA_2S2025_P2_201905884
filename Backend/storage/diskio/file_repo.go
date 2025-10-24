@@ -1990,11 +1990,17 @@ func readInodeAt(f *os.File, inodeTableStart int64, index int, region Region) (m
 	var ino models.Inode
 	inodeSize := binary.Size(ino)
 	offset := inodeTableStart + int64(index*inodeSize)
+	if index == 0 || index == 1 {
+		fmt.Printf("DEBUG readInodeAt: index=%d, inodeSize=%d, offset=%d, inodeTableStart=%d\n", index, inodeSize, offset, inodeTableStart)
+	}
 	if _, err := f.Seek(offset, 0); err != nil {
 		return ino, err
 	}
 	if err := binary.Read(f, binary.LittleEndian, &ino); err != nil {
 		return ino, err
+	}
+	if index == 0 || index == 1 {
+		fmt.Printf("DEBUG readInodeAt: inodo %d leído: IType=%d, ISize=%d, IUid=%d\n", index, ino.IType, ino.ISize, ino.IUid)
 	}
 	return ino, nil
 }

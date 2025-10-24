@@ -246,14 +246,14 @@ type RenameArgs struct {
 
 type CopyArgs struct {
 	ID       string
-	SrcPath  string
-	DestPath string
+	SrcPath  []string
+	DestPath []string
 }
 
 type MoveArgs struct {
 	ID       string
-	SrcPath  string
-	DestPath string
+	SrcPath  []string
+	DestPath []string
 }
 
 type FindArgs struct {
@@ -355,7 +355,7 @@ func ParseCopy(line string) (CopyArgs, error) {
 	if err != nil {
 		return args, err
 	}
-	args.SrcPath = src
+	args.SrcPath = splitPathToArray(src)
 
 	// Aceptar tanto -dest como -destino
 	dest := flags["dest"]
@@ -365,7 +365,7 @@ func ParseCopy(line string) (CopyArgs, error) {
 	if dest == "" {
 		return args, fmt.Errorf("falta parámetro -dest o -destino")
 	}
-	args.DestPath = dest
+	args.DestPath = splitPathToArray(dest)
 
 	return args, nil
 }
@@ -381,7 +381,7 @@ func ParseMove(line string) (MoveArgs, error) {
 	if err != nil {
 		return args, err
 	}
-	args.SrcPath = src
+	args.SrcPath = splitPathToArray(src)
 
 	// Aceptar tanto -dest como -destino
 	dest := flags["dest"]
@@ -391,7 +391,7 @@ func ParseMove(line string) (MoveArgs, error) {
 	if dest == "" {
 		return args, fmt.Errorf("falta parámetro -dest o -destino")
 	}
-	args.DestPath = dest
+	args.DestPath = splitPathToArray(dest)
 
 	return args, nil
 }
@@ -490,4 +490,22 @@ func ParseRecovery(line string) (RecoveryArgs, error) {
 	args.ID = id
 
 	return args, nil
+}
+
+// splitPathToArray convierte un string de path en un array de componentes
+// Ej: "/home/user/file.txt" -> ["home", "user", "file.txt"]
+func splitPathToArray(path string) []string {
+	path = strings.TrimSpace(path)
+	path = strings.Trim(path, "/")
+	if path == "" {
+		return []string{}
+	}
+	parts := strings.Split(path, "/")
+	var result []string
+	for _, p := range parts {
+		if p != "" {
+			result = append(result, p)
+		}
+	}
+	return result
 }

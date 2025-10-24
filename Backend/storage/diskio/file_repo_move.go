@@ -68,7 +68,8 @@ func (r *FileFsRepository) Move(id string, srcPath, destPath []string, uid int, 
 	} else {
 		srcParentIno, srcParentIdx, _, err = r.walkToNode(f, sb, srcParentPath, region)
 		if err != nil {
-			return fmt.Errorf("directorio padre de origen no existe: %w", err)
+			srcPathStr := "/" + strings.Join(srcParentPath, "/")
+			return fmt.Errorf("directorio padre de origen no existe: %s (%w)", srcPathStr, err)
 		}
 	}
 
@@ -142,7 +143,8 @@ func (r *FileFsRepository) Move(id string, srcPath, destPath []string, uid int, 
 		// Navegar al directorio padre
 		destDirIno, _, _, err = r.walkToNode(f, sb, destDirPath, region)
 		if err != nil {
-			return fmt.Errorf("directorio padre del destino no existe: %w", err)
+			destPathStr := "/" + strings.Join(destDirPath, "/")
+			return fmt.Errorf("directorio padre del destino no existe: %s (%w)", destPathStr, err)
 		}
 	}
 
