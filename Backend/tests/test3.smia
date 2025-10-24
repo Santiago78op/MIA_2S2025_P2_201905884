@@ -1,7 +1,7 @@
 # PRUEBA GODISK - MIA 2S 2025
 # 3 Discos - Validación de errores
-
-# FASE 1: CREAR DISCOS Y VALIDAR ERRORES
+# MODIFICAR EL 12 CON LOS ULTIMOS DIGITOS DE SU CARNET
+#  1: CREAR DISCOS Y VALIDAR ERRORES
 
 # ERROR: Parámetro incorrecto
 mkdisk -param=x -size=30 -path=/home/joshipanda2002/Pruebas_MIA/DiscoError.mia
@@ -18,7 +18,7 @@ mkdisk -size=30 -unit=M -fit=BF -path=/home/joshipanda2002/Pruebas_MIA/DiscoB.mi
 # Disco C - 15MB
 mkdisk -size=15 -unit=M -path=/home/joshipanda2002/Pruebas_MIA/DiscoC.mia
 
-# FASE 2: RMDISK - ELIMINAR DISCOS
+#  2: RMDISK - ELIMINAR DISCOS
 
 # ERROR: Disco no existe
 rmdisk -path=/home/joshipanda2002/Pruebas_MIA/DiscoNoExiste.mia
@@ -34,7 +34,7 @@ rmdisk -path=/home/joshipanda2002/Pruebas_MIA/DiscoTemp2.mia
 # ERROR: Intentar eliminar disco ya eliminado
 rmdisk -path=/home/joshipanda2002/Pruebas_MIA/DiscoTemp1.mia
 
-# FASE 3: FDISK - CREAR PARTICIONES
+#  3: FDISK - CREAR PARTICIONES
 
 # ERROR: Ruta no encontrada
 fdisk -type=P -unit=M -name=PartError -size=10 -path=/home/joshipanda2002/Pruebas_MIA/DiscoError.mia -fit=BF
@@ -60,7 +60,7 @@ fdisk -type=P -unit=M -name=PartC2 -size=6 -path=/home/joshipanda2002/Pruebas_MI
 # ERROR: Falta espacio
 fdisk -type=P -unit=M -name=PartError -size=20 -path=/home/joshipanda2002/Pruebas_MIA/DiscoC.mia
 
-# FASE 4: MOUNT - MONTAR PARTICIONES
+#  4: MOUNT - MONTAR PARTICIONES
 
 # ERROR: Partición no existe
 mount -path=/home/joshipanda2002/Pruebas_MIA/DiscoA.mia -name=PartNoExiste
@@ -77,7 +77,7 @@ mount -path=/home/joshipanda2002/Pruebas_MIA/DiscoA.mia -name=PartA1
 # Ver particiones montadas
 mounted
 
-# FASE 5: MKFS - FORMATEAR PARTICIONES
+#  5: MKFS - FORMATEAR PARTICIONES
 
 # ERROR: ID no encontrado
 mkfs -type=full -fs=3fs -id=999X
@@ -88,19 +88,18 @@ mkfs -type=full -fs=3fs -id=122A
 # Formatear con EXT3 con journaling
 mkfs -type=full -fs=3fs -id=123A
 
-# Formatear resto con EXT3
-mkfs -type=full -fs=3fs -id=121B
+# Formatear resto con EXT3 (solo particiones primarias y lógicas, NO extendidas)
 mkfs -type=full -fs=3fs -id=121C
 
 
-# FASE 6: LOGIN Y USUARIOS
+#  6: LOGIN Y USUARIOS
 
 # Ir a la interfaz web y hacer login con:
 # Usuario: root
 # Contraseña: 123
 # Partición: 122A
 
-# FASE 7: CREAR GRUPOS
+#  7: CREAR GRUPOS
 
 mkgrp -name=usuarios
 mkgrp -name=desarrolladores
@@ -109,18 +108,18 @@ mkgrp -name=administradores
 # ERROR: Grupo ya existe
 mkgrp -name=usuarios
 
-# FASE 8: VER USUARIOS users.txt
+#  8: VER USUARIOS users.txt
 
 cat -file1=/users.txt
 
-# FASE 9: ELIMINAR GRUPO
+#  9: ELIMINAR GRUPO
 
 rmgrp -name=desarrolladores
 
 # Ver cambios
 cat -file1=/users.txt
 
-# FASE 10: CREAR USUARIOS
+#  10: CREAR USUARIOS
 
 mkusr -user=user1 -pass=pass123 -grp=usuarios
 mkusr -user=user2 -pass=pass123 -grp=usuarios
@@ -135,21 +134,21 @@ mkusr -user=user3 -pass=pass123 -grp=noexiste
 # Ver cambios
 cat -file1=/users.txt
 
-# FASE 11: CAMBIAR GRUPO DE USUARIO
+#  11: CAMBIAR GRUPO DE USUARIO
 
 chgrp -user=user2 -grp=administradores
 
 # Ver cambios
 cat -file1=/users.txt
 
-# FASE 12: ELIMINAR USUARIO
+#  12: ELIMINAR USUARIO
 
 rmusr -user=user2
 
 # Ver cambios
 cat -file1=/users.txt
 
-# FASE 13: CREAR DIRECTORIOS
+#  13: CREAR DIRECTORIOS
 
 mkdir -path=/home
 mkdir -path=/home/user1
@@ -161,7 +160,7 @@ mkdir -path=/home/user1/documentos/proyectos/archivos
 mkdir -p -path=/home/user1/documentos/proyectos
 mkdir -p -path=/home/archivos/manuales
 
-# FASE 14: LOGOUT Y LOGIN COMO USUARIO
+#  14: LOGOUT Y LOGIN COMO USUARIO
 # NOTA: Logout/Login ahora se hacen SOLO desde la interfaz web
 
 # Ir a la interfaz web y:
@@ -170,7 +169,7 @@ mkdir -p -path=/home/archivos/manuales
 # 3. Hacer logout nuevamente
 # 4. Hacer login con usuario: root, contraseña: 123, partición: 122A
 
-# FASE 15: CREAR ARCHIVOS CON MKFILE
+#  15: CREAR ARCHIVOS CON MKFILE
 
 # Con tamaño
 mkfile -path=/home/user1/archivo1.txt -size=50
@@ -191,18 +190,18 @@ mkfile -path=/home/archivo.txt -size=-45
 # Con flag recursivo
 mkfile -r -path=/home/user1/proyectos/codigo/main.txt -size=75
 
-# FASE 16: LEER ARCHIVOS CON CAT
+#  16: LEER ARCHIVOS CON CAT
 
 cat -file1=/home/user1/readme.txt
 cat -file1=/home/archivos/documento.txt
 cat -file1=/home/user1/archivo1.txt
 
-# FASE 17 y 18: JOURNAL con solo EXT3
+#  17 y 18: JOURNAL con solo EXT3
 
 # Ver journal de partición EXT3 (122A es EXT3)
 journal -id=122A
 
-# FASE 19:  CHMOD
+#  19:  CHMOD
 
 # Cambiar permisos de archivo
 chmod -path=/home/user1/readme.txt -ugo=664
@@ -213,18 +212,18 @@ chmod -path=/home/user1 -ugo=775 -r
 # ERROR: Permisos inválidos
 chmod -path=/home/user1/readme.txt -ugo=999
 
-# FASE 20:  CHOWN
+#  20:  CHOWN
 
 # Cambiar propietario de archivo
 chown -path=/home/user1/archivo1.txt -user=admin1
 
 # Cambiar propietario de carpeta recursivo
-chown -path=/home/documentos -user=user1 -r
+chown -path=/home/user1/documentos -user=user1 -r
 
 # ERROR: Usuario no existe
 chown -path=/home/user1/readme.txt -user=noexiste
 
-# FASE 21:  FIND
+#  21:  FIND
 
 # Buscar archivos por nombre exacto
 find -path=/home -name=readme.txt
@@ -238,18 +237,18 @@ find -path=/home -name=user1
 # ERROR: Ruta no existe
 find -path=/noexiste -name=archivo.txt
 
-# FASE 22: RENAME
+#  22: RENAME
 
 # Renombrar archivo
 rename -path=/home/user1/archivo1.txt -name=archivo_renombrado.txt
 
 # Renombrar carpeta
-rename -path=/home/documentos -name=archivos_docs
+rename -path=/home/user1/documentos -name=docs_user1
 
 # ERROR: Nombre ya existe
 rename -path=/home/user1/archivo2.txt -name=readme.txt
 
-# FASE 23:  COPY
+#  23:  COPY
 
 # Copiar archivo
 copy -path=/home/user1/readme.txt -dest=/home/user1/readme_copia.txt
@@ -257,7 +256,7 @@ copy -path=/home/user1/readme.txt -dest=/home/user1/readme_copia.txt
 # ERROR: Destino no existe
 copy -path=/home/user1/readme.txt -dest=/noexiste/copia.txt
 
-# FASE 24:  MOVE
+#  24:  MOVE
 
 # Mover archivo (archivo2 ya fue renombrado, usar otro)
 move -path=/home/user1/readme_copia.txt -dest=/home/readme_movido.txt
@@ -265,7 +264,7 @@ move -path=/home/user1/readme_copia.txt -dest=/home/readme_movido.txt
 # ERROR: Origen no existe
 move -path=/noexiste.txt -dest=/home/destino.txt
 
-# FASE 25:  EDIT
+#  25:  EDIT
 
 # Editar archivo con contenido nuevo 
 edit -path=/home/user1/readme.txt -cont="Contenido editado del archivo"
@@ -276,7 +275,7 @@ cat -file1=/home/user1/readme.txt
 # ERROR: Archivo no existe
 edit -path=/noexiste.txt -cont="texto"
 
-# FASE 26:  REMOVE
+#  26:  REMOVE
 
 # Eliminar archivo
 remove -path=/home/user1/archivo_renombrado.txt
@@ -285,15 +284,15 @@ remove -path=/home/user1/archivo_renombrado.txt
 remove -path=/home/user1/proyectos/codigo
 
 # ERROR: Carpeta no vacía sin flag -r 
-remove -path=/home/archivos_docs
+remove -path=/home/docs_user1
 
 # Eliminar carpeta no vacía con flag -r
-remove -path=/home/archivos_docs -r
+remove -path=/home/docs_user1 -r
 
 # ERROR: No existe
 remove -path=/noexiste.txt
 
-# FASE 27: COMANDOS CRÍTICOS - LOSS Y RECOVERY
+#  27: COMANDOS CRÍTICOS - LOSS Y RECOVERY
 
 # Simular pérdida del sistema (solo EXT3 - usar 122A)
 loss -id=122A
@@ -304,7 +303,7 @@ journal -id=122A
 # Recuperar el sistema desde journal
 recovery -id=122A
 
-# FASE 28: DESMONTAR PARTICIONES
+# DESMONTAR PARTICIONES
 
 # Primero hacer logout desde la interfaz web
 
@@ -316,3 +315,4 @@ unmount -id=121C
 
 # Verificar
 mounted
+

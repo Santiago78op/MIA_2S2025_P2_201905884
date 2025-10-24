@@ -19,7 +19,7 @@ import (
 // - Si algún hijo no tiene permiso, NO elimina NADA (atómica)
 // - Libera inodos y bloques en bitmaps
 // - Registra en Journal (EXT3)
-func (r *FileFsRepository) Remove(id string, path []string) error {
+func (r *FileFsRepository) Remove(id string, path []string, uid int, gid int) error {
 	// 1. Resolver montaje
 	diskPath, region, err := r.resolve(id)
 	if err != nil {
@@ -42,15 +42,30 @@ func (r *FileFsRepository) Remove(id string, path []string) error {
 	// Write-ahead journal omitido - se registra al final de la operación
 	_ = isExt3
 
-	// 5. Validar permisos antes de eliminar
-	if err := r.validateRemovePermissions(f, sb, path, region); err != nil {
+	isRoot := uid == 1
+
+	// 5. Navegar al elemento y validar permisos recursivamente
+	targetIno, _, _, err := r.walkToNode(f, sb, path, region)
+	if err != nil {
+		return fmt.Errorf("elemento no encontrado: %w", err)
+	}
+	
+	// Validar permisos recursivamente ANTES de eliminar nada
+	if err := r.validateRemovePermissionsRecursive(f, sb, targetIno, uid, gid, isRoot, region); err != nil {
 		return err
 	}
 
-	// 6. Navegar al elemento a eliminar
-	targetIno, parentIdx, targetName, err := r.walkToNode(f, sb, path, region)
-	if err != nil {
-		return fmt.Errorf("elemento no encontrado: %w", err)
+	// 6. Navegar al elemento a eliminar (reuses targetIno from validation above)
+	parentIno, parentIdx, targetName, err := r.walkToNode(f, sb, path[:len(path)-1], region)
+	if err != nil && len(path) > 1 {
+		return fmt.Errorf("directorio padre no encontrado: %w", err)
+	}
+	if len(path) == 1 {
+		parentIdx = 0 // raíz
+		parentIno, err = r.readInodeByIndex(f, sb, 0, region)
+		if err != nil {
+			return err
+		}
 	}
 
 	// 7. Leer bitmaps
@@ -71,16 +86,12 @@ func (r *FileFsRepository) Remove(id string, path []string) error {
 
 	// 9. Eliminar entrada del directorio padre
 	if parentIdx != -1 {
-		parentIno, err := r.readInodeByIndex(f, sb, parentIdx, region)
-		if err != nil {
-			return err
-		}
-
 		if err := r.removeEntryFromDir(f, sb, parentIno, targetName, region); err != nil {
 			return err
 		}
 
-		// Actualizar inodo padre
+		// Actualizar inodo padre (mtime)
+		parentIno.SetMtime(time.Now().Unix())
 		if err := r.writeInodeToSB(f, sb, parentIno, region); err != nil {
 			return err
 		}
@@ -114,10 +125,44 @@ func (r *FileFsRepository) Remove(id string, path []string) error {
 	return nil
 }
 
-// validateRemovePermissions valida permisos de escritura recursivamente
-func (r *FileFsRepository) validateRemovePermissions(f *os.File, sb SuperBlockUnified, path []string, region Region) error {
-	// TODO: Implementar validación de permisos
-	// Por ahora permitimos eliminar todo
+
+// validateRemovePermissionsRecursive valida que tiene permisos de escritura en TODO el árbol
+func (r *FileFsRepository) validateRemovePermissionsRecursive(
+	f *os.File,
+	sb SuperBlockUnified,
+	ino InodeUnified,
+	uid int, gid int, isRoot bool,
+	region Region,
+) error {
+	// Verificar permiso de escritura en este inodo
+	if !canWrite(ino, uid, gid, isRoot) {
+		return fmt.Errorf("permiso denegado: no tiene permiso de escritura")
+	}
+
+	// Si es directorio, validar recursivamente en todos los hijos
+	if ino.IsDir() {
+		entries, err := r.readDirEntriesFromInode(f, sb, ino, region)
+		if err != nil {
+			return err
+		}
+
+		for _, e := range entries {
+			if e.Name == "." || e.Name == ".." {
+				continue
+			}
+
+			childIno, err := r.readInodeByIndex(f, sb, e.InodeIdx, region)
+			if err != nil {
+				continue
+			}
+
+			// Validar recursivamente
+			if err := r.validateRemovePermissionsRecursive(f, sb, childIno, uid, gid, isRoot, region); err != nil {
+				return err
+			}
+		}
+	}
+
 	return nil
 }
 

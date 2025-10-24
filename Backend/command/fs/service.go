@@ -197,12 +197,14 @@ func (s *FsService) Remove(id, path string) (string, error) {
 	//     Timestamp: time.Now().Unix(),
 	// })
 
-	// Ejecutar borrado atómico por permisos
-	// TODO: El repo debe implementar Remove con validación de permisos recursiva
+	// Ejecutar borrado con validación de permisos
+	err := s.repo.Remove(id, parts, uid, gid)
+	if err != nil {
+		return "", err
+	}
 	_ = user // Evitar warning
-	_, _, _ = uid, gid, partitionId
 
-	return fmt.Sprintf("REMOVE ejecutado en %s (stub - pendiente implementación en repo)", path), nil
+	return fmt.Sprintf("REMOVE completado en %s", path), nil
 }
 
 func (s *FsService) Edit(id, path, content string) (string, error) {

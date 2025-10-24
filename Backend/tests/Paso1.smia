@@ -1,8 +1,7 @@
-# PRUEBA GODISK - MIA 2S 2025
-#-------------------------------------------*
+# PRUEBA GODISK - MIA 2S 2025 - unmountall
 # 3 Discos - Validación de errores
-#-------------------------------------------*
-# FASE 1: CREAR DISCOS Y VALIDAR ERRORES
+# MODIFICAR EL 84 CON LOS ULTIMOS DIGITOS DE SU CARNET
+#  1: CREAR DISCOS Y VALIDAR ERRORES
 # ERROR: Parámetro incorrecto
 mkdisk -param=x -size=30 -path=/home/julian/Documents/MIA_2S2025_P2_201905884/Backend/Discos/DiscoError.mia
 # ERROR: Tamaño incorrecto
@@ -13,9 +12,7 @@ mkdisk -size=25 -unit=M -fit=FF -path=/home/julian/Documents/MIA_2S2025_P2_20190
 mkdisk -size=30 -unit=M -fit=BF -path=/home/julian/Documents/MIA_2S2025_P2_201905884/Backend/Discos/DiscoB.mia
 # Disco C - 15MB
 mkdisk -size=15 -unit=M -path=/home/julian/Documents/MIA_2S2025_P2_201905884/Backend/Discos/DiscoC.mia
-#-------------------------------------------*
-# FASE 2: RMDISK - ELIMINAR DISCOS
-#-------------------------------------------*
+#  2: RMDISK - ELIMINAR DISCOS
 # ERROR: Disco no existe
 rmdisk -path=/home/julian/Documents/MIA_2S2025_P2_201905884/Backend/Discos/DiscoNoExiste.mia
 # Crear discos temporales para pruebas de eliminación
@@ -26,9 +23,7 @@ rmdisk -path=/home/julian/Documents/MIA_2S2025_P2_201905884/Backend/Discos/Disco
 rmdisk -path=/home/julian/Documents/MIA_2S2025_P2_201905884/Backend/Discos/DiscoTemp2.mia
 # ERROR: Intentar eliminar disco ya eliminado
 rmdisk -path=/home/julian/Documents/MIA_2S2025_P2_201905884/Backend/Discos/DiscoTemp1.mia
-#-------------------------------------------*
-# FASE 3: FDISK - CREAR PARTICIONES
-#-------------------------------------------*
+#  3: FDISK - CREAR PARTICIONES
 # ERROR: Ruta no encontrada
 fdisk -type=P -unit=M -name=PartError -size=10 -path=/home/julian/Documents/MIA_2S2025_P2_201905884/Backend/Discos/DiscoError.mia -fit=BF
 # Disco A - 3 particiones primarias
@@ -47,9 +42,7 @@ fdisk -type=P -unit=M -name=PartC1 -size=8 -path=/home/julian/Documents/MIA_2S20
 fdisk -type=P -unit=M -name=PartC2 -size=6 -path=/home/julian/Documents/MIA_2S2025_P2_201905884/Backend/Discos/DiscoC.mia
 # ERROR: Falta espacio
 fdisk -type=P -unit=M -name=PartError -size=20 -path=/home/julian/Documents/MIA_2S2025_P2_201905884/Backend/Discos/DiscoC.mia
-#-------------------------------------------*
-# FASE 4: MOUNT - MONTAR PARTICIONES
-#-------------------------------------------*
+#  4: MOUNT - MONTAR PARTICIONES
 # ERROR: Partición no existe
 mount -path=/home/julian/Documents/MIA_2S2025_P2_201905884/Backend/Discos/DiscoA.mia -name=PartNoExiste
 # Montar particiones
@@ -60,20 +53,14 @@ mount -path=/home/julian/Documents/MIA_2S2025_P2_201905884/Backend/Discos/DiscoB
 mount -path=/home/julian/Documents/MIA_2S2025_P2_201905884/Backend/Discos/DiscoC.mia -name=PartC1
 # ERROR: Partición ya montada
 mount -path=/home/julian/Documents/MIA_2S2025_P2_201905884/Backend/Discos/DiscoA.mia -name=PartA1
-#-------------------------------------------*
 # Ver particiones montadas
-#-------------------------------------------*
 mounted
-#Reinicia y Elimina Particiones - unmountall
-#-------------------------------------------*
-# FASE 5: MKFS - FORMATEAR PARTICIONES
-#-------------------------------------------*
+#  5: MKFS - FORMATEAR PARTICIONES
 # ERROR: ID no encontrado
 mkfs -type=full -fs=3fs -id=999X
 # Formatear con EXT3 con journaling 
 mkfs -type=full -fs=3fs -id=842A
 # Formatear con EXT3 con journaling
 mkfs -type=full -fs=3fs -id=843A
-# Formatear resto con EXT3
-mkfs -type=full -fs=3fs -id=841B
+# Formatear resto con EXT3 (solo particiones primarias y lógicas, NO extendidas)
 mkfs -type=full -fs=3fs -id=841C

@@ -1,53 +1,46 @@
-#-------------------------------------------*
-# FASE 15: CREAR ARCHIVOS CON MKFILE
-#-------------------------------------------*
+#  14: LOGOUT Y LOGIN COMO USUARIO
+# NOTA: Logout/Login ahora se hacen SOLO desde la interfaz web
+# Ir a la interfaz web y:
+# 1. Hacer logout (botón "Cerrar Sesión")
+# 2. Hacer login con usuario: user1, contraseña: pass123, partición: 122A
+# 3. Hacer logout nuevamente
+# 4. Hacer login con usuario: root, contraseña: 123, partición: 122A
+#  15: CREAR ARCHIVOS CON MKFILE
 # Con tamaño
 mkfile -path=/home/user1/archivo1.txt -size=50
 mkfile -path=/home/user1/archivo2.txt -size=100
 # Con contenido de texto directo
 mkfile -path=/home/user1/readme.txt -cont="Este es un archivo de prueba con texto directo"
 # Con contenido más largo
-mkfile -path=/home/archivos/doc.txt -cont="Contenido del doc. Este es un ejemplo de archivo de texto con varias palabras."
+mkfile -path=/home/archivos/documento.txt -cont="Contenido del documento. Este es un ejemplo de archivo de texto con varias palabras."
 # ERROR: No existe ruta
 mkfile -path=/noexiste/archivo.txt -size=50
 # ERROR: Tamaño negativo
 mkfile -path=/home/archivo.txt -size=-45
 # Con flag recursivo
 mkfile -r -path=/home/user1/proyectos/codigo/main.txt -size=75
-#-------------------------------------------*
-# FASE 16: LEER ARCHIVOS CON CAT
-#-------------------------------------------*
+#  16: LEER ARCHIVOS CON CAT
 cat -file1=/home/user1/readme.txt
-cat -file1=/home/archivos/doc.txt
+cat -file1=/home/archivos/documento.txt
 cat -file1=/home/user1/archivo1.txt
-#-------------------------------------------*
-# FASE 17 y 18: JOURNAL con solo EXT3
-#-------------------------------------------*
+#  17 y 18: JOURNAL con solo EXT3
 # Ver journal de partición EXT3 (122A es EXT3)
-#-------------------------------------------*
 journal -id=842A
-#-------------------------------------------*
-# FASE 19:  CHMOD
-#-------------------------------------------*
+#  19:  CHMOD
 # Cambiar permisos de archivo
-#-------------------------------------------*
 chmod -path=/home/user1/readme.txt -ugo=664
 # Cambiar permisos de carpeta recursivo 
 chmod -path=/home/user1 -ugo=775 -r
 # ERROR: Permisos inválidos
 chmod -path=/home/user1/readme.txt -ugo=999
-#-------------------------------------------*
-# FASE 20:  CHOWN
-#-------------------------------------------*
+#  20:  CHOWN
 # Cambiar propietario de archivo
 chown -path=/home/user1/archivo1.txt -user=admin1
 # Cambiar propietario de carpeta recursivo
-chown -path=/home/documentos -user=user1 -r
+chown -path=/home/user1/documentos -user=user1 -r
 # ERROR: Usuario no existe
 chown -path=/home/user1/readme.txt -user=noexiste
-#-------------------------------------------*
-# FASE 21:  FIND
-#-------------------------------------------*
+#  21:  FIND
 # Buscar archivos por nombre exacto
 find -path=/home -name=readme.txt
 # Buscar con wildcard (CORREGIDO: ahora soporta * y ?)
@@ -56,73 +49,54 @@ find -path=/home -name=*.txt
 find -path=/home -name=user1
 # ERROR: Ruta no existe
 find -path=/noexiste -name=archivo.txt
-#-------------------------------------------*
-# FASE 22: RENAME
-#-------------------------------------------*
+#  22: RENAME
 # Renombrar archivo
-rename -path=/home/user1/archivo1.txt -name=archivo_rename.txt
+rename -path=/home/user1/archivo1.txt -name=archivo_name.txt
 # Renombrar carpeta
-rename -path=/home/documentos -name=archivos_docs
+rename -path=/home/user1/documentos -name=docs_user1
 # ERROR: Nombre ya existe
 rename -path=/home/user1/archivo2.txt -name=readme.txt
-#-------------------------------------------*
-# FASE 23:  COPY
-#-------------------------------------------*
+#  23:  COPY
 # Copiar archivo
-copy -path=/home/user1/readme.txt -destino=/home/user1/readme_copia.txt
+copy -path=/home/user1/readme.txt -dest=/home/user1/readme_copia.txt
 # ERROR: Destino no existe
-copy -path=/home/user1/readme.txt -destino=/noexiste/copia.txt
-#-------------------------------------------*
-# FASE 24:  MOVE
-#-------------------------------------------*
+copy -path=/home/user1/readme.txt -dest=/noexiste/copia.txt
+#  24:  MOVE
 # Mover archivo (archivo2 ya fue renombrado, usar otro)
 move -path=/home/user1/readme_copia.txt -dest=/home/readme_movido.txt
 # ERROR: Origen no existe
 move -path=/noexiste.txt -dest=/home/destino.txt
-#-------------------------------------------*
-# FASE 25:  EDIT
-#-------------------------------------------*
+#  25:  EDIT
 # Editar archivo con contenido nuevo 
-edit -path=/home/user1/readme.txt -contenido="Contenido editado del archivo"
-#-------------------------------------------*
+edit -path=/home/user1/readme.txt -cont="Contenido editado del archivo"
 # Verificar cambios
-#-------------------------------------------*
 cat -file1=/home/user1/readme.txt
 # ERROR: Archivo no existe
-edit -path=/noexiste.txt -contenido="texto"
-#-------------------------------------------*
-# FASE 26:  REMOVE
-#-------------------------------------------*
+edit -path=/noexiste.txt -cont="texto"
+#  26:  REMOVE
 # Eliminar archivo
-remove -path=/home/user1/archivo_renombrado.txt
+remove -path=/home/user1/archivo_name.txt
 # Eliminar carpeta vacía
 remove -path=/home/user1/proyectos/codigo
 # ERROR: Carpeta no vacía sin flag -r 
-remove -path=/home/archivos_docs
+remove -path=/home/docs_user1
 # Eliminar carpeta no vacía con flag -r
-remove -path=/home/archivos_docs -r
+remove -path=/home/docs_user1 -r
 # ERROR: No existe
 remove -path=/noexiste.txt
-#-------------------------------------------*
-# FASE 27: COMANDOS CRÍTICOS - LOSS Y RECOVERY
-#-------------------------------------------*
+#  27: COMANDOS CRÍTICOS - LOSS Y RECOVERY
 # Simular pérdida del sistema (solo EXT3 - usar 122A)
 loss -id=122A
-#-------------------------------------------*
 # Ver que el journal sigue disponible
 journal -id=122A
-#-------------------------------------------*
 # Recuperar el sistema desde journal
 recovery -id=122A
-#-------------------------------------------*
-# FASE 28: DESMONTAR PARTICIONES
+# DESMONTAR PARTICIONES
 # Primero hacer logout desde la interfaz web
 # Desmontar todas las particiones, se deben usar los IDs correctos montados
 unmount -id=122A
 unmount -id=123A
 unmount -id=121B
 unmount -id=121C
-#-------------------------------------------*
 # Verificar
-#-------------------------------------------*
 mounted

@@ -1,26 +1,16 @@
-#-------------------------------------------*
-# FASE 7: CREAR GRUPOS
-#-------------------------------------------*
+#  7: CREAR GRUPOS
 mkgrp -name=usuarios
-mkgrp -name=developers
+mkgrp -name=desarrolladores
 mkgrp -name=administradores
 # ERROR: Grupo ya existe
 mkgrp -name=usuarios
-#-------------------------------------------*
-# FASE 8: VER USUARIOS users.txt
-#-------------------------------------------*
+#  8: VER USUARIOS users.txt
 cat -file1=/users.txt
-#-------------------------------------------*
-# FASE 9: ELIMINAR GRUPO
-#-------------------------------------------*
-rmgrp -name=developers
-#-------------------------------------------*
+#  9: ELIMINAR GRUPO
+rmgrp -name=desarrolladores
 # Ver cambios
-#-------------------------------------------*
 cat -file1=/users.txt
-#-------------------------------------------*
-# FASE 10: CREAR USUARIOS
-#-------------------------------------------*
+#  10: CREAR USUARIOS
 mkusr -user=user1 -pass=pass123 -grp=usuarios
 mkusr -user=user2 -pass=pass123 -grp=usuarios
 mkusr -user=admin1 -pass=admin123 -grp=administradores
@@ -28,31 +18,18 @@ mkusr -user=admin1 -pass=admin123 -grp=administradores
 mkusr -user=user1 -pass=pass123 -grp=usuarios
 # ERROR: Grupo no existe
 mkusr -user=user3 -pass=pass123 -grp=noexiste
-#-------------------------------------------*
 # Ver cambios
-#-------------------------------------------*
 cat -file1=/users.txt
-#-------------------------------------------*
-# FASE 11: CAMBIAR GRUPO DE USUARIO
-#-------------------------------------------*
+#  11: CAMBIAR GRUPO DE USUARIO
 chgrp -user=user2 -grp=administradores
-#-------------------------------------------*
 # Ver cambios
-#-------------------------------------------*
 cat -file1=/users.txt
-#-------------------------------------------*
-# FASE 12: ELIMINAR USUARIO
-#-------------------------------------------*
+#  12: ELIMINAR USUARIO
 rmusr -user=user2
-#-------------------------------------------*
 # Ver cambios
-#-------------------------------------------*
 cat -file1=/users.txt
-#-------------------------------------------*
-# FASE 13: CREAR DIRECTORIOS
-#-------------------------------------------*
+#  13: CREAR DIRECTORIOS
 mkdir -path=/home
-mkdir -p -path=/home/documentos
 mkdir -path=/home/user1
 # ERROR: No existen carpetas padres
 mkdir -path=/home/user1/documentos/proyectos/archivos

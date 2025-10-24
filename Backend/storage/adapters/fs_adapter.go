@@ -42,7 +42,7 @@ func (a *FsAdapter) Cat(id string, files [][]string, uid int, gid int) (string, 
 
 // Comandos avanzados P2
 func (a *FsAdapter) Remove(id string, absPath []string, uid int, gid int) error {
-	return a.repo.Remove(id, absPath)
+	return a.repo.Remove(id, absPath, uid, gid)
 }
 
 func (a *FsAdapter) Edit(id string, absPath []string, content []byte, uid int, gid int) error {

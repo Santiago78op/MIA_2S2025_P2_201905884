@@ -259,6 +259,7 @@ func (r *FileFsRepository) writeBlockToSB(f *os.File, sb SuperBlockUnified, idx 
 		_, err := f.Write(block)
 		return err
 	default:
+		fmt.Printf("DEBUG writeBlockToSB: tipo recibido=%T\n", data)
 		return fmt.Errorf("tipo de bloque no soportado")
 	}
 }
