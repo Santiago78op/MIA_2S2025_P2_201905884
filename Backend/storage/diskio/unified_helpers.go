@@ -211,7 +211,7 @@ func (r *FileFsRepository) readBlockByIndex(f *os.File, sb SuperBlockUnified, id
 		start = sb.Ext2.SBlockStart
 	}
 
-	offset := start + int64(idx*64)
+	offset := start + int64(idx*models.BlockSizeFile)
 	if _, err := f.Seek(offset, 0); err != nil {
 		return BlockUnified{}, err
 	}
@@ -241,7 +241,7 @@ func (r *FileFsRepository) writeBlockToSB(f *os.File, sb SuperBlockUnified, idx 
 		start = sb.Ext2.SBlockStart
 	}
 
-	offset := start + int64(idx*64)
+	offset := start + int64(idx*models.BlockSizeFile)
 	if _, err := f.Seek(offset, 0); err != nil {
 		return err
 	}

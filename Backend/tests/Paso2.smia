@@ -3,7 +3,7 @@
 #-------------------------------------------*
 mkgrp -name=usuarios
 mkgrp -name=developers
-mkgrp -name=admins
+mkgrp -name=administradores
 # ERROR: Grupo ya existe
 mkgrp -name=usuarios
 #-------------------------------------------*
@@ -23,7 +23,7 @@ cat -file1=/users.txt
 #-------------------------------------------*
 mkusr -user=user1 -pass=pass123 -grp=usuarios
 mkusr -user=user2 -pass=pass123 -grp=usuarios
-mkusr -user=admin1 -pass=admin123 -grp=admins
+mkusr -user=admin1 -pass=admin123 -grp=administradores
 # ERROR: Usuario ya existe
 mkusr -user=user1 -pass=pass123 -grp=usuarios
 # ERROR: Grupo no existe
@@ -35,7 +35,7 @@ cat -file1=/users.txt
 #-------------------------------------------*
 # FASE 11: CAMBIAR GRUPO DE USUARIO
 #-------------------------------------------*
-chgrp -user=user2 -grp=admins
+chgrp -user=user2 -grp=administradores
 #-------------------------------------------*
 # Ver cambios
 #-------------------------------------------*

@@ -31,7 +31,7 @@ type Inode struct {
 
 // Directorios: 4 entradas por bloque
 type DirEntry struct {
-	BName  [12]byte // nombre base (sin '/')
+	BName  [20]byte // nombre base (sin '/')
 	BInodo int32    // índice de inodo; -1 si libre
 }
 type FolderBlock struct {

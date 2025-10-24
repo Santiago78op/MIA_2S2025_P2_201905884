@@ -25,8 +25,8 @@ func (r *FileFsRepository) Rename(id string, path []string, newName string, uid 
 	if strings.Contains(newName, "/") {
 		return fmt.Errorf("el nuevo nombre no puede contener '/'")
 	}
-	if len(newName) > 12 {
-		return fmt.Errorf("el nuevo nombre no puede exceder 12 caracteres")
+	if len(newName) > 20 {
+		return fmt.Errorf("el nuevo nombre no puede exceder 20 caracteres")
 	}
 
 	// 2. Resolver montaje

@@ -348,11 +348,8 @@ func ParseCopy(line string) (CopyArgs, error) {
 	_, flags := parseLine(line)
 	var args CopyArgs
 
-	id, err := mustString(flags, "id")
-	if err != nil {
-		return args, err
-	}
-	args.ID = id
+	// ID es opcional; si no se proporciona, se usa el de la sesión actual
+	args.ID = flags["id"] // puede ser ""
 
 	src, err := mustString(flags, "path")
 	if err != nil {
@@ -373,11 +370,8 @@ func ParseMove(line string) (MoveArgs, error) {
 	_, flags := parseLine(line)
 	var args MoveArgs
 
-	id, err := mustString(flags, "id")
-	if err != nil {
-		return args, err
-	}
-	args.ID = id
+	// ID es opcional; si no se proporciona, se usa el de la sesión actual
+	args.ID = flags["id"] // puede ser ""
 
 	src, err := mustString(flags, "path")
 	if err != nil {

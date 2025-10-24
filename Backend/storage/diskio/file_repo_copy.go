@@ -232,7 +232,7 @@ func (r *FileFsRepository) copyNodeRecursive(
 	}
 
 	// Calcular bloques necesarios
-	blocksNeeded := (len(content) + 63) / 64
+	blocksNeeded := (len(content) + models.BlockSizeFile - 1) / models.BlockSizeFile
 	if blocksNeeded > 12 {
 		bmInode[newInoIdx] = 0
 		return -1, 0, 0, fmt.Errorf("archivo demasiado grande (max 12 bloques)")
@@ -261,8 +261,8 @@ func (r *FileFsRepository) copyNodeRecursive(
 
 	// Escribir contenido en bloques
 	for i, blkIdx := range blockIndices {
-		start := i * 64
-		end := start + 64
+		start := i * models.BlockSizeFile
+		end := start + models.BlockSizeFile
 		if end > len(content) {
 			end = len(content)
 		}

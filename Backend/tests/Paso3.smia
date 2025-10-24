@@ -69,9 +69,9 @@ rename -path=/home/user1/archivo2.txt -name=readme.txt
 # FASE 23:  COPY
 #-------------------------------------------*
 # Copiar archivo
-copy -path=/home/user1/readme.txt -dest=/home/user1/readme_copia.txt
+copy -path=/home/user1/readme.txt -destino=/home/user1/readme_copia.txt
 # ERROR: Destino no existe
-copy -path=/home/user1/readme.txt -dest=/noexiste/copia.txt
+copy -path=/home/user1/readme.txt -destino=/noexiste/copia.txt
 #-------------------------------------------*
 # FASE 24:  MOVE
 #-------------------------------------------*

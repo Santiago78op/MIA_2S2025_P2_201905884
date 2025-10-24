@@ -689,9 +689,8 @@ func (r *FileFsRepository) Mkfs(id string, formatType string) error {
 	}
 
 	// Calcular n usando utils.ComputeLayout
-	// Asumimos inodeSize=64, blockSize=64 (según enunciado típico)
 	const inodeSize = 64
-	const blockSize = 64
+	const blockSize = models.BlockSizeFile // Usar constante actualizada (128)
 
 	// Importar utils para usar ComputeLayout
 	sb := computeLayout(region.Start, region.Size, inodeSize, blockSize)
@@ -1218,7 +1217,7 @@ func (r *FileFsRepository) Mkfile(id string, absPath []string, size int, content
 	}
 
 	// Calcular cuántos bloques necesitamos
-	blocksNeeded := (len(content) + 63) / 64 // redondear hacia arriba
+	blocksNeeded := (len(content) + models.BlockSizeFile - 1) / models.BlockSizeFile // redondear hacia arriba
 
 	// Reservar inodo para el archivo
 	fileInodeIdx := -1
@@ -1276,8 +1275,8 @@ func (r *FileFsRepository) Mkfile(id string, absPath []string, size int, content
 
 	// Escribir contenido en bloques
 	for i, blkIdx := range blockIndices {
-		start := i * 64
-		end := start + 64
+		start := i * models.BlockSizeFile
+		end := start + models.BlockSizeFile
 		if end > len(content) {
 			end = len(content)
 		}
@@ -1581,7 +1580,7 @@ func (r *FileFsRepository) UpdateFile(id string, absPath []string, newContent st
 
 			// Convertir contenido a bytes
 			content := []byte(newContent)
-			blocksNeeded := (len(content) + 63) / 64
+			blocksNeeded := (len(content) + models.BlockSizeFile - 1) / models.BlockSizeFile
 
 			// Liberar bloques antiguos si los hay
 			for i := 0; i < 12; i++ {
@@ -1618,8 +1617,8 @@ func (r *FileFsRepository) UpdateFile(id string, absPath []string, newContent st
 
 			// Escribir contenido en bloques
 			for i, blkIdx := range blockIndices {
-				start := i * 64
-				end := start + 64
+				start := i * models.BlockSizeFile
+				end := start + models.BlockSizeFile
 				if end > len(content) {
 					end = len(content)
 				}
@@ -2024,7 +2023,7 @@ func writeBlockAt(f *os.File, blockAreaStart int64, index int, data interface{},
 		return fmt.Errorf("tipo de bloque no soportado")
 	}
 
-	offset := blockAreaStart + int64(index*64) // blockSize = 64
+	offset := blockAreaStart + int64(index*models.BlockSizeFile)
 	if _, err := f.Seek(offset, 0); err != nil {
 		return err
 	}

@@ -84,9 +84,9 @@ func (a *UsersAdapter) Login(id, user, pass string) (uid, gid int, isRoot bool, 
 }
 
 func (a *UsersAdapter) Mkgrp(id, name string) error {
-	// Validar longitud del nombre del grupo (máximo 10 caracteres)
-	if len(name) > 10 {
-		return fmt.Errorf("el nombre del grupo excede el máximo de 10 caracteres")
+	// Validar longitud del nombre del grupo (máximo 20 caracteres)
+	if len(name) > 20 {
+		return fmt.Errorf("el nombre del grupo excede el máximo de 20 caracteres")
 	}
 
 	// Leer users.txt como root (uid=1, gid=1) ya que es una operación del sistema
@@ -243,15 +243,15 @@ func (a *UsersAdapter) Rmgrp(id, name string) error {
 }
 
 func (a *UsersAdapter) Mkusr(id, user, pass, grp string) error {
-	// Validar longitudes (máximo 10 caracteres cada uno)
-	if len(user) > 10 {
-		return fmt.Errorf("el nombre del usuario excede el máximo de 10 caracteres")
+	// Validar longitudes (máximo 20 caracteres cada uno)
+	if len(user) > 20 {
+		return fmt.Errorf("el nombre del usuario excede el máximo de 20 caracteres")
 	}
-	if len(pass) > 10 {
-		return fmt.Errorf("la contraseña excede el máximo de 10 caracteres")
+	if len(pass) > 20 {
+		return fmt.Errorf("la contraseña excede el máximo de 20 caracteres")
 	}
-	if len(grp) > 10 {
-		return fmt.Errorf("el nombre del grupo excede el máximo de 10 caracteres")
+	if len(grp) > 20 {
+		return fmt.Errorf("el nombre del grupo excede el máximo de 20 caracteres")
 	}
 
 	// Leer users.txt como root (uid=1, gid=1) ya que es una operación del sistema
@@ -376,9 +376,9 @@ func (a *UsersAdapter) Rmusr(id, user string) error {
 }
 
 func (a *UsersAdapter) Chgrp(id, user, grp string) error {
-	// Validar longitud del nombre del grupo (máximo 10 caracteres)
-	if len(grp) > 10 {
-		return fmt.Errorf("el nombre del grupo excede el máximo de 10 caracteres")
+	// Validar longitud del nombre del grupo (máximo 20 caracteres)
+	if len(grp) > 20 {
+		return fmt.Errorf("el nombre del grupo excede el máximo de 20 caracteres")
 	}
 
 	// Leer users.txt como root (uid=1, gid=1) ya que es una operación del sistema
