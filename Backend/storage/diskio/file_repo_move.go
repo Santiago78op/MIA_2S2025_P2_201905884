@@ -116,76 +116,100 @@ func (r *FileFsRepository) Move(id string, srcPath, destPath []string, uid int, 
 		return fmt.Errorf("error leyendo inodo origen: %w", err)
 	}
 
-	// 11. Navegar al directorio destino
-	destDirIno, _, _, err := r.walkToNode(f, sb, destPath, region)
-	if err != nil {
-		return fmt.Errorf("destino no existe: %w", err)
+	// 11. Separar destPath en directorio padre + nombre del archivo destino
+	var destDirPath []string
+	var destName string
+
+	if len(destPath) == 1 {
+		// Destino es en la raíz: /archivo.txt
+		destDirPath = []string{} // raíz
+		destName = destPath[0]
+	} else {
+		// Destino es /dir1/dir2/.../archivo.txt
+		destDirPath = destPath[:len(destPath)-1]
+		destName = destPath[len(destPath)-1]
 	}
 
-	// 12. Verificar que el destino es un directorio
+	// 12. Navegar al directorio padre del destino (debe existir y ser directorio)
+	var destDirIno InodeUnified
+	if len(destDirPath) == 0 {
+		// Destino es en raíz, leer inodo raíz (índice 0)
+		destDirIno, err = r.readInodeByIndex(f, sb, 0, region)
+		if err != nil {
+			return fmt.Errorf("no se pudo leer inodo raíz: %w", err)
+		}
+	} else {
+		// Navegar al directorio padre
+		destDirIno, _, _, err = r.walkToNode(f, sb, destDirPath, region)
+		if err != nil {
+			return fmt.Errorf("directorio padre del destino no existe: %w", err)
+		}
+	}
+
+	// 13. Verificar que el destino es un directorio
 	if !destDirIno.IsDir() {
-		return fmt.Errorf("destino no es un directorio")
+		return fmt.Errorf("el padre del destino no es un directorio")
 	}
 
-	// 13. Verificar permiso de escritura en directorio destino
+	// 14. Verificar permiso de escritura en directorio destino
 	if !canWrite(destDirIno, uid, gid, isRoot) {
 		return fmt.Errorf("sin permiso de escritura en directorio destino")
 	}
 
-	// 14. Verificar que no existe ya un elemento con el mismo nombre en destino
+	// 15. Verificar que no existe ya un elemento con el nombre destino
 	destEntries, err := r.readDirEntriesFromInode(f, sb, destDirIno, region)
 	if err != nil {
 		return err
 	}
 
 	for _, e := range destEntries {
-		if e.Name != "." && e.Name != ".." && strings.EqualFold(e.Name, srcName) {
-			return fmt.Errorf("ya existe '%s' en destino", srcName)
+		if e.Name != "." && e.Name != ".." && strings.EqualFold(e.Name, destName) {
+			return fmt.Errorf("ya existe '%s' en destino", destName)
 		}
 	}
 
-	// 15. Leer bitmaps (solo para actualizar si es necesario expandir el destino)
+	// 16. Leer bitmaps (solo para actualizar si es necesario expandir el destino)
 	bmBlock, err := r.readBitmapFromSB(f, sb, false, region)
 	if err != nil {
 		return err
 	}
 
-	// 16. OPERACIÓN MOVE: Re-enlazar el inodo en el destino
+	// 17. OPERACIÓN MOVE: Re-enlazar el inodo en el destino con el nuevo nombre
 	// Agregar entrada en directorio destino apuntando al mismo inodo
-	if err := r.addEntryToDirectory(f, sb, destDirIno, srcName, srcInodeIdx, bmBlock, region); err != nil {
+	if err := r.addEntryToDirectory(f, sb, destDirIno, destName, srcInodeIdx, bmBlock, region); err != nil {
 		return err
 	}
 
-	// 17. Actualizar timestamp del directorio destino
+	// 18. Actualizar timestamp del directorio destino
 	destDirIno.SetMtime(time.Now().Unix())
 	if err := r.writeInodeToSB(f, sb, destDirIno, region); err != nil {
 		return err
 	}
 
-	// 18. Eliminar entrada del directorio origen
+	// 19. Eliminar entrada del directorio origen
 	if err := r.removeEntryFromDirectory(f, sb, srcParentIno, srcEntryBlockIdx, srcEntrySlotIdx, region); err != nil {
 		return err
 	}
 
-	// 19. Actualizar timestamp del directorio origen
+	// 20. Actualizar timestamp del directorio origen
 	srcParentIno.SetMtime(time.Now().Unix())
 	if err := r.writeInodeToSB(f, sb, srcParentIno, region); err != nil {
 		return err
 	}
 
-	// 20. Si el origen es un directorio, actualizar su entrada ".." para apuntar al nuevo padre
+	// 21. Si el origen es un directorio, actualizar su entrada ".." para apuntar al nuevo padre
 	if srcIno.IsDir() {
 		if err := r.updateParentPointer(f, sb, srcIno, destDirIno.Index, region); err != nil {
 			return err
 		}
 	}
 
-	// 21. Escribir bitmap actualizado (si se expandió el destino)
+	// 22. Escribir bitmap actualizado (si se expandió el destino)
 	if err := r.writeBitmapToSB(f, sb, bmBlock, false, region); err != nil {
 		return err
 	}
 
-	// 22. Actualizar superblock
+	// 23. Actualizar superblock
 	sb.Ext2.SMtime = time.Now().Unix()
 	if err := r.writeSuperblock(f, sb, region); err != nil {
 		return err
@@ -193,7 +217,8 @@ func (r *FileFsRepository) Move(id string, srcPath, destPath []string, uid int, 
 
 	// Registrar en journal (ignorar errores para no romper la operación)
 	srcFullPath := "/" + strings.Join(srcPath, "/")
-	destFullPath := "/" + strings.Join(destPath, "/")
+	// Construir la ruta completa del destino correctamente
+	destFullPath := "/" + strings.Join(append(destDirPath, destName), "/")
 	contentInfo := fmt.Sprintf("to=%s", destFullPath)
 	_ = r.JournalAppendPublic(id, "MOVE", srcFullPath, contentInfo, time.Now().Unix())
 

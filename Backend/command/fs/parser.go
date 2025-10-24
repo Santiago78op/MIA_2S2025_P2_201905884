@@ -357,9 +357,13 @@ func ParseCopy(line string) (CopyArgs, error) {
 	}
 	args.SrcPath = src
 
-	dest, err := mustString(flags, "destino")
-	if err != nil {
-		return args, err
+	// Aceptar tanto -dest como -destino
+	dest := flags["dest"]
+	if dest == "" {
+		dest = flags["destino"]
+	}
+	if dest == "" {
+		return args, fmt.Errorf("falta parámetro -dest o -destino")
 	}
 	args.DestPath = dest
 
@@ -379,9 +383,13 @@ func ParseMove(line string) (MoveArgs, error) {
 	}
 	args.SrcPath = src
 
-	dest, err := mustString(flags, "destino")
-	if err != nil {
-		return args, err
+	// Aceptar tanto -dest como -destino
+	dest := flags["dest"]
+	if dest == "" {
+		dest = flags["destino"]
+	}
+	if dest == "" {
+		return args, fmt.Errorf("falta parámetro -dest o -destino")
 	}
 	args.DestPath = dest
 

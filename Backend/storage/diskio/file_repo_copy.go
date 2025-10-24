@@ -44,7 +44,7 @@ func (r *FileFsRepository) Copy(id string, srcPath, destPath []string, uid int, 
 	_ = isExt3
 
 	// 5. Navegar al origen
-	srcIno, srcParentIdx, srcName, err := r.walkToNode(f, sb, srcPath, region)
+	srcIno, srcParentIdx, _, err := r.walkToNode(f, sb, srcPath, region)
 	if err != nil {
 		return 0, 0, fmt.Errorf("no se encontró origen: %w", err)
 	}
@@ -55,32 +55,57 @@ func (r *FileFsRepository) Copy(id string, srcPath, destPath []string, uid int, 
 		return 0, 0, fmt.Errorf("sin permiso de lectura en origen '%s'", strings.Join(srcPath, "/"))
 	}
 
-	// 7. Navegar al destino (debe existir y ser directorio)
-	destIno, _, _, err := r.walkToNode(f, sb, destPath, region)
-	if err != nil {
-		return 0, 0, fmt.Errorf("destino no existe: %w", err)
-	}
-	if !destIno.IsDir() {
-		return 0, 0, fmt.Errorf("destino no es un directorio")
+	// 7. Separar destPath en directorio padre + nombre del archivo destino
+	var destDirPath []string
+	var destName string
+
+	if len(destPath) == 1 {
+		// Destino es en la raíz: /archivo.txt
+		destDirPath = []string{} // raíz
+		destName = destPath[0]
+	} else {
+		// Destino es /dir1/dir2/.../archivo.txt
+		destDirPath = destPath[:len(destPath)-1]
+		destName = destPath[len(destPath)-1]
 	}
 
-	// 8. Verificar permiso de escritura en destino
-	if !canWrite(destIno, uid, gid, isRoot) {
-		return 0, 0, fmt.Errorf("sin permiso de escritura en destino '%s'", strings.Join(destPath, "/"))
+	// 8. Navegar al directorio padre del destino (debe existir y ser directorio)
+	var destDirIno InodeUnified
+	if len(destDirPath) == 0 {
+		// Destino es en raíz, leer inodo raíz (índice 0)
+		destDirIno, err = r.readInodeByIndex(f, sb, 0, region)
+		if err != nil {
+			return 0, 0, fmt.Errorf("no se pudo leer inodo raíz: %w", err)
+		}
+	} else {
+		// Navegar al directorio padre
+		destDirIno, _, _, err = r.walkToNode(f, sb, destDirPath, region)
+		if err != nil {
+			return 0, 0, fmt.Errorf("directorio padre del destino no existe: %w", err)
+		}
 	}
 
-	// 9. Verificar que no existe ya un elemento con el mismo nombre en destino
-	destEntries, err := r.readDirEntriesFromInode(f, sb, destIno, region)
+	if !destDirIno.IsDir() {
+		return 0, 0, fmt.Errorf("el padre del destino no es un directorio")
+	}
+
+	// 9. Verificar permiso de escritura en directorio padre del destino
+	if !canWrite(destDirIno, uid, gid, isRoot) {
+		return 0, 0, fmt.Errorf("sin permiso de escritura en directorio destino '%s'", strings.Join(destDirPath, "/"))
+	}
+
+	// 10. Verificar que no existe ya un elemento con el nombre destino
+	destEntries, err := r.readDirEntriesFromInode(f, sb, destDirIno, region)
 	if err != nil {
 		return 0, 0, err
 	}
 	for _, e := range destEntries {
-		if e.Name != "." && e.Name != ".." && strings.EqualFold(e.Name, srcName) {
-			return 0, 0, fmt.Errorf("ya existe '%s' en destino", srcName)
+		if e.Name != "." && e.Name != ".." && strings.EqualFold(e.Name, destName) {
+			return 0, 0, fmt.Errorf("ya existe '%s' en destino", destName)
 		}
 	}
 
-	// 10. Leer bitmaps
+	// 11. Leer bitmaps
 	bmInode, err := r.readBitmapFromSB(f, sb, true, region)
 	if err != nil {
 		return 0, 0, err
@@ -90,7 +115,7 @@ func (r *FileFsRepository) Copy(id string, srcPath, destPath []string, uid int, 
 		return 0, 0, err
 	}
 
-	// 11. Copia recursiva
+	// 12. Copia recursiva
 	newInoIdx, copied, skipped, err := r.copyNodeRecursive(
 		f, sb, srcIno, bmInode, bmBlock, uid, gid, isRoot, region,
 	)
@@ -98,18 +123,18 @@ func (r *FileFsRepository) Copy(id string, srcPath, destPath []string, uid int, 
 		return copied, skipped, err
 	}
 
-	// 12. Agregar entrada en directorio destino
-	if err := r.addEntryToDirectory(f, sb, destIno, srcName, newInoIdx, bmBlock, region); err != nil {
+	// 13. Agregar entrada en directorio destino con el nombre especificado
+	if err := r.addEntryToDirectory(f, sb, destDirIno, destName, newInoIdx, bmBlock, region); err != nil {
 		return copied, skipped, err
 	}
 
-	// 13. Actualizar mtime del directorio destino
-	destIno.SetMtime(time.Now().Unix())
-	if err := r.writeInodeToSB(f, sb, destIno, region); err != nil {
+	// 14. Actualizar mtime del directorio destino
+	destDirIno.SetMtime(time.Now().Unix())
+	if err := r.writeInodeToSB(f, sb, destDirIno, region); err != nil {
 		return copied, skipped, err
 	}
 
-	// 14. Escribir bitmaps actualizados
+	// 15. Escribir bitmaps actualizados
 	if err := r.writeBitmapToSB(f, sb, bmInode, true, region); err != nil {
 		return copied, skipped, err
 	}
@@ -117,7 +142,7 @@ func (r *FileFsRepository) Copy(id string, srcPath, destPath []string, uid int, 
 		return copied, skipped, err
 	}
 
-	// 15. Actualizar superblock (contadores)
+	// 16. Actualizar superblock (contadores)
 	r.updateSuperblockCounters(sb, bmInode, bmBlock)
 	if err := r.writeSuperblock(f, sb, region); err != nil {
 		return copied, skipped, err
@@ -125,7 +150,8 @@ func (r *FileFsRepository) Copy(id string, srcPath, destPath []string, uid int, 
 
 	// Registrar en journal (ignorar errores para no romper la operación)
 	srcFullPath := "/" + strings.Join(srcPath, "/")
-	destFullPath := "/" + strings.Join(destPath, "/")
+	// Construir la ruta completa del destino correctamente
+	destFullPath := "/" + strings.Join(append(destDirPath, destName), "/")
 	contentInfo := fmt.Sprintf("to=%s, copied=%d, skipped=%d", destFullPath, copied, skipped)
 	_ = r.JournalAppendPublic(id, "COPY", srcFullPath, contentInfo, time.Now().Unix())
 

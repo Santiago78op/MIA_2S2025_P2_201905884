@@ -60,7 +60,7 @@ find -path=/noexiste -name=archivo.txt
 # FASE 22: RENAME
 #-------------------------------------------*
 # Renombrar archivo
-rename -path=/home/user1/archivo1.txt -name=archivo_renombrado.txt
+rename -path=/home/user1/archivo1.txt -name=archivo_rename.txt
 # Renombrar carpeta
 rename -path=/home/documentos -name=archivos_docs
 # ERROR: Nombre ya existe
