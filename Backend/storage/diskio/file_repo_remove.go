@@ -92,7 +92,8 @@ func (r *FileFsRepository) Remove(id string, path []string, recursive bool, uid 
 		}
 	}
 	if targetIdx == -1 {
-		return fmt.Errorf("elemento no encontrado: %s", targetName)
+		fullPath := "/" + strings.Join(path, "/")
+		return fmt.Errorf("no existe: %s", fullPath)
 	}
 
 	// 7. Leer el inodo del elemento a eliminar

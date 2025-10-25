@@ -79,24 +79,24 @@ remove -path=/home/user1/archivo_name.txt
 # Eliminar carpeta vacía
 remove -path=/home/user1/proyectos/codigo
 # ERROR: Carpeta no vacía sin flag -r 
-remove -path=/home/docs_user1
+remove -path=/home/user1/docs_user1
 # Eliminar carpeta no vacía con flag -r
-remove -path=/home/docs_user1 -r
+remove -path=/home/user1/docs_user1 -r
 # ERROR: No existe
 remove -path=/noexiste.txt
 #  27: COMANDOS CRÍTICOS - LOSS Y RECOVERY
 # Simular pérdida del sistema (solo EXT3 - usar 122A)
-loss -id=122A
+loss -id=842A
 # Ver que el journal sigue disponible
-journal -id=122A
+journal -id=842A
 # Recuperar el sistema desde journal
-recovery -id=122A
+recovery -id=842A
 # DESMONTAR PARTICIONES
 # Primero hacer logout desde la interfaz web
 # Desmontar todas las particiones, se deben usar los IDs correctos montados
-unmount -id=122A
-unmount -id=123A
-unmount -id=121B
-unmount -id=121C
+unmount -id=842A
+unmount -id=843A
+unmount -id=841B
+unmount -id=841C
 # Verificar
 mounted
