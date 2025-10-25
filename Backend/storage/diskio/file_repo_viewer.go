@@ -78,9 +78,8 @@ func (r *FileFsRepository) ListDirectory(id string, path []string) ([]ports.Dire
 				entryType = "dir"
 			}
 
-			// Convertir permisos a formato rwx
-			perm := fmt.Sprintf("%c%c%c",
-				entryIno.Perm()[0], entryIno.Perm()[1], entryIno.Perm()[2])
+			// Convertir permisos octales a formato rwx
+			perm := convertOctalPermToRWX(entryIno.Perm())
 
 			// Obtener usuario y grupo
 			owner := fmt.Sprintf("%d", entryIno.UID())
@@ -173,4 +172,43 @@ func (r *FileFsRepository) resolvePath(f *os.File, sb SuperBlockUnified, path []
 	}
 
 	return current, nil
+}
+
+// convertOctalPermToRWX convierte permisos octales a formato rwx
+// Ejemplo: [3]byte{'6','6','4'} -> "rw-rw-r--"
+func convertOctalPermToRWX(octPerm [3]byte) string {
+	result := ""
+
+	for i := 0; i < 3; i++ {
+		// Convertir carácter ASCII a número
+		digit := int(octPerm[i] - '0')
+
+		// Validar que esté en rango 0-7
+		if digit < 0 || digit > 7 {
+			result += "---"
+			continue
+		}
+
+		// Convertir a rwx
+		// bit 2 (4): read
+		// bit 1 (2): write
+		// bit 0 (1): execute
+		if digit&4 != 0 {
+			result += "r"
+		} else {
+			result += "-"
+		}
+		if digit&2 != 0 {
+			result += "w"
+		} else {
+			result += "-"
+		}
+		if digit&1 != 0 {
+			result += "x"
+		} else {
+			result += "-"
+		}
+	}
+
+	return result
 }
