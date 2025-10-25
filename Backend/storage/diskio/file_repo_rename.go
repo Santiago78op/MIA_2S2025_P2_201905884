@@ -84,6 +84,7 @@ func (r *FileFsRepository) Rename(id string, path []string, newName string, uid 
 
 	// 10. Actualizar la entrada en el directorio padre
 	updated := false
+	fmt.Printf("DEBUG RENAME: buscando entrada oldName='%s' con inodo %d en padre (idx=%d)\n", oldName, targetIno.Index, parentIdx)
 	for i := 0; i < 12; i++ {
 		blkIdx := parentIno.Block(i)
 		if blkIdx == -1 {
@@ -97,9 +98,14 @@ func (r *FileFsRepository) Rename(id string, path []string, newName string, uid 
 
 		for j := 0; j < models.DirEntriesPerBlk; j++ {
 			entry := &blk.FolderBlock.Content[j]
+			if entry.BInodo == -1 {
+				continue
+			}
 			entryName := strings.TrimRight(string(entry.BName[:]), "\x00")
+			fmt.Printf("DEBUG RENAME: revisando entrada: nombre='%s', inodo=%d\n", entryName, entry.BInodo)
 
 			if entry.BInodo == targetIno.Index && entryName == oldName {
+				fmt.Printf("DEBUG RENAME: encontrada entrada, actualizando nombre a '%s'\n", newName)
 				// Actualizar el nombre
 				for k := range entry.BName {
 					entry.BName[k] = 0
@@ -121,6 +127,7 @@ func (r *FileFsRepository) Rename(id string, path []string, newName string, uid 
 	}
 
 	if !updated {
+		fmt.Printf("DEBUG RENAME: NO se encontró entrada oldName='%s' inodo=%d en el directorio padre\n", oldName, targetIno.Index)
 		return fmt.Errorf("no se pudo actualizar la entrada del directorio")
 	}
 

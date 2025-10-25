@@ -20,6 +20,10 @@ import (
 // - Libera inodos y bloques en bitmaps
 // - Registra en Journal (EXT3)
 func (r *FileFsRepository) Remove(id string, path []string, recursive bool, uid int, gid int) error {
+	if len(path) == 0 {
+		return fmt.Errorf("path vacío: no se puede eliminar la raíz")
+	}
+
 	// 1. Resolver montaje
 	diskPath, region, err := r.resolve(id)
 	if err != nil {
@@ -44,28 +48,62 @@ func (r *FileFsRepository) Remove(id string, path []string, recursive bool, uid 
 
 	isRoot := uid == 1
 
-	// 5. Navegar al elemento y validar permisos recursivamente
-	targetIno, _, _, err := r.walkToNode(f, sb, path, region)
-	if err != nil {
-		return fmt.Errorf("elemento no encontrado: %w", err)
-	}
-	
-	// Validar permisos recursivamente ANTES de eliminar nada
-	if err := r.validateRemovePermissionsRecursive(f, sb, targetIno, uid, gid, isRoot, region); err != nil {
-		return err
+	// 4. Navegar al elemento target y su padre en una sola pasada
+	var parentIdx int32
+	var targetName string
+	var parentIno InodeUnified
+	var err2 error
+
+	targetName = path[len(path)-1] // El nombre del elemento a eliminar es SIEMPRE el último componente
+
+	if len(path) == 1 {
+		// Caso especial: elemento directo en raíz
+		parentIdx = 0
+		parentIno, err2 = r.readInodeByIndex(f, sb, 0, region)
+		if err2 != nil {
+			return fmt.Errorf("error leyendo raíz: %w", err2)
+		}
+	} else {
+		// Navegar al padre (usando path sin el último componente)
+		parentInoPrelim, _, _, err2 := r.walkToNode(f, sb, path[:len(path)-1], region)
+		if err2 != nil {
+			return fmt.Errorf("directorio padre no encontrado: %w", err2)
+		}
+		parentIdx = parentInoPrelim.Index
+		parentIno = parentInoPrelim
 	}
 
-	// 6. Navegar al elemento a eliminar (reuses targetIno from validation above)
-	parentIno, parentIdx, targetName, err := r.walkToNode(f, sb, path[:len(path)-1], region)
-	if err != nil && len(path) > 1 {
-		return fmt.Errorf("directorio padre no encontrado: %w", err)
+	// 5. Verificar que el padre es un directorio
+	if !parentIno.IsDir() {
+		return fmt.Errorf("el padre del elemento no es un directorio")
 	}
-	if len(path) == 1 {
-		parentIdx = 0 // raíz
-		parentIno, err = r.readInodeByIndex(f, sb, 0, region)
-		if err != nil {
-			return err
+
+	// 6. Buscar el elemento en el padre
+	entries, err := r.readDirEntriesFromInode(f, sb, parentIno, region)
+	if err != nil {
+		return fmt.Errorf("error leyendo directorio padre: %w", err)
+	}
+
+	targetIdx := int32(-1)
+	for _, e := range entries {
+		if e.Name == targetName {
+			targetIdx = e.InodeIdx
+			break
 		}
+	}
+	if targetIdx == -1 {
+		return fmt.Errorf("elemento no encontrado: %s", targetName)
+	}
+
+	// 7. Leer el inodo del elemento a eliminar
+	targetIno, err := r.readInodeByIndex(f, sb, targetIdx, region)
+	if err != nil {
+		return fmt.Errorf("error leyendo elemento: %w", err)
+	}
+
+	// 8. Validar permisos recursivamente ANTES de eliminar nada
+	if err := r.validateRemovePermissionsRecursive(f, sb, targetIno, uid, gid, isRoot, region); err != nil {
+		return err
 	}
 
 	// 7. Leer bitmaps
@@ -237,14 +275,14 @@ func (r *FileFsRepository) removeEntryFromDir(f *os.File, sb SuperBlockUnified, 
 			entryName := strings.TrimRight(string(entry.BName[:]), "\x00")
 
 			if entryName == name {
-				// Marcar como libre
-				entry.BInodo = -1
-				for k := range entry.BName {
-					entry.BName[k] = 0
-				}
+			// Marcar como libre
+			entry.BInodo = -1
+			for k := range entry.BName {
+				entry.BName[k] = 0
+			}
 
-				// Escribir bloque actualizado
-				return r.writeBlockToSB(f, sb, blkIdx, blk.FolderBlock, region)
+			// Escribir bloque actualizado
+			return r.writeBlockToSB(f, sb, blkIdx, blk, region)
 			}
 		}
 	}

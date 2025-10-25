@@ -266,6 +266,7 @@ func (r *FileFsRepository) writeBlockToSB(f *os.File, sb SuperBlockUnified, idx 
 
 // walkToNode navega un path y devuelve el inodo final, índice del padre y nombre del último componente
 func (r *FileFsRepository) walkToNode(f *os.File, sb SuperBlockUnified, path []string, region Region) (InodeUnified, int32, string, error) {
+	fmt.Printf("DEBUG walkToNode: navegando path=%v\n", path)
 	if len(path) == 0 {
 		// Retornar raíz
 		root, err := r.readInodeByIndex(f, sb, 0, region)
@@ -277,6 +278,7 @@ func (r *FileFsRepository) walkToNode(f *os.File, sb SuperBlockUnified, path []s
 	lastName := ""
 
 	for i, name := range path {
+		fmt.Printf("DEBUG walkToNode: paso %d, buscando '%s' en inodo %d\n", i, name, currentIdx)
 		lastName = name
 		currentIno, err := r.readInodeByIndex(f, sb, currentIdx, region)
 		if err != nil {

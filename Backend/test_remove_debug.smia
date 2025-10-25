@@ -1,0 +1,28 @@
+# Script de prueba para REMOVE
+# Crear disco
+mkdisk -size=10 -unit=M -path=./Discos/disco_remove.mia
+
+# Particionar
+fdisk -size=5 -unit=M -type=P -path=./Discos/disco_remove.mia -name=P1
+
+# Montar
+mount -path=./Discos/disco_remove.mia -name=P1
+
+# Formatear EXT2
+mkfs -id=841A
+
+# Crear estructura /home/user1
+mkdir -p -id=841A -path=/home
+mkdir -p -id=841A -path=/home/user1
+
+# Crear archivos
+mkfile -id=841A -path=/home/user1/archivo1.txt -size=50
+mkfile -id=841A -path=/home/user1/archivo_name.txt -size=75
+
+# Ver qué tenemos
+cat -id=841A -file1=/
+cat -id=841A -file1=/home
+cat -id=841A -file1=/home/user1/archivo_name.txt
+
+# Intentar borrar
+remove -id=841A -path=/home/user1/archivo_name.txt

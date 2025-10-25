@@ -141,7 +141,11 @@ func (s *FsService) Mkfile(id, p string, size int, cont string, recursive bool) 
 	if err := s.repo.Mkfile(id, parts, size, cont, recursive, uid, gid, time.Now()); err != nil {
 		return "", err
 	}
-	return "Archivo creado", nil
+	msg := "Archivo creado"
+	if recursive {
+		msg += " (con directorio padre -r)"
+	}
+	return msg, nil
 }
 
 func (s *FsService) Cat(id string, files []string) (string, error) {
