@@ -36,6 +36,7 @@ type DirEntry struct {
 }
 type FolderBlock struct {
 	Content [DirEntriesPerBlk]DirEntry
+	_       [32]byte // padding para alcanzar 128 bytes (4*24 + 32 = 128)
 }
 
 // Archivos: 64 bytes por bloque
