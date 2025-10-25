@@ -13,12 +13,26 @@ type DiskRepository interface {
 	FDiskLogical(path string, args FDiskArgs) error
 	DiskSignature(path string) (string, error) // firma única MBR o hash del path
 	ValidatePrimaryForMount(path, name string) error
+
+	// Nuevos métodos P2 para operaciones avanzadas de particiones
+	FindPartition(path string, name string) (interface{}, error) // Retorna PartitionRef
+	NextPartitionAfter(path string, ref interface{}) (interface{}, error)
+	ReadPartition(path string, ref interface{}) (int64, int64, error)
+	ResizePartition(path string, ref interface{}, newSize int64) error
+	DeletePartitionFast(path string, ref interface{}) error
+	DeletePartitionFull(path string, ref interface{}) error
+	GetExtendedBounds(path string) (int64, int64, bool, error)
+	GetPartitionUsedBytes(path string, ref interface{}) (int64, error)
+	CreatePartition(path string, name string, sizeBytes int64, ptype interface{}, fit byte) (string, error)
 }
 
 type MountStore interface {
 	NextID(carnet2, diskSig string) (string, error) // ej. "841A"
 	SetMounted(id, path, name string) error
 	List() []MountedEntry
+	Unmount(id string) error                           // NUEVO P2
+	SetPartitionSeq(diskSignature string, seq int) error // NUEVO P2
+	Clear()                                            // NUEVO P2 - Limpia completamente el estado
 }
 
 type MountedEntry struct {
@@ -96,7 +110,7 @@ func (s *DiskService) FDisk(a FDiskArgs) (string, error) {
 }
 
 func (s *DiskService) Mount(a MountArgs) (string, error) {
-	// Validación del PDF: sólo primarias pueden montarse en P1 (tu repo valida nombre/tipo)
+	// Validación: verificar que la partición existe
 	if err := s.repo.ValidatePrimaryForMount(a.Path, a.Name); err != nil {
 		return "", err
 	}
@@ -124,3 +138,45 @@ func (s *DiskService) Mount(a MountArgs) (string, error) {
 }
 
 func (s *DiskService) Mounted() []MountedEntry { return s.mounts.List() }
+
+// ============================================
+// MÉTODOS NUEVOS P2
+// ============================================
+
+func (s *DiskService) Unmount(id string) (string, error) {
+	// Validar que el ID existe en el mount store
+	mounted := s.mounts.List()
+	found := false
+	for _, entry := range mounted {
+		if entry.ID == id {
+			found = true
+			break
+		}
+	}
+
+	if !found {
+		return "", fmt.Errorf("la partición con ID '%s' no está montada", id)
+	}
+
+	// Desmontar partición (esto también resetea el correlativo si es necesario)
+	if err := s.mounts.Unmount(id); err != nil {
+		return "", fmt.Errorf("error desmontando partición: %w", err)
+	}
+
+	return fmt.Sprintf("Partición %s desmontada correctamente", id), nil
+}
+
+func (s *DiskService) UnmountAll() (string, error) {
+	mounted := s.mounts.List()
+
+	if len(mounted) == 0 {
+		return "No hay particiones montadas", nil
+	}
+
+	count := len(mounted)
+
+	// Limpiar completamente el estado (desmonta todas y resetea las letras de disco)
+	s.mounts.Clear()
+
+	return fmt.Sprintf("Se desmontaron %d particiones correctamente y se reinició la secuencia de letras", count), nil
+}

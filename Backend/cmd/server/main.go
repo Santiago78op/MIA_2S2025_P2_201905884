@@ -27,7 +27,8 @@ func main() {
 	// === Capa de infraestructura (storage) ===
 	diskRepo := diskio.NewFileDiskRepository()
 	mStore := mounts.NewState()
-	fsRepoBase := diskio.NewFileFsRepository(adapters.NewPortsMountStore(mStore), diskRepo)
+	portsMountStore := adapters.NewPortsMountStore(mStore)
+	fsRepoBase := diskio.NewFileFsRepository(portsMountStore, diskRepo)
 	gv := graphviz.New()
 
 	// === Capa de adaptadores (adapta storage -> command interfaces) ===
@@ -36,7 +37,11 @@ func main() {
 	fsRepoAdapter := adapters.NewFsAdapter(fsRepoBase)
 	usersRepoAdapter := adapters.NewUsersAdapter(fsRepoBase)
 	sessionAdapter := adapters.NewSessionAdapterFromMemory()
-	reportGenerator := adapters.NewReportGenerator(gv, fsRepoBase, diskRepo, adapters.NewPortsMountStore(mStore))
+	reportGenerator := adapters.NewReportGenerator(gv, fsRepoBase, diskRepo, portsMountStore)
+
+	// === Adaptadores para ViewerController (usa ports.*) ===
+	portsFsAdapter := adapters.NewPortsFsAdapter(fsRepoBase)
+	portsSessionStore := adapters.NewPortsSessionAdapter(sessionAdapter)
 
 	// === Capa de aplicación (servicios de dominio) ===
 	diskSvc := disk.NewDiskService(diskRepoAdapter, mountStoreAdapter, cfg.CarnetLastTwo)
@@ -51,9 +56,10 @@ func main() {
 	cs := controllers.NewCommandsController(cmdRunner)
 	ss := controllers.NewScriptController(&scriptRunnerAdapter{cmdRunner}) // Adaptador para ScriptRunner
 	rs := controllers.NewReportsController(reportSvc, cfg.ReportsPath)
+	vc := controllers.NewViewerController(portsFsAdapter, portsMountStore, portsSessionStore, cfg.DisksPath) // NUEVO P2: ViewerController
 
 	// === Router y servidor HTTP ===
-	r := router.SetupRouter(cfg, cs, ss, rs)
+	r := router.SetupRouter(cfg, cs, ss, rs, vc)
 
 	log.Info("Servidor listo. Escuchando en http://localhost:%s", cfg.Port)
 	log.Info("Healthcheck: http://localhost:%s/health", cfg.Port)

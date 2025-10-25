@@ -74,3 +74,42 @@ func (a *DiskAdapter) FDiskLogical(path string, args disk.FDiskArgs) error {
 
 	return a.repo.CreateLogical(path, extPart.Start, ebr)
 }
+
+// ========================= MÉTODOS P2 =========================
+
+func (a *DiskAdapter) FindPartition(path string, name string) (interface{}, error) {
+	return a.repo.FindPartition(path, name)
+}
+
+func (a *DiskAdapter) NextPartitionAfter(path string, ref interface{}) (interface{}, error) {
+	return a.repo.NextPartitionAfter(path, ref.(diskio.PartitionRef))
+}
+
+func (a *DiskAdapter) ReadPartition(path string, ref interface{}) (int64, int64, error) {
+	return a.repo.ReadPartition(path, ref.(diskio.PartitionRef))
+}
+
+func (a *DiskAdapter) ResizePartition(path string, ref interface{}, newSize int64) error {
+	return a.repo.ResizePartition(path, ref.(diskio.PartitionRef), newSize)
+}
+
+func (a *DiskAdapter) DeletePartitionFast(path string, ref interface{}) error {
+	return a.repo.DeletePartitionFast(path, ref.(diskio.PartitionRef))
+}
+
+func (a *DiskAdapter) DeletePartitionFull(path string, ref interface{}) error {
+	return a.repo.DeletePartitionFull(path, ref.(diskio.PartitionRef))
+}
+
+func (a *DiskAdapter) GetExtendedBounds(path string) (int64, int64, bool, error) {
+	return a.repo.GetExtendedBounds(path)
+}
+
+func (a *DiskAdapter) GetPartitionUsedBytes(path string, ref interface{}) (int64, error) {
+	return a.repo.GetPartitionUsedBytes(path, ref.(diskio.PartitionRef))
+}
+
+func (a *DiskAdapter) CreatePartition(path string, name string, sizeBytes int64, ptype interface{}, fit byte) (string, error) {
+	return a.repo.CreatePartition(path, name, sizeBytes, ptype.(diskio.PartType), fit)
+}
+

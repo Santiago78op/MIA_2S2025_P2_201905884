@@ -9,10 +9,10 @@ var (
 
 // Constantes de tamaños (en bytes)
 const (
-	BlockSizeFile    = 64 // tamaño de bloque de archivo
-	DirEntriesPerBlk = 4  // entradas por bloque de carpeta
-	PtrPerBlk        = 16 // punteros por bloque de apuntadores
-	InodePointers    = 15 // 12 directos + 3 indirectos
+	BlockSizeFile    = 128 // tamaño de bloque de archivo (aumentado para soportar BName[20])
+	DirEntriesPerBlk = 4   // entradas por bloque de carpeta (4 * 24 bytes = 96 < 128)
+	PtrPerBlk        = 16  // punteros por bloque de apuntadores
+	InodePointers    = 15  // 12 directos + 3 indirectos
 )
 
 // Tipos y banderas de partición

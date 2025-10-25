@@ -22,10 +22,10 @@ export const API = {
   async disks(){ const r=await fetch('/api/disks'); if(!r.ok) throw new Error('disks'); return r.json() },
   async partitions(diskPath){ const r=await fetch(`/api/disks/partitions?path=${encodeURIComponent(diskPath)}`); if(!r.ok) throw new Error('parts'); return r.json() },
 
-  async list(id, path){ const r=await fetch(`/api/fs/list?id=${encodeURIComponent(id)}&path=${encodeURIComponent(path)}`); if(!r.ok) throw new Error('list'); return r.json() },
-  async file(id, path){ const r=await fetch(`/api/fs/file?id=${encodeURIComponent(id)}&path=${encodeURIComponent(path)}`); if(!r.ok) throw new Error('file'); return r.text() },
+  async list(id, path){ const r=await fetch(`/api/fs/${encodeURIComponent(id)}/tree?path=${encodeURIComponent(path)}`); if(!r.ok) throw new Error('list'); return r.json() },
+  async file(id, path){ const r=await fetch(`/api/fs/${encodeURIComponent(id)}/file?path=${encodeURIComponent(path)}`); if(!r.ok) throw new Error('file'); const d = await r.json(); return d.content },
 
-  async journaling(id){ const r=await fetch(`/api/journaling?id=${encodeURIComponent(id)}`); if(!r.ok) throw new Error('journal'); return r.json() },
+  async journaling(id){ const r=await fetch(`/api/journal/${encodeURIComponent(id)}/table`); if(!r.ok) throw new Error('journal'); return r.json() },
 
   async genReport(name, id, out, extra=''){
     const r = await fetch('/api/reports', {

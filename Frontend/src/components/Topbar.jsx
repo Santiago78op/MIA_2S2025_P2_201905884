@@ -1,11 +1,7 @@
 import { useEffect, useState } from 'react'
-import { API } from '../lib/api'
 
 export default function Topbar({session, onLogout}) {
-  const [h,setH]=useState(null)
   const [theme,setTheme]=useState(localStorage.getItem('theme')||'neo')
-
-  useEffect(()=>{API.health().then(setH).catch(()=>{})},[])
 
   useEffect(()=>{
     document.documentElement.setAttribute('data-theme', theme==='aurora'?'aurora':'')
@@ -29,7 +25,6 @@ export default function Topbar({session, onLogout}) {
         <button className="theme-toggle" onClick={toggleTheme}>
           {theme==='neo'?'Neo Green':'Aurora Purple'}
         </button>
-        {h && <span className="badge mono">Backend: {h.status}</span>}
         {session?.user ? (
           <>
             <span className="badge">ID: {session.id}</span>

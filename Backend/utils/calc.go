@@ -66,6 +66,72 @@ func ComputeLayout(partStart, partSize int64, inodeSize, blockSize int) models.S
 	return sb
 }
 
+// CalcNExt3 calcula n para EXT3 con la fórmula que incluye journal:
+// partSize = sizeof(SB) + n*sizeof(JournalEntry) + n + 3n + n*sizeof(Inode) + 3n*sizeof(Block)
+// n = floor((partSize - SB) / (JournalEntry + 1 + 3 + Inode + 3*Block))
+func CalcNExt3(partSize int64, inodeSize int, blockSize int) int {
+	const journalEntrySize = 288 // tamaño de models.JournalEntry
+	sbSize := int64(binarySizeSuperBlockExt3())
+
+	denom := float64(journalEntrySize + 1 + 3 + inodeSize + 3*blockSize)
+	if denom <= 0 {
+		return 0
+	}
+
+	num := float64(partSize - sbSize)
+	n := int(math.Floor(num / denom))
+	if n < 0 {
+		return 0
+	}
+	return n
+}
+
+// ComputeLayoutExt3 calcula el layout para EXT3 con journal
+func ComputeLayoutExt3(partStart, partSize int64, inodeSize, blockSize int) models.SuperBlock {
+	n := CalcNExt3(partSize, inodeSize, blockSize)
+	if n < 1 {
+		n = 1
+	}
+
+	inodes := int32(n)
+	blocks := int32(3 * n)
+
+	const journalEntrySize = 288
+	const maxJournalEntries = 50
+
+	// Tamaños
+	sbSize := int64(binarySizeSuperBlockExt3())
+	journalSize := int64(maxJournalEntries * journalEntrySize)
+	bmInodeSize := int64(n)
+	bmBlockSize := int64(3 * n)
+	inodeTblSize := int64(n * inodeSize)
+
+	// Offsets ABSOLUTOS
+	sbStart := partStart
+	journalStart := sbStart + sbSize
+	bmInodeStart := journalStart + journalSize
+	bmBlockStart := bmInodeStart + bmInodeSize
+	inodeStart := bmBlockStart + bmBlockSize
+	blockStart := inodeStart + inodeTblSize
+
+	sb := models.SuperBlock{
+		SFilesystemType:  3, // EXT3
+		SInodesCount:     inodes,
+		SBlocksCount:     blocks,
+		SFreeInodesCount: inodes,
+		SFreeBlocksCount: blocks,
+		SMtime:           0,
+		SUmtime:          0,
+		SMagic:           models.FSMagic,
+		SBmInodeStart:    bmInodeStart,
+		SBmBlockStart:    bmBlockStart,
+		SInodeStart:      inodeStart,
+		SBlockStart:      blockStart,
+	}
+
+	return sb
+}
+
 // binarySizeSuperBlock devuelve el tamaño que ocupará el SB en disco para esta app.
 func binarySizeSuperBlock() int {
 	// Reflect del struct para calcular; como el layout es fijo, puedes devolver el valor precalculado.
@@ -73,6 +139,12 @@ func binarySizeSuperBlock() int {
 	// Recomendado: sustituir por binary.Size(models.SuperBlock{}) si no te preocupa el import circular.
 	var sb models.SuperBlock
 	return sizeOf(sb)
+}
+
+// binarySizeSuperBlockExt3 devuelve el tamaño del SuperBlock para EXT3
+func binarySizeSuperBlockExt3() int {
+	// SuperBlock + 2 campos adicionales (SJournalStart int64 + SJournalCount int32)
+	return binarySizeSuperBlock() + 8 + 4 // +12 bytes
 }
 
 // sizeOf obtiene binary.Size de forma genérica

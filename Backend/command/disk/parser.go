@@ -267,3 +267,27 @@ func ParseMount(line string) (MountArgs, error) {
 
 	return args, nil
 }
+
+
+// ============================================
+// PARSERS NUEVOS P2
+// ============================================
+
+// UnmountArgs representa los argumentos para unmount
+type UnmountArgs struct {
+	ID string
+}
+
+// ParseUnmount parsea un comando unmount
+func ParseUnmount(line string) (UnmountArgs, error) {
+	_, flags := ParseLine(line)
+	var args UnmountArgs
+
+	id, err := mustString(flags, "id")
+	if err != nil {
+		return args, err
+	}
+	args.ID = id
+
+	return args, nil
+}

@@ -7,6 +7,7 @@ import (
 
 type MkfsArgs struct {
 	ID   string
+	Fs   string // "2fs" | "3fs" (por defecto "2fs")
 	Type string // "full" (por defecto)
 }
 
@@ -116,6 +117,19 @@ func ParseMkfs(line string) (MkfsArgs, error) {
 	}
 	args.ID = id
 
+	// Parsear sistema de archivos (opcional, por defecto "2fs")
+	fsVal := strings.ToLower(flags["fs"])
+	if fsVal == "" {
+		fsVal = "2fs" // Valor por defecto
+	}
+
+	// Validar que el fs sea válido
+	if fsVal != "2fs" && fsVal != "3fs" {
+		return args, fmt.Errorf("sistema de archivos no válido: %s (solo se acepta '2fs' o '3fs')", fsVal)
+	}
+
+	args.Fs = fsVal
+
 	// Parsear tipo de formateo (opcional, por defecto "full")
 	typeVal := strings.ToLower(flags["type"])
 	if typeVal == "" {
@@ -207,4 +221,295 @@ func ParseCat(line string) (CatArgs, error) {
 	}
 
 	return args, nil
+}
+
+// ============================================
+// PARSERS NUEVOS P2
+// ============================================
+
+type RemoveArgs struct {
+	ID        string
+	Path      string
+	Recursive bool
+}
+
+type EditArgs struct {
+	ID      string
+	Path    string
+	Content string
+}
+
+type RenameArgs struct {
+	ID   string
+	Path string
+	Name string
+}
+
+type CopyArgs struct {
+	ID       string
+	SrcPath  []string
+	DestPath []string
+}
+
+type MoveArgs struct {
+	ID       string
+	SrcPath  []string
+	DestPath []string
+}
+
+type FindArgs struct {
+	ID   string
+	Path string
+	Name string
+}
+
+type ChmodArgs struct {
+	ID        string
+	Path      string
+	Ugo       string
+	Recursive bool
+}
+
+type ChownArgs struct {
+	ID        string
+	Path      string
+	User      string
+	Recursive bool
+}
+
+type LossArgs struct {
+	ID string
+}
+
+type RecoveryArgs struct {
+	ID string
+}
+
+func ParseRemove(line string) (RemoveArgs, error) {
+	_, flags := parseLine(line)
+	var args RemoveArgs
+
+	// ID es opcional; si no se proporciona, se usa el de la sesión actual
+	args.ID = flags["id"] // puede ser ""
+
+	path, err := mustString(flags, "path")
+	if err != nil {
+		return args, err
+	}
+	args.Path = path
+	
+	// Flag -r para recursivo
+	args.Recursive = flags["r"] == "true"
+
+	return args, nil
+}
+
+func ParseEdit(line string) (EditArgs, error) {
+	_, flags := parseLine(line)
+	var args EditArgs
+
+	// ID es opcional; si no se proporciona, se usa el de la sesión actual
+	args.ID = flags["id"] // puede ser ""
+
+	path, err := mustString(flags, "path")
+	if err != nil {
+		return args, err
+	}
+	args.Path = path
+
+	content, err := mustString(flags, "contenido")
+	if err != nil {
+		return args, err
+	}
+	args.Content = content
+
+	return args, nil
+}
+
+func ParseRename(line string) (RenameArgs, error) {
+	_, flags := parseLine(line)
+	var args RenameArgs
+
+	// ID es opcional; si no se proporciona, se usa el de la sesión actual
+	args.ID = flags["id"] // puede ser ""
+
+	path, err := mustString(flags, "path")
+	if err != nil {
+		return args, err
+	}
+	args.Path = path
+
+	name, err := mustString(flags, "name")
+	if err != nil {
+		return args, err
+	}
+	args.Name = name
+
+	return args, nil
+}
+
+func ParseCopy(line string) (CopyArgs, error) {
+	_, flags := parseLine(line)
+	var args CopyArgs
+
+	// ID es opcional; si no se proporciona, se usa el de la sesión actual
+	args.ID = flags["id"] // puede ser ""
+
+	src, err := mustString(flags, "path")
+	if err != nil {
+		return args, err
+	}
+	args.SrcPath = splitPathToArray(src)
+
+	// Aceptar tanto -dest como -destino
+	dest := flags["dest"]
+	if dest == "" {
+		dest = flags["destino"]
+	}
+	if dest == "" {
+		return args, fmt.Errorf("falta parámetro -dest o -destino")
+	}
+	args.DestPath = splitPathToArray(dest)
+
+	return args, nil
+}
+
+func ParseMove(line string) (MoveArgs, error) {
+	_, flags := parseLine(line)
+	var args MoveArgs
+
+	// ID es opcional; si no se proporciona, se usa el de la sesión actual
+	args.ID = flags["id"] // puede ser ""
+
+	src, err := mustString(flags, "path")
+	if err != nil {
+		return args, err
+	}
+	args.SrcPath = splitPathToArray(src)
+
+	// Aceptar tanto -dest como -destino
+	dest := flags["dest"]
+	if dest == "" {
+		dest = flags["destino"]
+	}
+	if dest == "" {
+		return args, fmt.Errorf("falta parámetro -dest o -destino")
+	}
+	args.DestPath = splitPathToArray(dest)
+
+	return args, nil
+}
+
+func ParseFind(line string) (FindArgs, error) {
+	_, flags := parseLine(line)
+	var args FindArgs
+
+	// ID es opcional, se tomará de la sesión si no se proporciona
+	args.ID = flags["id"]
+
+	path, err := mustString(flags, "path")
+	if err != nil {
+		return args, err
+	}
+	args.Path = path
+
+	name, err := mustString(flags, "name")
+	if err != nil {
+		return args, err
+	}
+	args.Name = name
+
+	return args, nil
+}
+
+func ParseChmod(line string) (ChmodArgs, error) {
+	_, flags := parseLine(line)
+	var args ChmodArgs
+
+	// ID es opcional, se tomará de la sesión si no se proporciona
+	args.ID = flags["id"]
+
+	path, err := mustString(flags, "path")
+	if err != nil {
+		return args, err
+	}
+	args.Path = path
+
+	ugo, err := mustString(flags, "ugo")
+	if err != nil {
+		return args, err
+	}
+	args.Ugo = ugo
+
+	args.Recursive = flags["r"] == "true"
+
+	return args, nil
+}
+
+func ParseChown(line string) (ChownArgs, error) {
+	_, flags := parseLine(line)
+	var args ChownArgs
+
+	// ID es opcional, se tomará de la sesión si no se proporciona
+	args.ID = flags["id"]
+
+	path, err := mustString(flags, "path")
+	if err != nil {
+		return args, err
+	}
+	args.Path = path
+
+	user, err := mustString(flags, "user")
+	if err != nil {
+		return args, err
+	}
+	args.User = user
+
+	args.Recursive = flags["r"] == "true"
+
+	return args, nil
+}
+
+func ParseLoss(line string) (LossArgs, error) {
+	_, flags := parseLine(line)
+	var args LossArgs
+
+	id, err := mustString(flags, "id")
+	if err != nil {
+		return args, err
+	}
+	args.ID = id
+
+	return args, nil
+}
+
+func ParseRecovery(line string) (RecoveryArgs, error) {
+	_, flags := parseLine(line)
+	var args RecoveryArgs
+
+	id, err := mustString(flags, "id")
+	if err != nil {
+		return args, err
+	}
+	args.ID = id
+
+	return args, nil
+}
+
+// splitPathToArray convierte un string de path en un array de componentes
+// Ej: "/home/user/file.txt" -> ["home", "user", "file.txt"]
+func splitPathToArray(path string) []string {
+	path = strings.TrimSpace(path)
+	path = strings.Trim(path, "/")
+	if path == "" {
+		return []string{}
+	}
+	parts := strings.Split(path, "/")
+	var result []string
+	for _, p := range parts {
+		if p != "" {
+			result = append(result, p)
+		}
+	}
+	return result
 }

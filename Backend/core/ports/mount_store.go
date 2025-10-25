@@ -11,4 +11,8 @@ type MountStore interface {
 	NextID(carnet2, diskSignature string) (string, error) // genera id estable por firma
 	SetMounted(id, path, name string) error
 	List() []MountedEntry
+	Unmount(id string) error                           // desmonta y opcionalmente resetea correlativo
+	SetPartitionSeq(diskSignature string, seq int) error // establece correlativo manualmente
+	GetMount(id string) (*MountedEntry, error)         // obtiene un montaje por ID
+	Clear()                                            // limpia completamente el estado (unmountall)
 }

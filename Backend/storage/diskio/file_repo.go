@@ -102,6 +102,8 @@ func (*FileDiskRepository) ValidatePrimaryForMount(path, name string) error {
 	if err != nil {
 		return err
 	}
+
+	// Buscar en particiones primarias
 	for _, p := range m.Partitions {
 		if p.Status == models.PartStatusUsed && p.Type == models.PartTypePrimary {
 			n := strings.TrimRight(string(p.Name[:]), "\x00")
@@ -110,7 +112,55 @@ func (*FileDiskRepository) ValidatePrimaryForMount(path, name string) error {
 			}
 		}
 	}
-	return fmt.Errorf("partición no encontrada o no es primaria: %s", name)
+
+	// Buscar en particiones lógicas (dentro de la extendida)
+	f, err := os.Open(path)
+	if err != nil {
+		return fmt.Errorf("partición no encontrada: %s", name)
+	}
+	defer f.Close()
+
+	// Encontrar la partición extendida
+	var extStart int64 = -1
+	for _, p := range m.Partitions {
+		if p.Status == models.PartStatusUsed && p.Type == models.PartTypeExtend {
+			extStart = p.Start
+			break
+		}
+	}
+
+	// Si hay partición extendida, buscar en sus particiones lógicas
+	if extStart != -1 {
+		cur := extStart
+		for {
+			var e models.EBR
+			if err := readEBR(f, &e, cur); err != nil {
+				break
+			}
+
+			// Si es el primer EBR vacío, terminar
+			if e.Status == models.PartStatusFree && e.Size == 0 {
+				break
+			}
+
+			// Si está en uso, verificar el nombre
+			if e.Status == models.PartStatusUsed {
+				n := strings.TrimRight(string(e.Name[:]), "\x00")
+				if n == name {
+					return nil
+				}
+			}
+
+			// Si no hay siguiente, terminar
+			if e.Next == -1 || e.Next == 0 {
+				break
+			}
+
+			cur = e.Next
+		}
+	}
+
+	return fmt.Errorf("partición no encontrada: %s", name)
 }
 
 func (*FileDiskRepository) CreatePrimary(path string, part models.Partition) error {
@@ -253,19 +303,23 @@ func (*FileDiskRepository) CreateLogical(path string, extStart int64, ebrNew mod
 	}
 
 	// Encontrar espacio libre para el nuevo EBR
-	newStart, ok := findSpaceForLogical(extPart, ebrs, ebrNew.Size, ebrNew.Fit)
+	// newEBRPos es donde se escribirá el header EBR en el disco
+	newEBRPos, ok := findSpaceForLogical(extPart, ebrs, ebrNew.Size, ebrNew.Fit)
 	if !ok {
 		return fmt.Errorf("no hay espacio suficiente en la partición extendida")
 	}
 
-	// Asignar el Start calculado al nuevo EBR
-	ebrNew.Start = newStart
+	// Calcular el tamaño del header EBR
+	ebrHeaderSize := int64(binary.Size(models.EBR{}))
+
+	// EBR.Start debe apuntar a los datos (después del header)
+	ebrNew.Start = newEBRPos + ebrHeaderSize
 	ebrNew.Status = models.PartStatusUsed
 	ebrNew.Next = -1
 
 	// Si no hay EBRs, este es el primero
 	if len(ebrs) == 0 {
-		// Escribir el primer EBR
+		// Escribir el primer EBR en el inicio de la extendida
 		if err := writeEBR(f, &ebrNew, extStart); err != nil {
 			return err
 		}
@@ -287,20 +341,20 @@ func (*FileDiskRepository) CreateLogical(path string, extStart int64, ebrNew mod
 		lastIdx := len(ebrs) - 1
 		prev := ebrs[lastIdx].ebr
 
-		// Escribir nuevo EBR
-		if err := writeEBR(f, &ebrNew, ebrNew.Start); err != nil {
+		// Escribir nuevo EBR en su posición calculada
+		if err := writeEBR(f, &ebrNew, newEBRPos); err != nil {
 			return err
 		}
 
-		// Actualizar el anterior para que apunte al nuevo
-		prev.Next = ebrNew.Start
+		// Actualizar el anterior para que apunte a la posición del nuevo EBR
+		prev.Next = newEBRPos
 		if err := writeEBR(f, &prev, ebrs[lastIdx].pos); err != nil {
 			return err
 		}
 	} else if insertIdx == 0 {
 		// Insertar al principio
-		// El nuevo EBR apunta al que estaba primero
-		ebrNew.Next = ebrs[0].ebr.Start
+		// El nuevo EBR apunta a la posición del EBR que estaba primero
+		ebrNew.Next = ebrs[0].pos
 
 		// Escribir el nuevo EBR al inicio de la extendida
 		if err := writeEBR(f, &ebrNew, extStart); err != nil {
@@ -309,18 +363,17 @@ func (*FileDiskRepository) CreateLogical(path string, extStart int64, ebrNew mod
 	} else {
 		// Insertar en medio
 		prev := ebrs[insertIdx-1].ebr
-		next := ebrs[insertIdx].ebr
 
-		// El nuevo apunta al siguiente
-		ebrNew.Next = next.Start
+		// El nuevo apunta a la posición del siguiente EBR
+		ebrNew.Next = ebrs[insertIdx].pos
 
-		// Escribir nuevo EBR
-		if err := writeEBR(f, &ebrNew, ebrNew.Start); err != nil {
+		// Escribir nuevo EBR en su posición calculada
+		if err := writeEBR(f, &ebrNew, newEBRPos); err != nil {
 			return err
 		}
 
-		// El anterior apunta al nuevo
-		prev.Next = ebrNew.Start
+		// El anterior apunta a la posición del nuevo EBR
+		prev.Next = newEBRPos
 		if err := writeEBR(f, &prev, ebrs[insertIdx-1].pos); err != nil {
 			return err
 		}
@@ -466,9 +519,10 @@ func findSpaceForLogical(extPart models.Partition, ebrs []ebrInfo, size int64, f
 
 	// Agregar todas las particiones lógicas existentes
 	for _, info := range ebrs {
-		// Cada partición lógica ocupa: EBR + datos
-		start := info.ebr.Start
-		end := start + ebrSize + info.ebr.Size
+		// Cada partición lógica ocupa: EBR (en info.pos) + datos (en info.ebr.Start)
+		// El EBR está en info.pos, y los datos van desde info.ebr.Start hasta info.ebr.Start + info.ebr.Size
+		start := info.pos
+		end := info.ebr.Start + info.ebr.Size
 		used = append(used, seg{start, end})
 	}
 
@@ -563,11 +617,61 @@ func (r *FileFsRepository) resolve(id string) (diskPath string, region Region, e
 	if err != nil {
 		return "", Region{}, err
 	}
+
+	// Buscar en particiones primarias
 	for _, p := range m.Partitions {
 		if p.Status == models.PartStatusUsed && trimName(p.Name) == ext.Name {
 			return ext.Path, Region{Start: p.Start, Size: p.Size}, nil
 		}
 	}
+
+	// Buscar en particiones lógicas (dentro de la extendida)
+	f, err := os.Open(ext.Path)
+	if err != nil {
+		return "", Region{}, fmt.Errorf("partición no encontrada: %s", ext.Name)
+	}
+	defer f.Close()
+
+	// Encontrar la partición extendida
+	var extStart int64 = -1
+	for _, p := range m.Partitions {
+		if p.Status == models.PartStatusUsed && p.Type == models.PartTypeExtend {
+			extStart = p.Start
+			break
+		}
+	}
+
+	// Si hay partición extendida, buscar en sus particiones lógicas
+	if extStart != -1 {
+		cur := extStart
+		for {
+			var e models.EBR
+			if err := readEBR(f, &e, cur); err != nil {
+				break
+			}
+
+			// Si es el primer EBR vacío, terminar
+			if e.Status == models.PartStatusFree && e.Size == 0 {
+				break
+			}
+
+			// Si está en uso, verificar el nombre
+			if e.Status == models.PartStatusUsed {
+				n := strings.TrimRight(string(e.Name[:]), "\x00")
+				if n == ext.Name {
+					return ext.Path, Region{Start: e.Start, Size: e.Size}, nil
+				}
+			}
+
+			// Si no hay siguiente, terminar
+			if e.Next == -1 || e.Next == 0 {
+				break
+			}
+
+			cur = e.Next
+		}
+	}
+
 	return "", Region{}, fmt.Errorf("partición no encontrada: %s", ext.Name)
 }
 
@@ -585,9 +689,8 @@ func (r *FileFsRepository) Mkfs(id string, formatType string) error {
 	}
 
 	// Calcular n usando utils.ComputeLayout
-	// Asumimos inodeSize=64, blockSize=64 (según enunciado típico)
 	const inodeSize = 64
-	const blockSize = 64
+	const blockSize = models.BlockSizeFile // Usar constante actualizada (128)
 
 	// Importar utils para usar ComputeLayout
 	sb := computeLayout(region.Start, region.Size, inodeSize, blockSize)
@@ -756,18 +859,39 @@ func (r *FileFsRepository) Mkdir(id string, absPath []string, parents bool, uid 
 	}
 	defer f.Close()
 
-	// Leer superblock
-	sb, err := readSuperBlock(f, region.Start)
+	// Detectar tipo de filesystem y leer superblock apropiado
+	sbInterface, inodeStart, blockStart, err := r.readSuperBlockUniversal(f, region.Start)
 	if err != nil {
 		return fmt.Errorf("error leyendo superblock: %w", err)
 	}
 
+	// Extraer campos comunes del superblock
+	var bmInodeStart, bmBlockStart int64
+	var inodesCount, blocksCount int32
+
+	switch sb := sbInterface.(type) {
+	case models.SuperBlock:
+		// EXT2
+		bmInodeStart = sb.SBmInodeStart
+		bmBlockStart = sb.SBmBlockStart
+		inodesCount = sb.SInodesCount
+		blocksCount = sb.SBlocksCount
+	case models.SuperBlockExt3:
+		// EXT3
+		bmInodeStart = sb.BmInodeStart
+		bmBlockStart = sb.BmBlockStart
+		inodesCount = sb.InodesCount
+		blocksCount = sb.BlocksCount
+	default:
+		return fmt.Errorf("tipo de superblock desconocido")
+	}
+
 	// Leer bitmaps
-	bmInode, err := readBitmap(f, sb.SBmInodeStart, int(sb.SInodesCount), region)
+	bmInode, err := readBitmap(f, bmInodeStart, int(inodesCount), region)
 	if err != nil {
 		return fmt.Errorf("error leyendo bitmap inodos: %w", err)
 	}
-	bmBlock, err := readBitmap(f, sb.SBmBlockStart, int(sb.SBlocksCount), region)
+	bmBlock, err := readBitmap(f, bmBlockStart, int(blocksCount), region)
 	if err != nil {
 		return fmt.Errorf("error leyendo bitmap bloques: %w", err)
 	}
@@ -779,7 +903,7 @@ func (r *FileFsRepository) Mkdir(id string, absPath []string, parents bool, uid 
 		isLast := i == len(absPath)-1
 
 		// Leer inodo actual
-		currentInode, err := readInodeAt(f, sb.SInodeStart, int(currentInodeIdx), region)
+		currentInode, err := readInodeAt(f, inodeStart, int(currentInodeIdx), region)
 		if err != nil {
 			return fmt.Errorf("error leyendo inodo %d: %w", currentInodeIdx, err)
 		}
@@ -799,7 +923,7 @@ func (r *FileFsRepository) Mkdir(id string, absPath []string, parents bool, uid 
 		}
 
 		// Buscar entrada 'name' en el directorio actual
-		foundIdx, err := findEntryInDir(f, &currentInode, sb.SBlockStart, name, region)
+		foundIdx, err := findEntryInDir(f, &currentInode, blockStart, name, region)
 		if err != nil {
 			return fmt.Errorf("error buscando entrada: %w", err)
 		}
@@ -811,7 +935,7 @@ func (r *FileFsRepository) Mkdir(id string, absPath []string, parents bool, uid 
 			}
 
 			// Crear nuevo directorio
-			newInodeIdx, newBlockIdx, err := allocateInodeAndBlock(bmInode, bmBlock, int(sb.SInodesCount), int(sb.SBlocksCount))
+			newInodeIdx, newBlockIdx, err := allocateInodeAndBlock(bmInode, bmBlock, int(inodesCount), int(blocksCount))
 			if err != nil {
 				return fmt.Errorf("error reservando inodo/bloque: %w", err)
 			}
@@ -846,28 +970,42 @@ func (r *FileFsRepository) Mkdir(id string, absPath []string, parents bool, uid 
 			newInode.ISize = int32(binary.Size(newDirBlock))
 
 			// Escribir inodo y bloque
-			if err := writeInodeAt(f, sb.SInodeStart, newInodeIdx, &newInode, region); err != nil {
+			if err := writeInodeAt(f, inodeStart, newInodeIdx, &newInode, region); err != nil {
 				return fmt.Errorf("error escribiendo inodo nuevo: %w", err)
 			}
-			if err := writeBlockAt(f, sb.SBlockStart, newBlockIdx, &newDirBlock, region); err != nil {
+			if err := writeBlockAt(f, blockStart, newBlockIdx, &newDirBlock, region); err != nil {
 				return fmt.Errorf("error escribiendo bloque nuevo: %w", err)
 			}
 
 			// Agregar entrada al directorio padre
-			if err := addEntryToDir(f, &currentInode, sb.SBlockStart, name, int32(newInodeIdx), bmBlock, int(sb.SBlocksCount), region); err != nil {
+			if err := addEntryToDir(f, &currentInode, blockStart, name, int32(newInodeIdx), bmBlock, int(blocksCount), region); err != nil {
 				return fmt.Errorf("error agregando entrada al directorio padre: %w", err)
 			}
 
 			// Actualizar inodo padre
 			currentInode.IMtime = now
-			if err := writeInodeAt(f, sb.SInodeStart, int(currentInodeIdx), &currentInode, region); err != nil {
+			if err := writeInodeAt(f, inodeStart, int(currentInodeIdx), &currentInode, region); err != nil {
 				return fmt.Errorf("error actualizando inodo padre: %w", err)
 			}
 
-			// Actualizar superblock
-			sb.SFreeInodesCount--
-			sb.SFreeBlocksCount--
-			sb.SMtime = now
+			// Actualizar superblock según el tipo
+			now = time.Now().Unix()
+			switch sb := sbInterface.(type) {
+			case models.SuperBlock:
+				sb.SFreeInodesCount--
+				sb.SFreeBlocksCount--
+				sb.SMtime = now
+				if err := writeSuperBlock(f, region.Start, &sb); err != nil {
+					return fmt.Errorf("error actualizando superblock: %w", err)
+				}
+			case models.SuperBlockExt3:
+				sb.FreeInodes--
+				sb.FreeBlocks--
+				sb.MTime = now
+				if err := r.writeSuperExt3(f, sb); err != nil {
+					return fmt.Errorf("error actualizando superblock: %w", err)
+				}
+			}
 
 			// Continuar con el nuevo directorio
 			currentInodeIdx = int32(newInodeIdx)
@@ -881,17 +1019,16 @@ func (r *FileFsRepository) Mkdir(id string, absPath []string, parents bool, uid 
 	}
 
 	// Escribir bitmaps actualizados
-	if _, err := SafeWriteAt(f, bmInode, sb.SBmInodeStart, region); err != nil {
+	if _, err := SafeWriteAt(f, bmInode, bmInodeStart, region); err != nil {
 		return fmt.Errorf("error actualizando bitmap inodos: %w", err)
 	}
-	if _, err := SafeWriteAt(f, bmBlock, sb.SBmBlockStart, region); err != nil {
+	if _, err := SafeWriteAt(f, bmBlock, bmBlockStart, region); err != nil {
 		return fmt.Errorf("error actualizando bitmap bloques: %w", err)
 	}
 
-	// Escribir superblock actualizado
-	if err := writeSuperBlock(f, region.Start, &sb); err != nil {
-		return fmt.Errorf("error actualizando superblock: %w", err)
-	}
+	// Registrar en journal (ignorar errores para no romper la operación)
+	fullPath := "/" + strings.Join(absPath, "/")
+	_ = r.JournalAppendPublic(id, "MKDIR", fullPath, "", time.Now().Unix())
 
 	return nil
 }
@@ -908,18 +1045,39 @@ func (r *FileFsRepository) Mkfile(id string, absPath []string, size int, content
 	}
 	defer f.Close()
 
-	// Leer superblock
-	sb, err := readSuperBlock(f, region.Start)
+	// Detectar tipo de filesystem y leer superblock apropiado
+	sbInterface, inodeStart, blockStart, err := r.readSuperBlockUniversal(f, region.Start)
 	if err != nil {
 		return fmt.Errorf("error leyendo superblock: %w", err)
 	}
 
+	// Extraer campos comunes del superblock
+	var bmInodeStart, bmBlockStart int64
+	var inodesCount, blocksCount int32
+
+	switch sb := sbInterface.(type) {
+	case models.SuperBlock:
+		// EXT2
+		bmInodeStart = sb.SBmInodeStart
+		bmBlockStart = sb.SBmBlockStart
+		inodesCount = sb.SInodesCount
+		blocksCount = sb.SBlocksCount
+	case models.SuperBlockExt3:
+		// EXT3
+		bmInodeStart = sb.BmInodeStart
+		bmBlockStart = sb.BmBlockStart
+		inodesCount = sb.InodesCount
+		blocksCount = sb.BlocksCount
+	default:
+		return fmt.Errorf("tipo de superblock desconocido")
+	}
+
 	// Leer bitmaps
-	bmInode, err := readBitmap(f, sb.SBmInodeStart, int(sb.SInodesCount), region)
+	bmInode, err := readBitmap(f, bmInodeStart, int(inodesCount), region)
 	if err != nil {
 		return fmt.Errorf("error leyendo bitmap inodos: %w", err)
 	}
-	bmBlock, err := readBitmap(f, sb.SBmBlockStart, int(sb.SBlocksCount), region)
+	bmBlock, err := readBitmap(f, bmBlockStart, int(blocksCount), region)
 	if err != nil {
 		return fmt.Errorf("error leyendo bitmap bloques: %w", err)
 	}
@@ -937,7 +1095,7 @@ func (r *FileFsRepository) Mkfile(id string, absPath []string, size int, content
 
 	for i, name := range parentPath {
 		// Leer inodo actual
-		currentInode, err := readInodeAt(f, sb.SInodeStart, int(currentInodeIdx), region)
+		currentInode, err := readInodeAt(f, inodeStart, int(currentInodeIdx), region)
 		if err != nil {
 			return fmt.Errorf("error leyendo inodo %d: %w", currentInodeIdx, err)
 		}
@@ -957,7 +1115,7 @@ func (r *FileFsRepository) Mkfile(id string, absPath []string, size int, content
 		}
 
 		// Buscar entrada
-		foundIdx, err := findEntryInDir(f, &currentInode, sb.SBlockStart, name, region)
+		foundIdx, err := findEntryInDir(f, &currentInode, blockStart, name, region)
 		if err != nil {
 			return fmt.Errorf("error buscando entrada: %w", err)
 		}
@@ -969,7 +1127,7 @@ func (r *FileFsRepository) Mkfile(id string, absPath []string, size int, content
 			}
 
 			// Crear directorio padre (similar a Mkdir)
-			newInodeIdx, newBlockIdx, err := allocateInodeAndBlock(bmInode, bmBlock, int(sb.SInodesCount), int(sb.SBlocksCount))
+			newInodeIdx, newBlockIdx, err := allocateInodeAndBlock(bmInode, bmBlock, int(inodesCount), int(blocksCount))
 			if err != nil {
 				return fmt.Errorf("error reservando inodo/bloque: %w", err)
 			}
@@ -1001,25 +1159,23 @@ func (r *FileFsRepository) Mkfile(id string, absPath []string, size int, content
 
 			newInode.ISize = int32(binary.Size(newDirBlock))
 
-			if err := writeInodeAt(f, sb.SInodeStart, newInodeIdx, &newInode, region); err != nil {
+			if err := writeInodeAt(f, inodeStart, newInodeIdx, &newInode, region); err != nil {
 				return fmt.Errorf("error escribiendo inodo nuevo: %w", err)
 			}
-			if err := writeBlockAt(f, sb.SBlockStart, newBlockIdx, &newDirBlock, region); err != nil {
+			if err := writeBlockAt(f, blockStart, newBlockIdx, &newDirBlock, region); err != nil {
 				return fmt.Errorf("error escribiendo bloque nuevo: %w", err)
 			}
 
-			if err := addEntryToDir(f, &currentInode, sb.SBlockStart, name, int32(newInodeIdx), bmBlock, int(sb.SBlocksCount), region); err != nil {
+			if err := addEntryToDir(f, &currentInode, blockStart, name, int32(newInodeIdx), bmBlock, int(blocksCount), region); err != nil {
 				return fmt.Errorf("error agregando entrada al directorio padre: %w", err)
 			}
 
 			currentInode.IMtime = now
-			if err := writeInodeAt(f, sb.SInodeStart, int(currentInodeIdx), &currentInode, region); err != nil {
+			if err := writeInodeAt(f, inodeStart, int(currentInodeIdx), &currentInode, region); err != nil {
 				return fmt.Errorf("error actualizando inodo padre: %w", err)
 			}
 
-			sb.SFreeInodesCount--
-			sb.SFreeBlocksCount--
-			sb.SMtime = now
+			// Nota: Los contadores de superblock se actualizan al final
 
 			currentInodeIdx = int32(newInodeIdx)
 		} else {
@@ -1028,13 +1184,13 @@ func (r *FileFsRepository) Mkfile(id string, absPath []string, size int, content
 	}
 
 	// Ahora crear el archivo en el directorio padre
-	parentInode, err := readInodeAt(f, sb.SInodeStart, int(currentInodeIdx), region)
+	parentInode, err := readInodeAt(f, inodeStart, int(currentInodeIdx), region)
 	if err != nil {
 		return fmt.Errorf("error leyendo inodo padre: %w", err)
 	}
 
 	// Verificar que el archivo no existe
-	existingIdx, err := findEntryInDir(f, &parentInode, sb.SBlockStart, fileName, region)
+	existingIdx, err := findEntryInDir(f, &parentInode, blockStart, fileName, region)
 	if err != nil {
 		return fmt.Errorf("error buscando archivo: %w", err)
 	}
@@ -1045,9 +1201,11 @@ func (r *FileFsRepository) Mkfile(id string, absPath []string, size int, content
 	// Leer contenido desde archivo host si se especifica (prioridad sobre -size)
 	var content []byte
 	if contentHostPath != "" {
+		// Intentar leer como archivo primero
 		content, err = os.ReadFile(contentHostPath)
 		if err != nil {
-			return fmt.Errorf("error leyendo archivo host: %w", err)
+			// Si falla, usar el valor como contenido directo
+			content = []byte(contentHostPath)
 		}
 	} else {
 		// Generar contenido con números 0-9 repetidos según el tamaño
@@ -1059,11 +1217,11 @@ func (r *FileFsRepository) Mkfile(id string, absPath []string, size int, content
 	}
 
 	// Calcular cuántos bloques necesitamos
-	blocksNeeded := (len(content) + 63) / 64 // redondear hacia arriba
+	blocksNeeded := (len(content) + models.BlockSizeFile - 1) / models.BlockSizeFile // redondear hacia arriba
 
 	// Reservar inodo para el archivo
 	fileInodeIdx := -1
-	for i := 0; i < int(sb.SInodesCount); i++ {
+	for i := 0; i < int(inodesCount); i++ {
 		if bmInode[i] == 0 {
 			bmInode[i] = 1
 			fileInodeIdx = i
@@ -1077,7 +1235,7 @@ func (r *FileFsRepository) Mkfile(id string, absPath []string, size int, content
 	// Reservar bloques para el contenido
 	blockIndices := make([]int32, 0, blocksNeeded)
 	for i := 0; i < blocksNeeded && len(blockIndices) < blocksNeeded; i++ {
-		for j := 0; j < int(sb.SBlocksCount); j++ {
+		for j := 0; j < int(blocksCount); j++ {
 			if bmBlock[j] == 0 {
 				bmBlock[j] = 1
 				blockIndices = append(blockIndices, int32(j))
@@ -1117,8 +1275,8 @@ func (r *FileFsRepository) Mkfile(id string, absPath []string, size int, content
 
 	// Escribir contenido en bloques
 	for i, blkIdx := range blockIndices {
-		start := i * 64
-		end := start + 64
+		start := i * models.BlockSizeFile
+		end := start + models.BlockSizeFile
 		if end > len(content) {
 			end = len(content)
 		}
@@ -1126,44 +1284,57 @@ func (r *FileFsRepository) Mkfile(id string, absPath []string, size int, content
 		var fileBlock models.FileBlock
 		copy(fileBlock.Content[:], content[start:end])
 
-		if err := writeBlockAt(f, sb.SBlockStart, int(blkIdx), &fileBlock, region); err != nil {
+		if err := writeBlockAt(f, blockStart, int(blkIdx), &fileBlock, region); err != nil {
 			return fmt.Errorf("error escribiendo bloque de archivo: %w", err)
 		}
 	}
 
 	// Escribir inodo del archivo
-	if err := writeInodeAt(f, sb.SInodeStart, fileInodeIdx, &fileInode, region); err != nil {
+	if err := writeInodeAt(f, inodeStart, fileInodeIdx, &fileInode, region); err != nil {
 		return fmt.Errorf("error escribiendo inodo de archivo: %w", err)
 	}
 
 	// Agregar entrada al directorio padre
-	if err := addEntryToDir(f, &parentInode, sb.SBlockStart, fileName, int32(fileInodeIdx), bmBlock, int(sb.SBlocksCount), region); err != nil {
+	if err := addEntryToDir(f, &parentInode, blockStart, fileName, int32(fileInodeIdx), bmBlock, int(blocksCount), region); err != nil {
 		return fmt.Errorf("error agregando entrada al directorio padre: %w", err)
 	}
 
 	// Actualizar inodo padre
 	parentInode.IMtime = now
-	if err := writeInodeAt(f, sb.SInodeStart, int(currentInodeIdx), &parentInode, region); err != nil {
+	if err := writeInodeAt(f, inodeStart, int(currentInodeIdx), &parentInode, region); err != nil {
 		return fmt.Errorf("error actualizando inodo padre: %w", err)
 	}
 
-	// Actualizar superblock
-	sb.SFreeInodesCount -= int32(1)
-	sb.SFreeBlocksCount -= int32(len(blockIndices))
-	sb.SMtime = now
+	// Actualizar superblock según el tipo
+	switch sb := sbInterface.(type) {
+	case models.SuperBlock:
+		sb.SFreeInodesCount -= int32(1)
+		sb.SFreeBlocksCount -= int32(len(blockIndices))
+		sb.SMtime = now
+		if err := writeSuperBlock(f, region.Start, &sb); err != nil {
+			return fmt.Errorf("error actualizando superblock: %w", err)
+		}
+	case models.SuperBlockExt3:
+		sb.FreeInodes -= int32(1)
+		sb.FreeBlocks -= int32(len(blockIndices))
+		sb.MTime = now
+		if err := r.writeSuperExt3(f, sb); err != nil {
+			return fmt.Errorf("error actualizando superblock: %w", err)
+		}
+	}
 
 	// Escribir bitmaps actualizados
-	if _, err := SafeWriteAt(f, bmInode, sb.SBmInodeStart, region); err != nil {
+	if _, err := SafeWriteAt(f, bmInode, bmInodeStart, region); err != nil {
 		return fmt.Errorf("error actualizando bitmap inodos: %w", err)
 	}
-	if _, err := SafeWriteAt(f, bmBlock, sb.SBmBlockStart, region); err != nil {
+	if _, err := SafeWriteAt(f, bmBlock, bmBlockStart, region); err != nil {
 		return fmt.Errorf("error actualizando bitmap bloques: %w", err)
 	}
 
-	// Escribir superblock actualizado
-	if err := writeSuperBlock(f, region.Start, &sb); err != nil {
-		return fmt.Errorf("error actualizando superblock: %w", err)
-	}
+	// Registrar en journal (ignorar errores para no romper la operación)
+	fullPath := "/" + strings.Join(absPath, "/")
+	contentInfo := fmt.Sprintf("size=%d", size)
+	_ = r.JournalAppendPublic(id, "MKFILE", fullPath, contentInfo, time.Now().Unix())
 
 	return nil
 }
@@ -1180,8 +1351,8 @@ func (r *FileFsRepository) Cat(id string, files [][]string, uid int, gid int) (s
 	}
 	defer f.Close()
 
-	// Leer superblock
-	sb, err := readSuperBlock(f, region.Start)
+	// Detectar tipo de filesystem y leer superblock apropiado
+	_, inodeStart, blockStart, err := r.readSuperBlockUniversal(f, region.Start)
 	if err != nil {
 		return "", fmt.Errorf("error leyendo superblock: %w", err)
 	}
@@ -1200,7 +1371,7 @@ func (r *FileFsRepository) Cat(id string, files [][]string, uid int, gid int) (s
 			isLast := i == len(filePath)-1
 
 			// Leer inodo actual
-			currentInode, err := readInodeAt(f, sb.SInodeStart, int(currentInodeIdx), region)
+			currentInode, err := readInodeAt(f, inodeStart, int(currentInodeIdx), region)
 			if err != nil {
 				return "", fmt.Errorf("error leyendo inodo %d: %w", currentInodeIdx, err)
 			}
@@ -1212,7 +1383,7 @@ func (r *FileFsRepository) Cat(id string, files [][]string, uid int, gid int) (s
 				}
 
 				// Buscar siguiente componente
-				foundIdx, err := findEntryInDir(f, &currentInode, sb.SBlockStart, name, region)
+				foundIdx, err := findEntryInDir(f, &currentInode, blockStart, name, region)
 				if err != nil {
 					return "", fmt.Errorf("error buscando entrada: %w", err)
 				}
@@ -1222,7 +1393,7 @@ func (r *FileFsRepository) Cat(id string, files [][]string, uid int, gid int) (s
 				currentInodeIdx = foundIdx
 			} else {
 				// Es el último componente, buscar el archivo
-				foundIdx, err := findEntryInDir(f, &currentInode, sb.SBlockStart, name, region)
+				foundIdx, err := findEntryInDir(f, &currentInode, blockStart, name, region)
 				if err != nil {
 					return "", fmt.Errorf("error buscando archivo: %w", err)
 				}
@@ -1231,7 +1402,7 @@ func (r *FileFsRepository) Cat(id string, files [][]string, uid int, gid int) (s
 				}
 
 				// Leer inodo del archivo
-				fileInode, err := readInodeAt(f, sb.SInodeStart, int(foundIdx), region)
+				fileInode, err := readInodeAt(f, inodeStart, int(foundIdx), region)
 				if err != nil {
 					return "", fmt.Errorf("error leyendo inodo de archivo: %w", err)
 				}
@@ -1256,7 +1427,7 @@ func (r *FileFsRepository) Cat(id string, files [][]string, uid int, gid int) (s
 
 					// Leer bloque
 					var fileBlock models.FileBlock
-					offset := sb.SBlockStart + int64(blkIdx*64)
+					offset := blockStart + int64(blkIdx*models.BlockSizeFile)
 					if _, err := f.Seek(offset, 0); err != nil {
 						return "", fmt.Errorf("error buscando bloque: %w", err)
 					}
@@ -1330,14 +1501,31 @@ func (r *FileFsRepository) UpdateFile(id string, absPath []string, newContent st
 	}
 	defer f.Close()
 
-	// Leer superblock
-	sb, err := readSuperBlock(f, region.Start)
+	// Detectar tipo de filesystem y leer superblock apropiado
+	sbInterface, inodeStart, blockStart, err := r.readSuperBlockUniversal(f, region.Start)
 	if err != nil {
 		return fmt.Errorf("error leyendo superblock: %w", err)
 	}
 
+	// Extraer campos comunes del superblock
+	var bmBlockStart int64
+	var blocksCount int32
+
+	switch sb := sbInterface.(type) {
+	case models.SuperBlock:
+		// EXT2
+		bmBlockStart = sb.SBmBlockStart
+		blocksCount = sb.SBlocksCount
+	case models.SuperBlockExt3:
+		// EXT3
+		bmBlockStart = sb.BmBlockStart
+		blocksCount = sb.BlocksCount
+	default:
+		return fmt.Errorf("tipo de superblock desconocido")
+	}
+
 	// Leer bitmaps
-	bmBlock, err := readBitmap(f, sb.SBmBlockStart, int(sb.SBlocksCount), region)
+	bmBlock, err := readBitmap(f, bmBlockStart, int(blocksCount), region)
 	if err != nil {
 		return fmt.Errorf("error leyendo bitmap bloques: %w", err)
 	}
@@ -1349,7 +1537,7 @@ func (r *FileFsRepository) UpdateFile(id string, absPath []string, newContent st
 		isLast := i == len(absPath)-1
 
 		// Leer inodo actual
-		currentInode, err := readInodeAt(f, sb.SInodeStart, int(currentInodeIdx), region)
+		currentInode, err := readInodeAt(f, inodeStart, int(currentInodeIdx), region)
 		if err != nil {
 			return fmt.Errorf("error leyendo inodo %d: %w", currentInodeIdx, err)
 		}
@@ -1361,7 +1549,7 @@ func (r *FileFsRepository) UpdateFile(id string, absPath []string, newContent st
 			}
 
 			// Buscar siguiente componente
-			foundIdx, err := findEntryInDir(f, &currentInode, sb.SBlockStart, name, region)
+			foundIdx, err := findEntryInDir(f, &currentInode, blockStart, name, region)
 			if err != nil {
 				return fmt.Errorf("error buscando entrada: %w", err)
 			}
@@ -1371,7 +1559,7 @@ func (r *FileFsRepository) UpdateFile(id string, absPath []string, newContent st
 			currentInodeIdx = foundIdx
 		} else {
 			// Es el último componente, buscar el archivo
-			foundIdx, err := findEntryInDir(f, &currentInode, sb.SBlockStart, name, region)
+			foundIdx, err := findEntryInDir(f, &currentInode, blockStart, name, region)
 			if err != nil {
 				return fmt.Errorf("error buscando archivo: %w", err)
 			}
@@ -1380,7 +1568,7 @@ func (r *FileFsRepository) UpdateFile(id string, absPath []string, newContent st
 			}
 
 			// Leer inodo del archivo
-			fileInode, err := readInodeAt(f, sb.SInodeStart, int(foundIdx), region)
+			fileInode, err := readInodeAt(f, inodeStart, int(foundIdx), region)
 			if err != nil {
 				return fmt.Errorf("error leyendo inodo de archivo: %w", err)
 			}
@@ -1392,7 +1580,7 @@ func (r *FileFsRepository) UpdateFile(id string, absPath []string, newContent st
 
 			// Convertir contenido a bytes
 			content := []byte(newContent)
-			blocksNeeded := (len(content) + 63) / 64
+			blocksNeeded := (len(content) + models.BlockSizeFile - 1) / models.BlockSizeFile
 
 			// Liberar bloques antiguos si los hay
 			for i := 0; i < 12; i++ {
@@ -1405,7 +1593,7 @@ func (r *FileFsRepository) UpdateFile(id string, absPath []string, newContent st
 			// Asignar nuevos bloques
 			blockIndices := make([]int32, 0, blocksNeeded)
 			for i := 0; i < blocksNeeded; i++ {
-				for j := 0; j < int(sb.SBlocksCount); j++ {
+				for j := 0; j < int(blocksCount); j++ {
 					if bmBlock[j] == 0 {
 						bmBlock[j] = 1
 						blockIndices = append(blockIndices, int32(j))
@@ -1429,8 +1617,8 @@ func (r *FileFsRepository) UpdateFile(id string, absPath []string, newContent st
 
 			// Escribir contenido en bloques
 			for i, blkIdx := range blockIndices {
-				start := i * 64
-				end := start + 64
+				start := i * models.BlockSizeFile
+				end := start + models.BlockSizeFile
 				if end > len(content) {
 					end = len(content)
 				}
@@ -1438,29 +1626,36 @@ func (r *FileFsRepository) UpdateFile(id string, absPath []string, newContent st
 				var fileBlock models.FileBlock
 				copy(fileBlock.Content[:], content[start:end])
 
-				if err := writeBlockAt(f, sb.SBlockStart, int(blkIdx), &fileBlock, region); err != nil {
+				if err := writeBlockAt(f, blockStart, int(blkIdx), &fileBlock, region); err != nil {
 					return fmt.Errorf("error escribiendo bloque de archivo: %w", err)
 				}
 			}
 
 			// Escribir inodo actualizado
-			if err := writeInodeAt(f, sb.SInodeStart, int(foundIdx), &fileInode, region); err != nil {
+			if err := writeInodeAt(f, inodeStart, int(foundIdx), &fileInode, region); err != nil {
 				return fmt.Errorf("error escribiendo inodo actualizado: %w", err)
 			}
 
-			// Actualizar superblock
-			sb.SMtime = time.Now().Unix()
+			// Actualizar superblock según el tipo
+			now := time.Now().Unix()
+			switch sb := sbInterface.(type) {
+			case models.SuperBlock:
+				sb.SMtime = now
+				if err := writeSuperBlock(f, region.Start, &sb); err != nil {
+					return fmt.Errorf("error actualizando superblock: %w", err)
+				}
+			case models.SuperBlockExt3:
+				sb.MTime = now
+				if err := r.writeSuperExt3(f, sb); err != nil {
+					return fmt.Errorf("error actualizando superblock: %w", err)
+				}
+			}
 		}
 	}
 
 	// Escribir bitmap actualizado
-	if _, err := SafeWriteAt(f, bmBlock, sb.SBmBlockStart, region); err != nil {
+	if _, err := SafeWriteAt(f, bmBlock, bmBlockStart, region); err != nil {
 		return fmt.Errorf("error actualizando bitmap bloques: %w", err)
-	}
-
-	// Escribir superblock actualizado
-	if err := writeSuperBlock(f, region.Start, &sb); err != nil {
-		return fmt.Errorf("error actualizando superblock: %w", err)
 	}
 
 	return nil
@@ -1642,8 +1837,8 @@ func (r *FileFsRepository) ReadBlock(id string, index int) ([]byte, error) {
 		return nil, err
 	}
 
-	block := make([]byte, 64)
-	offset := sb.SBlockStart + int64(index*64)
+	block := make([]byte, models.BlockSizeFile)
+	offset := sb.SBlockStart + int64(index*models.BlockSizeFile)
 	if _, err := f.Seek(offset, 0); err != nil {
 		return nil, err
 	}
@@ -1671,15 +1866,15 @@ func (r *FileFsRepository) WriteBlock(id string, index int, data []byte) error {
 		return err
 	}
 
-	if len(data) > 64 {
-		return fmt.Errorf("bloque demasiado grande: %d bytes (máx 64)", len(data))
+	if len(data) > models.BlockSizeFile {
+		return fmt.Errorf("bloque demasiado grande: %d bytes (máx %d)", len(data), models.BlockSizeFile)
 	}
 
 	// Pad con zeros si es necesario
-	block := make([]byte, 64)
+	block := make([]byte, models.BlockSizeFile)
 	copy(block, data)
 
-	offset := sb.SBlockStart + int64(index*64)
+	offset := sb.SBlockStart + int64(index*models.BlockSizeFile)
 	_, err = SafeWriteAt(f, block, offset, region)
 	return err
 }
@@ -1752,13 +1947,42 @@ func readSuperBlock(f *os.File, offset int64) (models.SuperBlock, error) {
 	return sb, nil
 }
 
+// readSuperBlockUniversal lee el superblock y detecta si es EXT2 o EXT3
+// Retorna: superblock (solo para magic check), inodeStart, blockStart, error
+func (r *FileFsRepository) readSuperBlockUniversal(f *os.File, offset int64) (interface{}, int64, int64, error) {
+	// Primero leer como EXT2 para detectar el tipo
+	sb2, err := readSuperBlock(f, offset)
+	if err != nil {
+		return nil, 0, 0, err
+	}
+
+	// Si SMagic no es válido, probar como EXT3
+	if sb2.SMagic != models.FSMagic {
+		// Intentar leer como EXT3
+		sb3, err := r.readSuperExt3(f, offset)
+		if err != nil {
+			return nil, 0, 0, fmt.Errorf("formato inválido (ni EXT2 ni EXT3)")
+		}
+		// EXT3
+		return sb3, sb3.InodeStart, sb3.BlockStart, nil
+	}
+
+	// Es EXT2
+	return sb2, sb2.SInodeStart, sb2.SBlockStart, nil
+}
+
 // writeInodeAt escribe un inodo en la tabla de inodos
 func writeInodeAt(f *os.File, inodeTableStart int64, index int, ino *models.Inode, region Region) error {
 	offset := inodeTableStart + int64(index*binary.Size(*ino))
+	fmt.Printf("DEBUG writeInodeAt: index=%d, offset=%d, IUid=%d, ISize=%d\n", index, offset, ino.IUid, ino.ISize)
 	if _, err := f.Seek(offset, 0); err != nil {
-		return err
+		return fmt.Errorf("error seeking to %d: %w", offset, err)
 	}
-	return binary.Write(f, binary.LittleEndian, ino)
+	if err := binary.Write(f, binary.LittleEndian, ino); err != nil {
+		return fmt.Errorf("error writing inode: %w", err)
+	}
+	fmt.Printf("DEBUG writeInodeAt: inodo %d escrito exitosamente\n", index)
+	return nil
 }
 
 // readInodeAt lee un inodo de la tabla de inodos
@@ -1766,11 +1990,17 @@ func readInodeAt(f *os.File, inodeTableStart int64, index int, region Region) (m
 	var ino models.Inode
 	inodeSize := binary.Size(ino)
 	offset := inodeTableStart + int64(index*inodeSize)
+	if index == 0 || index == 1 {
+		fmt.Printf("DEBUG readInodeAt: index=%d, inodeSize=%d, offset=%d, inodeTableStart=%d\n", index, inodeSize, offset, inodeTableStart)
+	}
 	if _, err := f.Seek(offset, 0); err != nil {
 		return ino, err
 	}
 	if err := binary.Read(f, binary.LittleEndian, &ino); err != nil {
 		return ino, err
+	}
+	if index == 0 || index == 1 {
+		fmt.Printf("DEBUG readInodeAt: inodo %d leído: IType=%d, ISize=%d, IUid=%d\n", index, ino.IType, ino.ISize, ino.IUid)
 	}
 	return ino, nil
 }
@@ -1799,7 +2029,7 @@ func writeBlockAt(f *os.File, blockAreaStart int64, index int, data interface{},
 		return fmt.Errorf("tipo de bloque no soportado")
 	}
 
-	offset := blockAreaStart + int64(index*64) // blockSize = 64
+	offset := blockAreaStart + int64(index*models.BlockSizeFile)
 	if _, err := f.Seek(offset, 0); err != nil {
 		return err
 	}
@@ -1861,7 +2091,7 @@ func findEntryInDir(f *os.File, dirInode *models.Inode, blockAreaStart int64, na
 
 		// Leer el bloque de directorio
 		var dirBlk models.FolderBlock
-		offset := blockAreaStart + int64(blkIdx*64)
+		offset := blockAreaStart + int64(blkIdx*models.BlockSizeFile)
 		if _, err := f.Seek(offset, 0); err != nil {
 			return -1, err
 		}
@@ -1924,7 +2154,7 @@ func addEntryToDir(f *os.File, dirInode *models.Inode, blockAreaStart int64, nam
 
 		// Leer bloque existente
 		var dirBlk models.FolderBlock
-		offset := blockAreaStart + int64(blkIdx*64)
+		offset := blockAreaStart + int64(blkIdx*models.BlockSizeFile)
 		if _, err := f.Seek(offset, 0); err != nil {
 			return err
 		}
@@ -2006,4 +2236,106 @@ func hasWritePermission(dirInode models.Inode, uid int32, gid int32) bool {
 	// Otherwise, verificar permisos de others
 	othersPerm := int(dirInode.IPerm[2] - '0')
 	return (othersPerm & 2) != 0 // bit de escritura en others
+}
+
+// ============================================================
+// EXT3 + JOURNAL - Métodos públicos del repositorio
+// ============================================================
+
+// MkfsWithTypeExt3Wrapper formatea partición con EXT3 (wrapper público)
+func (r *FileFsRepository) MkfsExt3(id string) error {
+	return r.MkfsWithTypeExt3(id, JournalConst50)
+}
+
+// MkfsWithType formatea la partición con EXT2 o EXT3 (unificado P1/P2)
+func (r *FileFsRepository) MkfsWithType(id string, fsType int32, full bool) error {
+	switch fsType {
+	case 2:
+		// EXT2: usar la implementación existente de P1
+		return r.Mkfs(id, "full")
+	case 3:
+		// EXT3: usar la implementación nueva con journal
+		return r.MkfsWithTypeExt3(id, JournalConst50)
+	default:
+		return fmt.Errorf("fsType inválido (2|3)")
+	}
+}
+
+// JournalAppendPublic agrega una entrada al journal (interfaz pública)
+func (r *FileFsRepository) JournalAppendPublic(id string, op, path, content string, ts int64) error {
+	diskPath, partStart, _, err := r.getMountInfo(id)
+	if err != nil {
+		return err
+	}
+
+	f, err := os.OpenFile(diskPath, os.O_RDWR, 0o644)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+
+	sb, err := r.readSuperExt3(f, partStart)
+	if err != nil {
+		return err
+	}
+
+	if sb.FsType != 3 {
+		return errors.New("operación no soportada en EXT2")
+	}
+
+	var inf models.Information
+	inf.Set(op, path, content, ts)
+	j := models.Journal{Count: 0, Content: inf}
+
+	return r.AppendJournal(f, sb, j)
+}
+
+// JournalListPublic devuelve todas las entradas del journal
+func (r *FileFsRepository) JournalListPublic(id string) ([]models.Journal, error) {
+	diskPath, partStart, _, err := r.getMountInfo(id)
+	if err != nil {
+		return nil, err
+	}
+
+	f, err := os.OpenFile(diskPath, os.O_RDONLY, 0o644)
+	if err != nil {
+		return nil, err
+	}
+	defer f.Close()
+
+	sb, err := r.readSuperExt3(f, partStart)
+	if err != nil {
+		return nil, err
+	}
+
+	if sb.FsType != 3 {
+		return nil, errors.New("operación no soportada en EXT2")
+	}
+
+	return r.ListJournal(f, sb)
+}
+
+// JournalClearPublic limpia todas las entradas del journal
+func (r *FileFsRepository) JournalClearPublic(id string) error {
+	diskPath, partStart, _, err := r.getMountInfo(id)
+	if err != nil {
+		return err
+	}
+
+	f, err := os.OpenFile(diskPath, os.O_RDWR, 0o644)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+
+	sb, err := r.readSuperExt3(f, partStart)
+	if err != nil {
+		return err
+	}
+
+	if sb.FsType != 3 {
+		return errors.New("operación no soportada en EXT2")
+	}
+
+	return r.ClearJournal(f, sb)
 }

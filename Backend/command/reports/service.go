@@ -14,6 +14,7 @@ type ReportGenerator interface {
 	SuperBlock(id, out string) (string, error)
 	File(id, out, filePath string) (string, error) // filePath = path_file
 	LS(id, out, pathForLs string) (string, error)  // pathForLs = path_file_ls
+	Journal(id string) (string, error)
 }
 
 type ReportService struct {
@@ -56,4 +57,9 @@ func (r *ReportService) Generate(name, id, out, extra string) (string, error) {
 	default:
 		return "", fmt.Errorf("reporte no soportado: %s", name)
 	}
+}
+
+// Journal muestra el journal de una partición EXT3
+func (r *ReportService) Journal(id string) (string, error) {
+	return r.gen.Journal(id)
 }
