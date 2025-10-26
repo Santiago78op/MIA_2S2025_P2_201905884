@@ -1,6 +1,4 @@
-¡Felicidades por cerrar P1! 🥳 Te propongo un plan de “evolución segura” para P2 que **no rompe** nada de tu backend actual y te deja integrar EXT3, journaling y los 11 comandos nuevos, además de endpoints para el visualizador y login por UI.
-
-Abajo tienes:
+# MIGRACION a EXT3 + JOURNALING (P2)
 
 1. Estrategia de migración sin riesgo
 2. Cambios puntuales en paquetes (árbol y contratos)
