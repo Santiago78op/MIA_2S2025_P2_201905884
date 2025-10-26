@@ -44,7 +44,7 @@ El sistema se organiza en tres capas principales:
 
 ```mermaid
 graph TD
-    A[Frontend React/Vite] -->|HTTP REST| B[Backend Go (Gin Framework)]
+    A[Frontend React/Vite] --> B[Backend Go (Gin Framework)]
     B --> C[Simulación EXT2/EXT3 (.mia)]
     B --> D[Graphviz - Generación de Reportes]
     A --> E[(AWS S3 - Hosting Estático)]
