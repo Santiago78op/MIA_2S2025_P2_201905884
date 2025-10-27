@@ -6,9 +6,9 @@ export default defineConfig({
   server: {
     port: 5173,
     proxy: {
-      '/api': { target: 'http://localhost:8080', changeOrigin: true },
-      '/health': { target: 'http://localhost:8080', changeOrigin: true },
-      '/reports': { target: 'http://localhost:8080', changeOrigin: true }
+      '/api': { target: 'http://18.118.86.143:8080', changeOrigin: true },
+      '/health': { target: 'http://18.118.86.143:8080', changeOrigin: true },
+      '/reports': { target: 'http://18.118.86.143:8080', changeOrigin: true }
     }
   }
 })
